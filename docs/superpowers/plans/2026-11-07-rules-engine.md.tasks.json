@@ -1,0 +1,93 @@
+{
+  "planPath": "docs/superpowers/plans/2026-11-07-rules-engine.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 0: Scaffold the workspace",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 0: Scaffold the workspace.\n\n**Verify:** `npm test && npm run typecheck`\n\n```json:metadata\n{\"files\": [\"package.json\", \".gitignore\", \"packages/engine/package.json\", \"packages/engine/tsconfig.json\", \"packages/engine/src/index.ts\"], \"verifyCommand\": \"npm test && npm run typecheck\", \"acceptanceCriteria\": [\"npm test exits 0\", \"npm run typecheck exits 0\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 1: Types, positions and board geometry",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 1: Types, positions and board geometry.\n\n**Verify:** `cd packages/engine && npx vitest run test/board.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/types.ts\", \"packages/engine/src/position.ts\", \"packages/engine/src/board.ts\", \"packages/engine/test/board.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/board.test.ts\", \"acceptanceCriteria\": [\"52 unique connected track squares\", \"starts and entries match conventions\", \"LINE_ACROSS has 40 symmetric entries, none on row 0\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: State, occupancy, paths and the test helper",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 2: State, occupancy, paths and the test helper.\n\n**Verify:** `cd packages/engine && npx vitest run test/path.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/state.ts\", \"packages/engine/src/occupancy.ts\", \"packages/engine/src/path.ts\", \"packages/engine/test/helpers.ts\", \"packages/engine/test/path.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/path.test.ts\", \"acceptanceCriteria\": [\"forward paths turn into own lane, exact home, exit opponent lanes\", \"backward paths wrap and are track-only\", \"isClear false on opponent blocks\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Legal moves: enter, forward (Front Kick), blocks, dedupe",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 3: Legal moves: enter, forward (Front Kick), blocks, dedupe.\n\n**Verify:** `cd packages/engine && npx vitest run test/frontKick.test.ts test/blocks.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/moves/enter.ts\", \"packages/engine/src/moves/forward.ts\", \"packages/engine/src/legalMoves.ts\", \"packages/engine/test/frontKick.test.ts\", \"packages/engine/test/blocks.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/frontKick.test.ts test/blocks.test.ts\", \"acceptanceCriteria\": [\"landing on lone opponent kicks, other moves still allowed\", \"only a 6 enters; enter kicks/blocked\", \"blocks cannot be passed or landed on\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Turn flow: roll, applyMove, pass, finishing",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 4: Turn flow: roll, applyMove, pass, finishing.\n\n**Verify:** `cd packages/engine && npx vitest run test/game.test.ts test/finishing.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/game.ts\", \"packages/engine/test/game.test.ts\", \"packages/engine/test/finishing.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/game.test.ts test/finishing.test.ts\", \"acceptanceCriteria\": [\"wasted rolls; wasted 6 rolls again\", \"applyMove validates and is pure\", \"6 gives another roll unless finished\", \"firstWins / playForPlaces\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Back Kick",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 5: Back Kick.\n\n**Verify:** `cd packages/engine && npx vitest run test/backKick.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/moves/back.ts\", \"packages/engine/src/legalMoves.ts\", \"packages/engine/test/backKick.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/backKick.test.ts\", \"acceptanceCriteria\": [\"only onto lone opponent, toggle on\", \"past own start onto lane entry\", \"fresh piece can; own-lane pieces cannot\", \"blocks stop it\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Line Kick",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 6: Line Kick.\n\n**Verify:** `cd packages/engine && npx vitest run test/lineKick.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/moves/line.ts\", \"packages/engine/src/legalMoves.ts\", \"packages/engine/test/lineKick.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/lineKick.test.ts\", \"acceptanceCriteria\": [\"kicker takes opponent square\", \"between square blocks; no row 0\", \"own-lane shortcut; backwards needs Back Kick on\", \"duplicates merged\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Home Kick",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 7: Home Kick.\n\n**Verify:** `cd packages/engine && npx vitest run test/homeKick.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/moves/homeKick.ts\", \"packages/engine/src/legalMoves.ts\", \"packages/engine/test/homeKick.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/homeKick.test.ts\", \"acceptanceCriteria\": [\"exact count into opponent lane\", \"works from entry square\", \"invader exits back to track and can kick\", \"owner can kick invader\", \"blocks stop it\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Labourer",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 8: Labourer.\n\n**Verify:** `cd packages/engine && npx vitest run test/labourer.test.ts`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/occupancy.ts\", \"packages/engine/src/legalMoves.ts\", \"packages/engine/src/game.ts\", \"packages/engine/test/labourer.test.ts\"], \"verifyCommand\": \"cd packages/engine && npx vitest run test/labourer.test.ts\", \"acceptanceCriteria\": [\"triggers when victim has nothing in play\", \"owner plays victim's <6 rolls; play passes after victim\", \"6 ends it\", \"multiple ownership; finishing releases\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Public API, replay and random-game invariants",
+      "status": "pending",
+      "description": "See docs/superpowers/plans/2026-11-07-rules-engine.md \u2014 Task 9: Public API, replay and random-game invariants.\n\n**Verify:** `npm test && npm run typecheck`\n\n```json:metadata\n{\"files\": [\"packages/engine/src/index.ts\", \"packages/engine/test/random.ts\", \"packages/engine/test/replay.test.ts\", \"packages/engine/test/invariants.test.ts\"], \"verifyCommand\": \"npm test && npm run typecheck\", \"acceptanceCriteria\": [\"replay equals live state\", \"100 random games finish with invariants held\", \"index exports public API\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        8
+      ]
+    }
+  ],
+  "lastUpdated": "2026-11-07T23:47:04.333340"
+}
