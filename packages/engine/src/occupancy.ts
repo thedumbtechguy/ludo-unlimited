@@ -1,4 +1,4 @@
-import { posKey } from './position'
+import { isOnBoard, posKey } from './position'
 import type { Color, GameState, PieceId, Position } from './types'
 
 export function piecesAt(state: GameState, pos: Position): PieceId[] {
@@ -22,3 +22,6 @@ export function loneOpponent(state: GameState, pos: Position, mover: Color): Pie
 
 export const hasOpponent = (state: GameState, pos: Position, mover: Color): boolean =>
   piecesAt(state, pos).some((p) => p.color !== mover)
+
+export const hasPiecesInPlay = (state: GameState, color: Color): boolean =>
+  state.players.some((p) => p.color === color && p.pieces.some(isOnBoard))
