@@ -1,6 +1,7 @@
 import { backMoves } from './moves/back'
 import { enterMoves } from './moves/enter'
 import { forwardMoves } from './moves/forward'
+import { homeKickMoves } from './moves/homeKick'
 import { lineMoves } from './moves/line'
 import { posKey } from './position'
 import { getPlayer } from './state'
@@ -8,7 +9,7 @@ import type { GameState, Move, PieceId } from './types'
 
 type MoveGenerator = (state: GameState, piece: PieceId, roll: number) => Move[]
 
-const GENERATORS: MoveGenerator[] = [enterMoves, forwardMoves, backMoves, lineMoves]
+const GENERATORS: MoveGenerator[] = [enterMoves, forwardMoves, backMoves, lineMoves, homeKickMoves]
 
 /** Moves with the same key have the same result; the player sees only one. */
 export function outcomeKey(move: Move): string {
