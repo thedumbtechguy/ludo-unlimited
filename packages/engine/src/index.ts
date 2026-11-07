@@ -1,1 +1,6 @@
-export {}
+export * from './types'
+export { BASE, HOME, lane, track, posKey, samePos } from './position'
+export { TRACK, LINE_ACROSS, startIndex, entryIndex, laneCell } from './board'
+export { createGame, getPlayer, positionOf } from './state'
+export { legalMoves, currentMover } from './legalMoves'
+export { roll, applyMove, pass, replay } from './game'
