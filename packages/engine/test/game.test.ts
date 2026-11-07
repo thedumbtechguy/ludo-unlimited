@@ -76,4 +76,31 @@ describe('turn flow', () => {
   it('turn order only includes seated colours', () => {
     expect(roll(setup({ players: 2 }), 3).turn).toBe('yellow')
   })
+
+  it('rejects a fractional roll', () => {
+    expect(() => roll(setup(), 3.5)).toThrow('invalid roll')
+  })
+
+  it('an enter that kicks sends the opponent to base', () => {
+    const s = roll(setup({ pieces: { yellow: [0] } }), 6)
+    const next = applyMove(s, legalMoves(s).find((m) => m.kind === 'enter')!)
+    expect(getPlayer(next, 'red').pieces[0]).toEqual(track(0))
+    expect(getPlayer(next, 'yellow').pieces[0]).toEqual(BASE)
+  })
+
+  it('turn order and pass skip players who have finished', () => {
+    const s = setup({ endCondition: 'playForPlaces', pieces: { red: [5] } })
+    s.players.find((p) => p.color === 'green')!.finishedPlace = 1
+    expect(roll(s, 3).turn).toBe('red')
+    expect(applyMove(roll(s, 3), { kind: 'forward', piece: piece('red'), to: track(8) }).turn).toBe('yellow')
+    expect(pass(s).turn).toBe('yellow')
+  })
+
+  it('nothing can happen once the game is over', () => {
+    const s = roll(setup({ pieces: { red: [lane('red', 4), HOME, HOME, HOME] } }), 2)
+    const over = applyMove(s, legalMoves(s)[0])
+    expect(() => pass(over)).toThrow('game is over')
+    expect(() => applyMove(over, legalMoves(s)[0])).toThrow('game is over')
+  })
 })
+

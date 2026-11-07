@@ -48,6 +48,6 @@ describe('board geometry', () => {
   })
 
   it('never pairs row 0 (the arm tips)', () => {
-    for (const index of [10, 12, 49, 51]) expect(LINE_ACROSS.has(index)).toBe(false)
+    for (const index of [10, 12, 23, 25, 36, 38, 49, 51]) expect(LINE_ACROSS.has(index)).toBe(false)
   })
 })

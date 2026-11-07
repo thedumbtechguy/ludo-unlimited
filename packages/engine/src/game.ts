@@ -17,7 +17,9 @@ export function roll(state: GameState, value: number): GameState {
 }
 
 export function applyMove(state: GameState, move: Move): GameState {
-  const legal = legalMoves(state).find((m) => outcomeKey(m) === outcomeKey(move))
+  if (state.status !== 'playing') throw new Error('game is over')
+  const key = outcomeKey(state, move)
+  const legal = legalMoves(state).find((m) => outcomeKey(state, m) === key)
   if (!legal) throw new Error('illegal move')
   const rolled = state.pendingRoll
   const next = cloneState(state)

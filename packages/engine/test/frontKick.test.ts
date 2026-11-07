@@ -31,4 +31,13 @@ describe('front kick (always on)', () => {
   it('nothing is legal without a pending roll', () => {
     expect(legalMoves(setup({ pieces: { red: [5] } }))).toEqual([])
   })
+
+  it('stacked pieces offer one choice, not twins', () => {
+    const s = setup({ roll: 3, pieces: { red: [5, 5] } })
+    expect(legalMoves(s)).toEqual([{ kind: 'forward', piece: piece('red'), to: track(8) }])
+  })
+
+  it('pieces in base offer a single enter', () => {
+    expect(legalMoves(setup({ roll: 6 }))).toEqual([{ kind: 'enter', piece: piece('red'), to: track(0) }])
+  })
 })

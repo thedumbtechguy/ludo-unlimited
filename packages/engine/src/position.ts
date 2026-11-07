@@ -1,7 +1,7 @@
 import type { Color, Position } from './types'
 
-export const BASE: Position = { kind: 'base' }
-export const HOME: Position = { kind: 'home' }
+export const BASE: Position = Object.freeze({ kind: 'base' })
+export const HOME: Position = Object.freeze({ kind: 'home' })
 export const track = (index: number): Position => ({ kind: 'track', index })
 export const lane = (owner: Color, index: number): Position => ({ kind: 'lane', owner, index })
 
