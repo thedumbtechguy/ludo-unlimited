@@ -12,18 +12,48 @@
   --switch-on: #34C759;
   --switch-off: rgba(0, 0, 0, 0.12);
   --knob: #FFFFFF;
-  --dot-ring: #FFFFFF;
+  --dot-ring: var(--table);
   --chip-bg: #FFFFFF;
   --chip-border: rgba(0, 0, 0, 0.18);
   --chip-pip: #1d1d1f;
   --sheet-bg: #FFFFFF;
   --backdrop: rgba(0, 0, 0, 0.35);
   --board-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  /* The board is a physical, light board in both themes, only softened in dark so it doesn't glare. */
+  --board: #cbd5e1;
+  --tile: #ffffff;
+  /* The "×4" streak count next to the dice. */
+  --streak: #C2410C;
+  color-scheme: light;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 600;
   color: var(--text);
   background: var(--table);
   -webkit-font-smoothing: antialiased;
+}
+/*
+  Dark: a true-black table like a native dark-mode app; the board, dice and player colours stay as
+  they are. data-theme is set on <html> before first paint (index.html), then kept by useTheme.
+  The page and sheet colours are the two to swap for a grey table (#1C1C1E page, #2C2C2E sheets).
+*/
+:root[data-theme="dark"] {
+  --table: #000000;
+  --sheet-bg: #1C1C1E;
+  --text: #FFFFFF;
+  --muted: #98989D;
+  --line: rgba(255, 255, 255, 0.14);
+  --button-bg: #0A84FF;
+  --button2-border: rgba(255, 255, 255, 0.3);
+  --pill-border: rgba(255, 255, 255, 0.3);
+  --switch-on: #30D158;
+  --switch-off: rgba(255, 255, 255, 0.16);
+  --chip-border: rgba(255, 255, 255, 0.18);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --board-shadow: none;
+  --board: #a9b4c2;
+  --tile: #e8ebef;
+  --streak: #F76B15;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--table); }
@@ -251,7 +281,7 @@ button.row { cursor: pointer; }
 /* Whose turn it is, just above the dice. */
 .turn-label { display: flex; align-items: center; gap: 6px; height: 20px; margin: 0; font-weight: 800; font-size: 14px; white-space: nowrap; }
 .turn-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--turn-color); }
-.streak-label { position: absolute; top: 4px; right: -6px; font-weight: 900; font-size: 15px; color: #C2410C; white-space: nowrap; pointer-events: none; }
+.streak-label { position: absolute; top: 4px; right: -6px; font-weight: 900; font-size: 15px; color: var(--streak); white-space: nowrap; pointer-events: none; }
 .controls[data-hand="right"] .streak-label { right: auto; left: -6px; }
 .fire-slot { position: relative; flex: 1; min-height: 0; margin-bottom: -18px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .on-fire { position: relative; z-index: 6; margin: 0; font-weight: 900; color: #F76B15; letter-spacing: -1.5px; line-height: 1; white-space: nowrap; paint-order: stroke fill; -webkit-text-stroke: 9px #ffffff; text-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); pointer-events: none; animation: on-fire-in 380ms cubic-bezier(.2, .9, .3, 1.25) both; }

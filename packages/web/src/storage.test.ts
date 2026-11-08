@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, saveEffects, saveGame, saveHand, saveMusic, saveSound } from './storage'
+import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveSound, saveTheme } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -64,6 +64,39 @@ describe('storage', () => {
       })
       expect(() => saveHand('left')).not.toThrow()
       expect(loadHand()).toBe('right')
+    })
+  })
+
+  describe('theme', () => {
+    it('defaults to following the system', () => {
+      expect(loadTheme()).toBe('system')
+    })
+
+    it('persists the choice on this device', () => {
+      saveTheme('dark')
+      expect(localStorage.getItem('ludo-unlimited:theme')).toBe('dark')
+      expect(loadTheme()).toBe('dark')
+      saveTheme('light')
+      expect(loadTheme()).toBe('light')
+      saveTheme('system')
+      expect(localStorage.getItem('ludo-unlimited:theme')).toBe('system')
+      expect(loadTheme()).toBe('system')
+    })
+
+    it('ignores a stored value it does not know', () => {
+      localStorage.setItem('ludo-unlimited:theme', 'sepia')
+      expect(loadTheme()).toBe('system')
+    })
+
+    it('survives storage that throws', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      expect(() => saveTheme('dark')).not.toThrow()
+      expect(loadTheme()).toBe('system')
     })
   })
 

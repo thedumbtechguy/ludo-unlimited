@@ -81,6 +81,44 @@ describe('App', () => {
     expect(localStorage.getItem('ludo-unlimited:hand')).toBe('left')
   })
 
+  describe('theme', () => {
+    afterEach(() => delete document.documentElement.dataset.theme)
+
+    it('follows the system by default: light here', () => {
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      expect(document.documentElement.dataset.theme).toBe('light')
+    })
+
+    it('starts in the stored theme', () => {
+      localStorage.setItem('ludo-unlimited:theme', 'dark')
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      expect(document.documentElement.dataset.theme).toBe('dark')
+    })
+
+    it('changes and remembers the theme from the setup screen', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: /Theme/ }))
+      await user.click(screen.getByRole('radio', { name: 'Dark' }))
+      expect(document.documentElement.dataset.theme).toBe('dark')
+      expect(localStorage.getItem('ludo-unlimited:theme')).toBe('dark')
+    })
+
+    it('cycles and remembers the theme from the game menu', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: 'Start game' }))
+      await user.click(screen.getByRole('button', { name: 'Menu' }))
+      await user.click(screen.getByRole('button', { name: 'Theme: System' }))
+      expect(localStorage.getItem('ludo-unlimited:theme')).toBe('light')
+      await user.click(screen.getByRole('button', { name: 'Theme: Light' }))
+      expect(document.documentElement.dataset.theme).toBe('dark')
+      expect(screen.getByRole('button', { name: 'Theme: Dark' })).toBeInTheDocument()
+    })
+  })
+
   it('remembers the effects setting changed from the game menu', async () => {
     const user = userEvent.setup()
     render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)

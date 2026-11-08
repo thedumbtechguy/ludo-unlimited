@@ -40,6 +40,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // The theme tests read styles.css as text to check the dark tokens.
+    css: { include: /styles\.css/ },
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })

@@ -6,8 +6,9 @@ import { GameScreen } from './screens/GameScreen'
 import { Home } from './screens/Home'
 import { Results } from './screens/Results'
 import { Setup } from './screens/Setup'
-import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, saveEffects, saveGame, saveHand, saveMusic, saveSound } from './storage'
-import type { EffectsLevel, Hand, Seats } from './types'
+import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveSound, saveTheme } from './storage'
+import type { EffectsLevel, Hand, Seats, ThemePref } from './types'
+import { useTheme } from './useTheme'
 import type { Timing } from './useGame'
 
 type Screen =
@@ -39,6 +40,12 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
     saveMusic(on)
     setMusic(on)
   }
+  const [theme, setTheme] = useState(loadTheme)
+  const changeTheme = (next: ThemePref) => {
+    saveTheme(next)
+    setTheme(next)
+  }
+  useTheme(theme)
   useEffect(() => audio.setPrefs({ sound, music }), [sound, music])
 
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) =>
@@ -59,7 +66,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
         />
       )
     case 'setup':
-      return <Setup onBack={goHome} onStart={(settings, seats) => startGame(settings, seats)} hand={hand} onHand={changeHand} />
+      return <Setup onBack={goHome} onStart={(settings, seats) => startGame(settings, seats)} hand={hand} onHand={changeHand} theme={theme} onTheme={changeTheme} />
     case 'game':
       return (
         <GameScreen
@@ -74,6 +81,8 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
           }}
           hand={hand}
           onHand={changeHand}
+          theme={theme}
+          onTheme={changeTheme}
           effectsLevel={effectsLevel}
           onEffectsLevel={changeEffects}
           sound={sound}

@@ -1,5 +1,5 @@
 import { replay, type GameEvent, type Settings } from '@ludo/engine'
-import type { EffectsLevel, Hand, Seats } from './types'
+import type { EffectsLevel, Hand, Seats, ThemePref } from './types'
 
 export type SavedGame = { settings: Settings; seats: Seats; log: GameEvent[] }
 
@@ -68,6 +68,27 @@ export function loadEffects(): EffectsLevel {
 export function saveEffects(level: EffectsLevel): void {
   try {
     localStorage.setItem(EFFECTS_KEY, level)
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}
+
+const THEME_KEY = 'ludo-unlimited:theme'
+
+/** The stored theme choice, else follow the system. index.html reads the same key before first paint. */
+export function loadTheme(): ThemePref {
+  try {
+    const stored = localStorage.getItem(THEME_KEY)
+    if (stored === 'light' || stored === 'dark') return stored
+  } catch {
+    // Storage blocked: follow the system.
+  }
+  return 'system'
+}
+
+export function saveTheme(theme: ThemePref): void {
+  try {
+    localStorage.setItem(THEME_KEY, theme)
   } catch {
     // Storage blocked: the choice lasts until the page closes.
   }

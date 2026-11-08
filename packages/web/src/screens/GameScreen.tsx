@@ -13,7 +13,7 @@ import { Sheet } from '../components/Sheet'
 import { SwitchMark } from '../components/Picker'
 import { firstHuman, rulesName, seatNames, turnTag, wastedText } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
-import type { EffectsLevel, Hand } from '../types'
+import type { EffectsLevel, Hand, ThemePref } from '../types'
 import { COLOR_HEX } from '../theme'
 import { useGame, type GameOptions } from '../useGame'
 
@@ -21,6 +21,8 @@ type Props = {
   options: GameOptions
   hand: Hand
   onHand: (hand: Hand) => void
+  theme: ThemePref
+  onTheme: (theme: ThemePref) => void
   effectsLevel: EffectsLevel
   onEffectsLevel: (level: EffectsLevel) => void
   sound: boolean
@@ -33,9 +35,11 @@ type Props = {
 }
 
 const HAND_NAME: Record<Hand, string> = { right: 'Right', left: 'Left' }
+export const THEME_NAME: Record<ThemePref, string> = { system: 'System', light: 'Light', dark: 'Dark' }
+const NEXT_THEME: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' }
 const EFFECTS_NAME: Record<EffectsLevel, string> = { full: 'Full', reduced: 'Reduced' }
 
-export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel, sound, onSound, music, onMusic, onFinish, onQuit, onRestart }: Props) {
+export function GameScreen({ options, hand, onHand, theme, onTheme, effectsLevel, onEffectsLevel, sound, onSound, music, onMusic, onFinish, onQuit, onRestart }: Props) {
   const g = useGame(options)
   const { game } = g
   // The destination being hovered or focused, so the tray can light up the rolls it would use.
@@ -160,6 +164,10 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
               >
                 <span>Playing hand</span>
                 <span className="row-value">{HAND_NAME[hand]}</span>
+              </button>
+              <button type="button" className="sheet-row" aria-label={`Theme: ${THEME_NAME[theme]}`} onClick={() => onTheme(NEXT_THEME[theme])}>
+                <span>Theme</span>
+                <span className="row-value">{THEME_NAME[theme]}</span>
               </button>
               <button
                 type="button"

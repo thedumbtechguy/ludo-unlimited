@@ -4,7 +4,7 @@ import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
 import { COLOR_NAME, seatNames } from '../labels'
 import { COLOR_HEX } from '../theme'
-import type { Hand, Seats } from '../types'
+import type { Hand, Seats, ThemePref } from '../types'
 
 const RULE_NAME: [keyof Rules, string][] = [
   ['backKick', 'Back Kick'],
@@ -31,12 +31,25 @@ const HANDS = [
   ['left', 'Left'],
 ] as const
 
+const THEMES = [
+  ['system', 'System'],
+  ['light', 'Light'],
+  ['dark', 'Dark'],
+] as const
+
 const labelOf = <T,>(options: readonly (readonly [T, string])[], value: T) => options.find(([v]) => v === value)![1]
 
-type Open = 'players' | 'afterKick' | 'end' | 'rules' | 'hand'
-type Props = { onStart: (settings: Settings, seats: Seats) => void; onBack: () => void; hand: Hand; onHand: (hand: Hand) => void }
+type Open = 'players' | 'afterKick' | 'end' | 'rules' | 'hand' | 'theme'
+type Props = {
+  onStart: (settings: Settings, seats: Seats) => void
+  onBack: () => void
+  hand: Hand
+  onHand: (hand: Hand) => void
+  theme: ThemePref
+  onTheme: (theme: ThemePref) => void
+}
 
-export function Setup({ onStart, onBack, hand, onHand }: Props) {
+export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) {
   const [mode, setMode] = useState<ModeName>('ghana')
   const [rules, setRules] = useState<Rules>({ ...MODES.ghana.rules })
   const [afterKick, setAfterKick] = useState<AfterKick>(MODES.ghana.afterKick)
@@ -128,6 +141,7 @@ export function Setup({ onStart, onBack, hand, onHand }: Props) {
           This device
         </h2>
         {pickerRow('hand', 'Playing hand', labelOf(HANDS, hand))}
+        {pickerRow('theme', 'Theme', labelOf(THEMES, theme))}
       </section>
 
       <button type="button" className="primary start" onClick={start}>
@@ -138,6 +152,7 @@ export function Setup({ onStart, onBack, hand, onHand }: Props) {
       {open === 'afterKick' && <Picker title="After a kick" options={AFTER_KICK} value={afterKick} onPick={setAfterKick} onClose={close} />}
       {open === 'end' && <Picker title="Game ends" options={END} value={endCondition} onPick={setEndCondition} onClose={close} />}
       {open === 'hand' && <Picker title="Playing hand" options={HANDS} value={hand} onPick={onHand} onClose={close} />}
+      {open === 'theme' && <Picker title="Theme" options={THEMES} value={theme} onPick={onTheme} onClose={close} />}
       {open === 'rules' && (
         <Sheet title="Choose rules one by one" onClose={close}>
           <div className="sheet-rows">

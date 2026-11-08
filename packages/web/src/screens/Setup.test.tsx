@@ -2,12 +2,22 @@ import { MODES } from '@ludo/engine'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { Hand } from '../types'
+import type { Hand, ThemePref } from '../types'
 import { Setup } from './Setup'
 
-const renderSetup = (props: { hand?: Hand; onHand?: (hand: Hand) => void; onBack?: () => void } = {}) => {
+type Extra = { hand?: Hand; onHand?: (hand: Hand) => void; theme?: ThemePref; onTheme?: (theme: ThemePref) => void; onBack?: () => void }
+const renderSetup = (props: Extra = {}) => {
   const onStart = vi.fn()
-  render(<Setup onStart={onStart} onBack={props.onBack ?? (() => {})} hand={props.hand ?? 'right'} onHand={props.onHand ?? (() => {})} />)
+  render(
+    <Setup
+      onStart={onStart}
+      onBack={props.onBack ?? (() => {})}
+      hand={props.hand ?? 'right'}
+      onHand={props.onHand ?? (() => {})}
+      theme={props.theme ?? 'system'}
+      onTheme={props.onTheme ?? (() => {})}
+    />,
+  )
   return onStart
 }
 const start = () => userEvent.click(screen.getByRole('button', { name: 'Start game' }))
@@ -150,6 +160,25 @@ describe('Setup', () => {
       expect(screen.getByRole('button', { name: /Playing hand/ })).toHaveTextContent('Right')
       await pick(/Playing hand/, 'Left')
       expect(onHand).toHaveBeenCalledWith('left')
+    })
+
+    it('picks the theme from System, Light and Dark', async () => {
+      const onTheme = vi.fn()
+      renderSetup({ theme: 'system', onTheme })
+      expect(screen.getByRole('button', { name: /Theme/ })).toHaveTextContent('System')
+      await userEvent.click(screen.getByRole('button', { name: /Theme/ }))
+      const picker = screen.getByRole('radiogroup', { name: 'Theme' })
+      expect(within(picker).getAllByRole('radio').map((r) => r.textContent)).toEqual(['System', 'Light', 'Dark'])
+      expect(within(picker).getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'true')
+      await userEvent.click(within(picker).getByRole('radio', { name: 'Dark' }))
+      expect(onTheme).toHaveBeenCalledWith('dark')
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    it('lists the theme under This device, after the playing hand', () => {
+      renderSetup({ theme: 'light' })
+      const device = screen.getByRole('region', { name: 'This device' })
+      expect(within(device).getAllByRole('button').map((b) => b.textContent)).toEqual(['Playing handRight', 'ThemeLight'])
     })
   })
 

@@ -19,6 +19,8 @@ const renderGame = (options: Partial<Parameters<typeof GameScreen>[0]['options']
       options={{ settings, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING, ...options }}
       hand="right"
       onHand={noop}
+      theme="system"
+      onTheme={noop}
       effectsLevel="full"
       onEffectsLevel={noop}
       sound
@@ -65,7 +67,7 @@ describe('GameScreen', () => {
       renderGame({}, { onQuit, onRestart })
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       const menu = screen.getByRole('dialog', { name: 'Menu' })
-      expect([...menu.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Playing hand: Right', 'Effects: Full', 'Sound', 'Music', 'Restart game', 'Quit to home'])
+      expect([...menu.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Playing hand: Right', 'Theme: System', 'Effects: Full', 'Sound', 'Music', 'Restart game', 'Quit to home'])
       expect(within(menu).getByRole('switch', { name: 'Sound' })).toHaveAttribute('aria-checked', 'true')
       expect(within(menu).getByText('Right')).toHaveClass('row-value')
       await userEvent.click(within(menu).getByRole('button', { name: 'Restart game' }))
@@ -88,6 +90,21 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       await userEvent.click(screen.getByRole('button', { name: 'Playing hand: Left' }))
       expect(onHand).toHaveBeenCalledWith('right')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    it.each([
+      ['system', 'System', 'light'],
+      ['light', 'Light', 'dark'],
+      ['dark', 'Dark', 'system'],
+    ] as const)('cycles the theme from %s to the next, leaving the menu open', async (theme, name, next) => {
+      const onTheme = vi.fn()
+      renderGame({}, { theme, onTheme })
+      await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+      const row = screen.getByRole('button', { name: `Theme: ${name}` })
+      expect(within(row).getByText(name)).toHaveClass('row-value')
+      await userEvent.click(row)
+      expect(onTheme).toHaveBeenCalledWith(next)
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 

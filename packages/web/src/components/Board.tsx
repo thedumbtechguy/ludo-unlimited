@@ -18,7 +18,7 @@ import {
   targetLabel,
   turnTag,
 } from '../labels'
-import { BOARD_BG, COLOR_HEX, INK, KICK_MARK, MOVE_MARK, ON_COLOR, TAG_TEXT, TILE } from '../theme'
+import { COLOR_HEX, INK, KICK_MARK, MOVE_MARK, ON_COLOR, TAG_TEXT } from '../theme'
 
 export type BoardProps = {
   state: GameState
@@ -200,13 +200,14 @@ export function Board({
             <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.35" />
           </filter>
         </defs>
-        <rect width={BOARD_SIZE} height={BOARD_SIZE} rx="16" fill={BOARD_BG} />
+        {/* The board and its plain tiles take their colours from styles.css (--board, --tile): softer in dark mode. */}
+        <rect width={BOARD_SIZE} height={BOARD_SIZE} rx="16" style={{ fill: 'var(--board)' }} />
         {COLORS.map((color) => {
           const o = yardAt(color)
           return (
             <g key={color}>
               <rect data-testid="yard" data-color={color} x={o.x + 4} y={o.y + 4} width="232" height="232" rx="24" fill={COLOR_HEX[color]} />
-              <rect x={o.x + 40} y={o.y + 40} width="160" height="160" rx="20" fill={TILE} />
+              <rect x={o.x + 40} y={o.y + 40} width="160" height="160" rx="20" style={{ fill: 'var(--tile)' }} />
               {color === active && (
                 <rect data-testid="active-yard" data-color={color} x={o.x + 6.5} y={o.y + 6.5} width="227" height="227" rx="21.5" fill="none" stroke="#ffffff" strokeWidth="5" />
               )}
@@ -224,7 +225,7 @@ export function Board({
               width={CELL - 2}
               height={CELL - 2}
               rx="8"
-              fill={tile.fill ? COLOR_HEX[tile.fill] : TILE}
+              style={{ fill: tile.fill ? COLOR_HEX[tile.fill] : 'var(--tile)' }}
             />
           )
         })}

@@ -6,3 +6,7 @@ export type Seats = Partial<Record<Color, Seat>>
 export type Hand = 'right' | 'left'
 /** How much the effects layer shows: a per-device preference, like the hand. */
 export type EffectsLevel = 'full' | 'reduced'
+/** The colour theme chosen on this device: follow the system, or always light or dark. */
+export type ThemePref = 'system' | 'light' | 'dark'
+/** The theme actually shown, once `system` is resolved. */
+export type Theme = 'light' | 'dark'
