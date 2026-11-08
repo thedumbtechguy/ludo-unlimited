@@ -84,6 +84,8 @@ button.row { cursor: pointer; }
 .controls .dice-view { scale: 0.8; }
 .controls .dice::before { bottom: 10px; scale: 0.8; }
 .controls-side { display: flex; flex-direction: column; gap: 12px; flex: 1; min-width: 0; }
+/* Right hand: the dice on the right edge, under the thumb; the tray and hint to its left. */
+.controls[data-hand="right"] { flex-direction: row-reverse; }
 /* The tray and the slot under it hold their heights, so nothing jumps. */
 .roll-tray { list-style: none; display: flex; align-items: center; gap: 8px; height: 48px; margin: 0; padding: 0 5px; overflow: hidden; }
 .chip { flex: 0 1 38px; min-width: 28px; height: 38px; padding: 6px; border: 1px solid var(--chip-border); border-radius: 8px; background: var(--chip-bg); }
@@ -108,7 +110,7 @@ button.row { cursor: pointer; }
   .menu-button span { display: inline; }
   .play { flex-direction: row; align-items: center; justify-content: center; gap: 48px; min-height: 0; }
   .play .board { width: min(704px, calc(100vh - 96px), calc(100vw - 404px)); }
-  .controls { flex-direction: column; justify-content: center; gap: 22px; width: 260px; height: auto; margin: 0; }
+  .controls, .controls[data-hand] { flex-direction: column; justify-content: center; gap: 22px; width: 260px; height: auto; margin: 0; }
   .controls .dice { width: 150px; height: 150px; }
   .controls .dice-view, .controls .dice::before { scale: 1; }
   .controls-side { flex: none; align-items: center; gap: 22px; width: 100%; }

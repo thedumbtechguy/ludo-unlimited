@@ -75,6 +75,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Playing hand: Right' }))
     expect(red()).toHaveAttribute('x', '4')
     expect(red()).toHaveAttribute('y', '364')
+    expect(screen.getByRole('region', { name: 'Dice' })).toHaveAttribute('data-hand', 'left')
     expect(localStorage.getItem('ludo-unlimited:hand')).toBe('left')
   })
 

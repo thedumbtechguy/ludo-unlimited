@@ -85,7 +85,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
             <KickCallout callout={g.callout} />
           </Board>
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
-          <section className="controls" aria-label="Dice">
+          {/* On phones the dice sits under the playing hand's thumb. */}
+          <section className="controls" aria-label="Dice" data-hand={hand}>
             <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
             <div className="controls-side">
               <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />

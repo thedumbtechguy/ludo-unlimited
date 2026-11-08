@@ -98,6 +98,14 @@ describe('GameScreen', () => {
   })
 
   describe('controls', () => {
+    it('put the dice on the playing hand’s side', () => {
+      const { unmount } = renderGame()
+      expect(screen.getByRole('region', { name: 'Dice' })).toHaveAttribute('data-hand', 'right')
+      unmount()
+      renderGame({}, { hand: 'left' })
+      expect(screen.getByRole('region', { name: 'Dice' })).toHaveAttribute('data-hand', 'left')
+    })
+
     it('asks for a roll, then offers Roll again and Stop after a 6', async () => {
       renderGame({ dice: fixedDice([6, 6, 3]) })
       expect(screen.getByText('Tap the dice to roll')).toBeInTheDocument()
