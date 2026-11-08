@@ -1,7 +1,7 @@
 import { createGame, settingsFor, track } from '@ludo/engine'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixedDice } from '../dice'
 import { FAST_TIMING } from '../useGame'
 import { GameScreen } from './GameScreen'
@@ -33,6 +33,8 @@ const renderGame = (options: Partial<Parameters<typeof GameScreen>[0]['options']
   )
 
 describe('GameScreen', () => {
+  afterEach(() => vi.useRealTimers())
+
   describe('top bar', () => {
     it('shows the title and the rules name', () => {
       renderGame()
@@ -150,7 +152,24 @@ describe('GameScreen', () => {
       renderGame()
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
       expect(screen.getByRole('status')).toHaveTextContent('No move with your 3')
-      expect(screen.getByText('No move with your 3. Tap the dice to roll')).toBeInTheDocument()
+      // Stacked: the note on its own line above the hint.
+      expect(screen.getByText('No move with your 3', { selector: '.hint-note' })).toBeInTheDocument()
+      expect(screen.getByText('Tap the dice to roll')).toBeInTheDocument()
+    })
+
+    it('stays quiet about a computer’s roll that had no move', async () => {
+      vi.useFakeTimers()
+      renderGame({ seats: { red: 'human', yellow: 'computer' } })
+      await act(async () => {
+        screen.getByRole('button', { name: /Roll dice/ }).click()
+      })
+      expect(screen.getByText('No move with your 3', { selector: '.hint-note' })).toBeInTheDocument()
+      // Yellow (a computer) rolls a 3 with nothing on the board, and the turn comes back to Red.
+      await act(async () => {
+        vi.runOnlyPendingTimers()
+      })
+      expect(screen.queryByText(/had no move/)).toBeNull()
+      expect(screen.queryByText('No move with your 3', { selector: '.hint-note' })).toBeNull()
     })
   })
 

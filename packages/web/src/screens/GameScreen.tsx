@@ -60,8 +60,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
         ? 'Tap a numbered square, or a piece'
         : 'Tap a marked square'
       : ''
-  const noMove = g.wasted && wastedText(g.wasted, you)
-  const shownHint = noMove ? (hint ? `${noMove}. ${hint}` : noMove) : hint
+  // Only a person's own wasted roll is worth a word; a computer's is just noise.
+  const noMove = g.wasted && options.seats[g.wasted.color] === 'human' ? wastedText(g.wasted, you) : undefined
 
   return (
     // Effects are skipped when timing is instant (the browser tests' ?fast), so they never slow a game down.
@@ -123,7 +123,10 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
                     </button>
                   </div>
                 ) : (
-                  <p className="hint">{shownHint}</p>
+                  <p className="hint">
+                    {noMove && <span className="hint-note">{noMove}</span>}
+                    <span>{hint}</span>
+                  </p>
                 )}
               </div>
             </div>

@@ -96,6 +96,8 @@ button.row { cursor: pointer; }
 .chip.now { outline: 3px solid var(--button-bg); outline-offset: 2px; }
 .action-slot { display: flex; align-items: center; height: 52px; }
 .hint { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; }
+.hint > span { display: block; }
+.hint-note { color: var(--muted); font-size: 14px; }
 .roll-again { display: flex; gap: 8px; width: 100%; }
 .roll-again .primary { flex: 1; padding: 0 12px; }
 .roll-again .secondary { width: 80px; padding: 0; }
