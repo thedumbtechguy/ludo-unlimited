@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 const PIPS: Record<number, number[]> = {
   1: [4],
@@ -9,34 +9,67 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 }
 
-// Rotation that brings each face to the viewer (faces are placed in styles.css).
-const FACE_UP: Record<number, string> = {
-  1: 'rotateX(0deg) rotateY(0deg)',
-  6: 'rotateY(180deg)',
-  2: 'rotateY(-90deg)',
-  5: 'rotateY(90deg)',
-  3: 'rotateX(-90deg)',
-  4: 'rotateX(90deg)',
+// Rotation [x, y] in degrees that brings each face to the viewer (faces are placed in styles.css).
+// Always expressed as the same two functions so CSS interpolates function-by-function; a different
+// function list between rolls makes the browser fall back to matrix interpolation, which drops the
+// extra full turns and the spin never shows.
+const FACE_UP: Record<number, [number, number]> = {
+  1: [0, 0],
+  6: [0, 180],
+  2: [0, -90],
+  5: [0, 90],
+  3: [-90, 0],
+  4: [90, 0],
 }
 
-const REST_TILT = 'rotateX(-20deg) rotateY(25deg)'
-const SETTLED_TILT = 'rotateX(-12deg) rotateY(14deg)'
+// Where each face sits in the cube's own space (unit normal).
+const NORMAL: Record<number, [number, number, number]> = {
+  1: [0, 0, 1],
+  6: [0, 0, -1],
+  2: [1, 0, 0],
+  5: [-1, 0, 0],
+  3: [0, -1, 0],
+  4: [0, 1, 0],
+}
+
+type Shade = 'front' | 'top' | 'side' | 'back'
+
+// Light comes from the front-top-left: which role does each face play once `facing` is toward the viewer?
+function shadeOf(face: number, facing: number): Shade {
+  const [ax, ay] = FACE_UP[facing].map((d) => (d * Math.PI) / 180)
+  const [x, y, z] = NORMAL[face]
+  // transform is rotateX(ax) rotateY(ay): rotate about Y first, then X.
+  const x1 = x * Math.cos(ay) + z * Math.sin(ay)
+  const z1 = -x * Math.sin(ay) + z * Math.cos(ay)
+  const y2 = y * Math.cos(ax) - z1 * Math.sin(ax)
+  const z2 = y * Math.sin(ax) + z1 * Math.cos(ax)
+  if (z2 > 0.5) return 'front'
+  if (y2 < -0.5) return 'top'
+  if (x1 < -0.5) return 'side'
+  return 'back'
+}
 
 type Props = { value?: number; rolling?: boolean; target?: number; disabled: boolean; onRoll: () => void }
 
 export function DiceButton({ value, rolling = false, target, disabled, onRoll }: Props) {
   // Accumulated full turns, so each roll keeps spinning forward.
   const [turns, setTurns] = useState({ x: 0, y: 0 })
+  const [wasRolling, setWasRolling] = useState(false)
 
-  useEffect(() => {
-    if (!rolling) return
-    const extra = () => 2 + Math.floor(Math.random() * 2)
-    setTurns((t) => ({ x: t.x + extra(), y: t.y + extra() }))
-  }, [rolling])
+  // Bump the turns in the same render that flips `rolling`, so the spin and the result face change in one
+  // style update (an effect would apply them a render apart and retarget the transition mid-flight).
+  if (rolling !== wasRolling) {
+    setWasRolling(rolling)
+    if (rolling) {
+      const extra = () => 2 + Math.floor(Math.random() * 2)
+      setTurns((t) => ({ x: t.x + extra(), y: t.y + extra() }))
+    }
+  }
 
   const idle = value === undefined && !rolling
   const facing = (rolling ? target ?? value : value) ?? 6
-  const transform = `${idle ? REST_TILT : SETTLED_TILT} rotateX(${turns.x * 360}deg) rotateY(${turns.y * 360}deg) ${FACE_UP[facing]}`
+  const [fx, fy] = FACE_UP[facing]
+  const transform = `rotateX(${turns.x * 360}deg) rotateY(${turns.y * 360}deg) rotateX(${fx}deg) rotateY(${fy}deg)`
 
   return (
     <button
@@ -46,16 +79,21 @@ export function DiceButton({ value, rolling = false, target, disabled, onRoll }:
       onClick={onRoll}
       aria-label={value ? `Roll dice (last roll ${value})` : 'Roll dice'}
     >
-      <span className="cube" style={{ transform }} aria-hidden="true">
-        {[1, 2, 3, 4, 5, 6].map((n) => (
-          <span key={n} className={`face face-${n}`}>
-            <span className="pips">
-              {Array.from({ length: 9 }, (_, i) => (
-                <span key={i} className={PIPS[n].includes(i) ? (idle ? 'pip on faded' : 'pip on') : 'pip'} />
-              ))}
+      <span className="dice-view" aria-hidden="true">
+        <span className="cube" style={{ transform }}>
+          <span className="core core-a" />
+          <span className="core core-b" />
+          <span className="core core-c" />
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <span key={n} className={`face face-${n} shade-${shadeOf(n, facing)}`}>
+              <span className="pips">
+                {Array.from({ length: 9 }, (_, i) => (
+                  <span key={i} className={PIPS[n].includes(i) ? (idle ? 'pip on faded' : 'pip on') : 'pip'} />
+                ))}
+              </span>
             </span>
-          </span>
-        ))}
+          ))}
+        </span>
       </span>
     </button>
   )
