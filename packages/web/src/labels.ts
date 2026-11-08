@@ -1,6 +1,27 @@
 import type { Color, GameState, Move, PieceId, Position } from '@ludo/engine'
+import type { Seats } from './types'
 
 export const COLOR_NAME: Record<Color, string> = { red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue' }
+
+export const ORDINAL = ['1st', '2nd', '3rd', '4th']
+
+/** The first human seat in seat order: the one the game calls "You". */
+export const firstHuman = (seats: Seats, colors: Color[]): Color | undefined => colors.find((c) => seats[c] === 'human')
+
+/** "You" for the first human, "Player 2", "Player 3"… for the others, "Computer" for the rest. */
+export function seatNames(seats: Seats, colors: Color[]): Partial<Record<Color, string>> {
+  let humans = 0
+  return Object.fromEntries(
+    colors.map((color) => {
+      if (seats[color] !== 'human') return [color, 'Computer']
+      humans += 1
+      return [color, humans === 1 ? 'You' : `Player ${humans}`]
+    }),
+  )
+}
+
+/** The tag on the active yard. */
+export const turnTag = (color: Color, you?: Color): string => (color === you ? 'Your turn' : `${COLOR_NAME[color]}'s turn`)
 
 /** A place on the board as a noun: "square 9", "Yellow's home lane, square 2". */
 export function placeName(pos: Position): string {

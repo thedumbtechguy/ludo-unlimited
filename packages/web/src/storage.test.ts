@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadGame, saveGame } from './storage'
+import { clearGame, loadGame, loadHand, saveGame, saveHand } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -35,5 +35,35 @@ describe('storage', () => {
     })
     expect(() => saveGame({ settings, seats: {}, log: [] })).not.toThrow()
     expect(loadGame()).toBeUndefined()
+  })
+
+  describe('playing hand', () => {
+    it('defaults to right', () => {
+      expect(loadHand()).toBe('right')
+    })
+
+    it('persists the chosen hand on this device', () => {
+      saveHand('left')
+      expect(localStorage.getItem('ludo-unlimited:hand')).toBe('left')
+      expect(loadHand()).toBe('left')
+      saveHand('right')
+      expect(loadHand()).toBe('right')
+    })
+
+    it('ignores a stored value it does not know', () => {
+      localStorage.setItem('ludo-unlimited:hand', 'sideways')
+      expect(loadHand()).toBe('right')
+    })
+
+    it('survives storage that throws', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      expect(() => saveHand('left')).not.toThrow()
+      expect(loadHand()).toBe('right')
+    })
   })
 })

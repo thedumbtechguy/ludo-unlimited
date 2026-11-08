@@ -15,8 +15,17 @@ export const ON_COLOR: Record<Color, string> = {
   blue: '#ffffff',
 }
 
+/** Text on the white "Your turn" tag: a deep shade of the yard's colour. */
+export const TAG_TEXT: Record<Color, string> = {
+  red: '#b0262b',
+  green: '#1b6b45',
+  yellow: '#3d2a00',
+  blue: '#2a45a8',
+}
+
 export const BOARD_BG = '#cbd5e1'
 export const TILE = '#ffffff'
+export const INK = '#1d1d1f'
 export const MOVE_MARK = '#3e63dd'
 export const KICK_MARK = '#e5484d'
 

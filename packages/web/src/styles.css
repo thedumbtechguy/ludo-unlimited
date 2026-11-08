@@ -43,7 +43,9 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   .game { grid-template-columns: minmax(0, calc(100vh - 32px)) 320px; justify-content: center; align-items: start; }
 }
 
-.board { position: relative; width: 100%; aspect-ratio: 1 / 1; }
+/* The board is a size container: --u is one board unit (the SVG is 600 units across), so text and
+   overlays on it scale with it. */
+.board { position: relative; width: 100%; aspect-ratio: 1 / 1; container-type: inline-size; --u: calc(100cqw / 600); border-radius: calc(16 * var(--u)); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); }
 .board svg { display: block; width: 100%; height: 100%; }
 .piece { transition: transform 120ms linear; }
 .piece.movable > .body { animation: pulse 0.9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
@@ -54,7 +56,16 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 }
 .hit { position: absolute; width: max(44px, 6.6%); aspect-ratio: 1 / 1; transform: translate(-50%, -50%); border: 0; border-radius: 50%; background: transparent; cursor: pointer; padding: 0; }
 .hit:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-.labourer-badge { position: absolute; transform: translate(-50%, 0); background: var(--ink); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 999px; pointer-events: none; white-space: nowrap; }
+/* Players live on their yards: name and home count on the top edge, Labourer along the bottom. */
+.yard-label, .yard-labourer { position: absolute; width: calc(232 * var(--u)); height: calc(36 * var(--u)); display: flex; align-items: center; pointer-events: none; white-space: nowrap; }
+.yard-label { justify-content: space-between; padding: 0 calc(12 * var(--u)) 0 calc(16 * var(--u)); }
+.yard-name { font-weight: 800; font-size: calc(17 * var(--u)); }
+.yard-label.active .yard-name { font-weight: 900; font-size: calc(18 * var(--u)); }
+.yard-home { font-weight: 600; font-size: calc(14 * var(--u)); padding-right: calc(4 * var(--u)); }
+.yard-place { font-weight: 800; font-size: calc(15 * var(--u)); padding-right: calc(4 * var(--u)); }
+.yard-tag { font-weight: 800; font-size: calc(13 * var(--u)); background: #ffffff; padding: calc(4 * var(--u)) calc(9 * var(--u)); border-radius: 999px; }
+.yard-labourer { justify-content: center; gap: calc(6 * var(--u)); font-weight: 700; font-size: calc(14 * var(--u)); }
+.yard-labourer svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); }
 
 .panel { display: flex; flex-direction: column; gap: 16px; }
 .banner { padding: 10px 16px; border-radius: 14px; }

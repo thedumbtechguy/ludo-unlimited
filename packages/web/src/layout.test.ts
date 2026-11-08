@@ -1,6 +1,6 @@
 import { createGame, lane, settingsFor, startIndex, track, TRACK } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { TILES, placements, positionPoint } from './layout'
+import { TILES, placements, positionPoint, quarterTurns, turnPoint, viewerOf } from './layout'
 
 const red0 = { color: 'red', index: 0 } as const
 
@@ -43,5 +43,42 @@ describe('layout', () => {
     const state = createGame(settingsFor('classic', 2, 'firstWins'))
     const moved = placements(state, { piece: red0, at: track(0) }).find((p) => p.piece.color === 'red' && p.piece.index === 0)
     expect(moved?.point).toEqual({ x: 60, y: 260 })
+  })
+
+  describe('orientation', () => {
+    it('turns points clockwise a quarter at a time around the centre', () => {
+      expect(turnPoint({ x: 60, y: 260 }, 0)).toEqual({ x: 60, y: 260 })
+      expect(turnPoint({ x: 60, y: 260 }, 1)).toEqual({ x: 340, y: 60 })
+      expect(turnPoint({ x: 60, y: 260 }, 2)).toEqual({ x: 540, y: 340 })
+      expect(turnPoint({ x: 300, y: 300 }, 3)).toEqual({ x: 300, y: 300 })
+    })
+
+    it('right hand puts the viewer’s yard bottom-right', () => {
+      for (const [viewer, yard] of [
+        ['red', { x: 120, y: 120 }],
+        ['green', { x: 480, y: 120 }],
+        ['yellow', { x: 480, y: 480 }],
+        ['blue', { x: 120, y: 480 }],
+      ] as const) {
+        expect(turnPoint(yard, quarterTurns(viewer, 'right'))).toEqual({ x: 480, y: 480 })
+      }
+    })
+
+    it('left hand puts the viewer’s yard bottom-left', () => {
+      for (const [viewer, yard] of [
+        ['red', { x: 120, y: 120 }],
+        ['green', { x: 480, y: 120 }],
+        ['yellow', { x: 480, y: 480 }],
+        ['blue', { x: 120, y: 480 }],
+      ] as const) {
+        expect(turnPoint(yard, quarterTurns(viewer, 'left'))).toEqual({ x: 120, y: 480 })
+      }
+    })
+
+    it('the viewer is the first human seat, or red with no humans', () => {
+      expect(viewerOf({ red: 'computer', green: 'human', yellow: 'human' }, ['red', 'green', 'yellow'])).toBe('green')
+      expect(viewerOf({ red: 'computer', yellow: 'computer' }, ['red', 'yellow'])).toBe('red')
+      expect(viewerOf({}, ['red', 'yellow'])).toBe('red')
+    })
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, kickMessage, listNumbers, numberedTargetLabel, pieceLabel, placeName, targetLabel } from './labels'
+import { combinedRolls, describePosition, firstHuman, kickMessage, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -34,5 +34,24 @@ describe('labels', () => {
     expect(numberedTargetLabel(1, move, '6+4')).toBe('Piece 1: Kick Yellow on square 9 using 6+4')
     expect(placeName(lane('yellow', 2))).toBe("Yellow's home lane, square 2")
     expect(listNumbers([1, 2, 3])).toBe('1, 2 and 3')
+  })
+
+  it('names seats: You for the first human, Player N for the next ones, Computer', () => {
+    const colors = ['red', 'green', 'yellow', 'blue'] as const
+    expect(seatNames({ red: 'computer', green: 'human', yellow: 'human', blue: 'human' }, [...colors])).toEqual({
+      red: 'Computer',
+      green: 'You',
+      yellow: 'Player 2',
+      blue: 'Player 3',
+    })
+    expect(seatNames({ red: 'human' }, ['red', 'yellow'])).toEqual({ red: 'You', yellow: 'Computer' })
+    expect(firstHuman({ red: 'computer', yellow: 'human' }, ['red', 'yellow'])).toBe('yellow')
+    expect(firstHuman({ red: 'computer' }, ['red', 'yellow'])).toBeUndefined()
+  })
+
+  it('tags the active yard', () => {
+    expect(turnTag('red', 'red')).toBe('Your turn')
+    expect(turnTag('green', 'red')).toBe("Green's turn")
+    expect(turnTag('green', undefined)).toBe("Green's turn")
   })
 })

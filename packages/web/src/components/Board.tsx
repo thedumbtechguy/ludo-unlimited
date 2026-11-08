@@ -1,18 +1,20 @@
 import { COLORS, posKey, positionOf, type Color, type GameState, type Move, type PieceId } from '@ludo/engine'
 import { useEffect, useState } from 'react'
-import { BOARD_SIZE, CELL, TILES, placements, positionPoint, yardOrigin, type Moving, type Point } from '../layout'
+import { BOARD_SIZE, CELL, TILES, placements, positionPoint, turnPoint, yardOrigin, type Moving, type Point } from '../layout'
 import {
   COLOR_NAME,
   combinedRolls,
   listNumbers,
+  ORDINAL,
   numberedPieceLabel,
   numberedTargetLabel,
   pieceLabel,
   placeName,
   targetAction,
   targetLabel,
+  turnTag,
 } from '../labels'
-import { BOARD_BG, COLOR_HEX, KICK_MARK, MOVE_MARK, TILE } from '../theme'
+import { BOARD_BG, COLOR_HEX, INK, KICK_MARK, MOVE_MARK, ON_COLOR, TAG_TEXT, TILE } from '../theme'
 
 export type BoardProps = {
   state: GameState
@@ -25,18 +27,26 @@ export type BoardProps = {
   onDeselect?: () => void
   /** The target being hovered or focused, or undefined when it is left. */
   onPreview?: (move?: Move) => void
+  /** Clockwise quarter turns: the whole board, pieces and buttons turn together; text stays upright. */
+  turn?: number
+  /** The name painted on each seated player's yard; no names, no yard labels. */
+  names?: Partial<Record<Color, string>>
+  /** The first human seat, whose turn tag reads "Your turn". */
+  you?: Color
+  /** Whose yard is tagged and outlined as taking the turn. */
+  active?: Color
 }
 
 /** Every target move landing on one square. */
 type Destination = { key: string; point: Point; moves: Move[] }
 
-function destinations(targets: Move[]): Destination[] {
+function destinations(targets: Move[], turn: number): Destination[] {
   const byKey = new Map<string, Destination>()
   for (const move of targets) {
     const key = posKey(move.to)
     const existing = byKey.get(key)
     if (existing) existing.moves.push(move)
-    else byKey.set(key, { key, point: positionPoint(move.to, move.piece), moves: [move] })
+    else byKey.set(key, { key, point: turnPoint(positionPoint(move.to, move.piece), turn), moves: [move] })
   }
   return [...byKey.values()]
 }
@@ -58,20 +68,43 @@ function chooserPlacement({ x, y }: Point) {
   }
 }
 
-const CENTER: [Color, string][] = [
-  ['green', '240,240 360,240 300,300'],
-  ['yellow', '360,240 360,360 300,300'],
-  ['blue', '240,360 360,360 300,300'],
-  ['red', '240,240 240,360 300,300'],
+const CENTER: [Color, Point[]][] = [
+  ['green', [{ x: 240, y: 240 }, { x: 360, y: 240 }, { x: 300, y: 300 }]],
+  ['yellow', [{ x: 360, y: 240 }, { x: 360, y: 360 }, { x: 300, y: 300 }]],
+  ['blue', [{ x: 240, y: 360 }, { x: 360, y: 360 }, { x: 300, y: 300 }]],
+  ['red', [{ x: 240, y: 240 }, { x: 240, y: 360 }, { x: 300, y: 300 }]],
 ]
 
-export function Board({ state, moving, movable = [], selected, targets = [], onSelectPiece, onPickTarget, onDeselect, onPreview }: BoardProps) {
-  const pieces = placements(state, moving)
+const YARD = 240
+
+/** The top-left corner of a box of `size` whose unturned top-left is `at`, once the board is turned. */
+const turnedBox = (at: Point, size: number, turn: number): Point => {
+  const c = turnPoint({ x: at.x + size / 2, y: at.y + size / 2 }, turn)
+  return { x: c.x - size / 2, y: c.y - size / 2 }
+}
+
+export function Board({
+  state,
+  moving,
+  movable = [],
+  selected,
+  targets = [],
+  onSelectPiece,
+  onPickTarget,
+  onDeselect,
+  onPreview,
+  turn = 0,
+  names,
+  you,
+  active,
+}: BoardProps) {
+  const pieces = placements(state, moving).map((p) => ({ ...p, point: turnPoint(p.point, turn) }))
   const pointOf = (piece: PieceId) => pieces.find((p) => samePiece(p.piece, piece))!.point
+  const yardAt = (color: Color) => turnedBox(yardOrigin(color), YARD, turn)
   // With 2+ movable pieces and none selected, number them so each destination can say whose it is.
   const numbered = !selected && movable.length > 1
   const numberOf = (piece: PieceId) => movable.findIndex((m) => samePiece(m, piece)) + 1
-  const spots = destinations(targets)
+  const spots = destinations(targets, turn)
   const movableSquares = new Set(movable.map((piece) => posKey(positionOf(state, piece))))
 
   // The open chooser for a square several moves share; closed whenever the game moves on.
@@ -114,28 +147,38 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
         </defs>
         <rect width={BOARD_SIZE} height={BOARD_SIZE} rx="16" fill={BOARD_BG} />
         {COLORS.map((color) => {
-          const o = yardOrigin(color)
+          const o = yardAt(color)
           return (
             <g key={color}>
-              <rect x={o.x + 4} y={o.y + 4} width="232" height="232" rx="24" fill={COLOR_HEX[color]} />
+              <rect data-testid="yard" data-color={color} x={o.x + 4} y={o.y + 4} width="232" height="232" rx="24" fill={COLOR_HEX[color]} />
               <rect x={o.x + 40} y={o.y + 40} width="160" height="160" rx="20" fill={TILE} />
+              {color === active && (
+                <rect data-testid="active-yard" data-color={color} x={o.x + 6.5} y={o.y + 6.5} width="227" height="227" rx="21.5" fill="none" stroke="#ffffff" strokeWidth="5" />
+              )}
             </g>
           )
         })}
-        {TILES.map((tile, i) => (
-          <rect
-            key={i}
-            data-testid="tile"
-            x={tile.x + 1}
-            y={tile.y + 1}
-            width={CELL - 2}
-            height={CELL - 2}
-            rx="8"
-            fill={tile.fill ? COLOR_HEX[tile.fill] : TILE}
-          />
-        ))}
+        {TILES.map((tile, i) => {
+          const t = turnedBox(tile, CELL, turn)
+          return (
+            <rect
+              key={i}
+              data-testid="tile"
+              x={t.x + 1}
+              y={t.y + 1}
+              width={CELL - 2}
+              height={CELL - 2}
+              rx="8"
+              fill={tile.fill ? COLOR_HEX[tile.fill] : TILE}
+            />
+          )
+        })}
         {CENTER.map(([color, points]) => (
-          <polygon key={color} points={points} fill={COLOR_HEX[color]} />
+          <polygon
+            key={color}
+            points={points.map((p) => turnPoint(p, turn)).map(({ x, y }) => `${x},${y}`).join(' ')}
+            fill={COLOR_HEX[color]}
+          />
         ))}
         {pieces.map(({ piece, point, stack, top }) => {
           const isMovable = movable.some((m) => samePiece(m, piece))
@@ -148,10 +191,10 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
               style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
             >
               <circle className="body" r="15" fill={COLOR_HEX[piece.color]} stroke="#ffffff" strokeWidth="4" filter="url(#piece-shadow)" />
-              {samePiece(piece, selected) && <circle r="21" fill="none" stroke="#0f172a" strokeWidth="3" />}
+              {samePiece(piece, selected) && <circle r="21" fill="none" stroke={INK} strokeWidth="3" />}
               {stack > 1 && top && (
                 <g transform="translate(13 -13)">
-                  <circle r="9" fill="#0f172a" />
+                  <circle r="9" fill={INK} />
                   <text textAnchor="middle" dy="4" fontSize="11" fontWeight="700" fill="#ffffff">
                     {stack}
                   </text>
@@ -187,7 +230,7 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
               )}
               {rolls && (
                 <g transform={`translate(${point.x} ${point.y + 24})`}>
-                  <rect x={-4 - rolls.length * 3.5} y="-8" width={8 + rolls.length * 7} height="16" rx="8" fill="#0f172a" />
+                  <rect x={-4 - rolls.length * 3.5} y="-8" width={8 + rolls.length * 7} height="16" rx="8" fill={INK} />
                   <text data-testid="target-rolls" textAnchor="middle" dy="3.5" fontSize="11" fontWeight="700" fill="#ffffff">
                     {rolls}
                   </text>
@@ -202,8 +245,8 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
             const p = pointOf(piece)
             return (
               <g key={`number-${piece.index}`} transform={`translate(${p.x - 15} ${p.y - 15})`} pointerEvents="none">
-                <circle r="10" fill="#ffffff" stroke="#0f172a" strokeWidth="2" />
-                <text data-testid="piece-number" textAnchor="middle" dy="4.5" fontSize="13" fontWeight="800" fill="#0f172a">
+                <circle r="10" fill="#ffffff" stroke={INK} strokeWidth="2" />
+                <text data-testid="piece-number" textAnchor="middle" dy="4.5" fontSize="13" fontWeight="800" fill={INK}>
                   {numberOf(piece)}
                 </text>
               </g>
@@ -287,10 +330,43 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
           })}
         </div>
       )}
+      {names &&
+        state.players.map(({ color, pieces: at, finishedPlace }) => {
+          const o = yardAt(color)
+          const home = at.filter((p) => p.kind === 'home').length
+          return (
+            <div
+              key={color}
+              data-testid={`yard-label-${color}`}
+              className={color === active ? 'yard-label active' : 'yard-label'}
+              style={{ left: pct(o.x + 4), top: pct(o.y + 4), color: ON_COLOR[color] }}
+            >
+              <span className="yard-name">{names[color]}</span>
+              {finishedPlace ? (
+                <span className="yard-place">{ORDINAL[finishedPlace - 1]}</span>
+              ) : color === active ? (
+                <span className="yard-tag" style={{ color: TAG_TEXT[color] }}>
+                  {turnTag(color, you)}
+                </span>
+              ) : (
+                <span className="yard-home">{home} home</span>
+              )}
+            </div>
+          )
+        })}
       {(Object.entries(state.labourers) as [Color, Color][]).map(([victim, owner]) => {
-        const o = yardOrigin(victim)
+        const o = yardAt(victim)
         return (
-          <div key={victim} className="labourer-badge" style={{ left: pct(o.x + 120), top: pct(o.y + 12) }}>
+          <div
+            key={victim}
+            data-testid={`labourer-${victim}`}
+            className="yard-labourer"
+            style={{ left: pct(o.x + 4), top: pct(o.y + 200), color: ON_COLOR[victim] }}
+          >
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <rect x="1" y="4" width="5" height="4" rx="2" />
+              <rect x="6" y="4" width="5" height="4" rx="2" />
+            </svg>
             Labourer to {COLOR_NAME[owner]}
           </div>
         )

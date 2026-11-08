@@ -28,9 +28,16 @@ Everything around the board should look like it belongs to this game, not to a t
 
 ## Board orientation
 
-- The board is drawn turned so that the **first human seat's yard is bottom-left**. With no human seat, red goes bottom-left.
-- It's turned once when the game starts and stays put. In pass-and-play it doesn't turn between players.
-- Implementation: the board's SVG and the overlay buttons share one transform. Text on the board (yard labels, piece numbers, the "6+4" labels) is turned back so it reads upright.
+- The board is turned towards the **viewer**: the first human seat, or red when there's no human seat.
+- A **playing hand** preference picks the corner: `hand: 'right' | 'left'`, default `'right'`.
+  - Right: the viewer's yard is drawn **bottom-right**.
+  - Left: the viewer's yard is drawn **bottom-left**.
+- The turn is fixed for the game: in pass-and-play it doesn't turn between players. Only changing the hand re-orients it, immediately, even mid-game.
+- The hand is a per-device preference, not a game setting: it's kept out of the engine `Settings` and the saved game log, and stored in `localStorage` under `ludo-unlimited:hand`. The app works without storage (it falls back to right).
+- Where it's changed:
+  - a "Playing hand" row (Right/Left picker) in a small "This device" section of the setup screen, above Start game
+  - "Playing hand: Right/Left" in the in-game menu sheet
+- Implementation: every point drawn on the board (yards, squares, pieces, markers and the overlay buttons) goes through one quarter-turn mapping, so the drawing and the buttons always line up and text on the board (yard labels, piece numbers, the "6+4" labels) is never rotated and reads upright.
 
 ## Yards as player panels
 
@@ -68,7 +75,7 @@ Each yard shows:
 - A smaller outlined line underneath, e.g. "Red sent Yellow back to base".
 - It fades in and out over about 1.4s and isn't clickable. Round 2 effects will build on it.
 
-**Menu (`≡`):** a sheet from the bottom with "Quit to home" and "Restart game".
+**Menu (`≡`):** a sheet from the bottom with "Quit to home", "Restart game" and "Playing hand: Right/Left".
 
 ## Setup screen ("New game")
 
@@ -82,6 +89,7 @@ Rows on the table, each at least 52px tall, separated by `--line`:
   - "After a kick": opens a picker (Carry on / Turn ends / Bonus roll).
   - "Game ends": opens a picker (When one player wins / When places are set).
   - "Choose rules one by one": opens a sheet with a switch for each of Back Kick, Line Kick, Home Kick and Labourer.
+- **This device section:** a "Playing hand" row (Right/Left), opening a picker. See Board orientation.
 - **Start game:** a full-width main button at the bottom, in red (the first seat's colour).
 
 **Pickers and sheets** slide up from the bottom over a dimmed table. Options are rows with a checkmark on the current one. Tapping an option closes the picker.
@@ -109,7 +117,7 @@ Rows on the table, each at least 52px tall, separated by `--line`:
 
 - Update the existing component and App tests to the new structure. Keep every behaviour test.
 - New tests:
-  - board orientation: the first human seat's yard is drawn bottom-left
+  - board orientation: right hand draws the viewer's yard bottom-right, left hand bottom-left; the hand persists in storage and survives storage throwing
   - yard labels: names, home counts, the turn tag, the Labourer line
   - setup rows: the switch, pickers and per-rule sheet produce the right `Settings`
   - kick callout text for each kick kind

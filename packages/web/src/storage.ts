@@ -1,5 +1,5 @@
 import { replay, type GameEvent, type Settings } from '@ludo/engine'
-import type { Seats } from './types'
+import type { Hand, Seats } from './types'
 
 export type SavedGame = { settings: Settings; seats: Seats; log: GameEvent[] }
 
@@ -31,5 +31,23 @@ export function clearGame(): void {
     localStorage.removeItem(KEY)
   } catch {
     // Nothing to clear when storage is blocked.
+  }
+}
+
+const HAND_KEY = 'ludo-unlimited:hand'
+
+export function loadHand(): Hand {
+  try {
+    return localStorage.getItem(HAND_KEY) === 'left' ? 'left' : 'right'
+  } catch {
+    return 'right'
+  }
+}
+
+export function saveHand(hand: Hand): void {
+  try {
+    localStorage.setItem(HAND_KEY, hand)
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
   }
 }

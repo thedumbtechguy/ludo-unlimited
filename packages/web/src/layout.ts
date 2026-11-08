@@ -1,4 +1,5 @@
 import { COLORS, TRACK, laneCell, posKey, startIndex, type Color, type GameState, type PieceId, type Position } from '@ludo/engine'
+import type { Hand, Seats } from './types'
 
 export const CELL = 40
 export const BOARD_SIZE = 600
@@ -25,6 +26,22 @@ const HOME_SPOT: Record<Color, Point> = {
 }
 
 export const yardOrigin = (color: Color): Point => YARD[color]
+
+/** Whose yard the board is turned towards: the first human seat, or red with no humans. */
+export const viewerOf = (seats: Seats, colors: Color[]): Color => colors.find((c) => seats[c] === 'human') ?? 'red'
+
+/**
+ * Clockwise quarter turns that put the viewer's yard bottom-right (right hand) or bottom-left (left hand).
+ * The unturned yards sit clockwise from top-left in COLORS order.
+ */
+export const quarterTurns = (viewer: Color, hand: Hand): number => ((hand === 'right' ? 2 : 3) - COLORS.indexOf(viewer) + 4) % 4
+
+/** A board point turned clockwise `turns` quarter turns about the centre. Everything drawn on the board goes through this. */
+export function turnPoint({ x, y }: Point, turns: number): Point {
+  let p = { x, y }
+  for (let i = 0; i < turns; i++) p = { x: BOARD_SIZE - p.y, y: p.x }
+  return p
+}
 
 const cellCenter = ([c, r]: readonly [number, number]): Point => ({ x: c * CELL + CELL / 2, y: r * CELL + CELL / 2 })
 

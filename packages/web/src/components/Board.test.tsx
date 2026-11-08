@@ -2,6 +2,7 @@ import { createGame, settingsFor, track, type Move } from '@ludo/engine'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { quarterTurns } from '../layout'
 import { Board } from './Board'
 
 const game = (players: 2 | 3 | 4 = 4) => createGame(settingsFor('classic', players, 'firstWins'))
@@ -35,11 +36,11 @@ describe('Board', () => {
     expect(onPickTarget).toHaveBeenCalledWith(move)
   })
 
-  it('shows a labourer badge on the victim’s yard', () => {
+  it('shows the Labourer line on the victim’s yard', () => {
     const state = game()
     state.labourers = { yellow: 'red' }
     render(<Board state={state} />)
-    expect(screen.getByText('Labourer to Red')).toBeInTheDocument()
+    expect(screen.getByTestId('labourer-yellow')).toHaveTextContent('Labourer to Red')
   })
 
   it('draws a moving piece at its animated square', () => {
@@ -190,5 +191,99 @@ describe('Board', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Piece 1: Red, on square 7' }))
     expect(onSelectPiece).toHaveBeenCalledWith(red2)
     expect(onPickTarget).not.toHaveBeenCalled()
+  })
+
+  describe('orientation', () => {
+    const yard = (color: string) => screen.getAllByTestId('yard').find((el) => el.getAttribute('data-color') === color)!
+    const at = (el: Element) => [el.getAttribute('x'), el.getAttribute('y')]
+
+    it('is unturned by default: red top-left', () => {
+      render(<Board state={game()} />)
+      expect(at(yard('red'))).toEqual(['4', '4'])
+      expect(at(yard('yellow'))).toEqual(['364', '364'])
+    })
+
+    it('right hand draws the viewer’s yard bottom-right', () => {
+      render(<Board state={game()} turn={quarterTurns('green', 'right')} />)
+      expect(at(yard('green'))).toEqual(['364', '364'])
+      expect(at(yard('yellow'))).toEqual(['4', '364'])
+    })
+
+    it('left hand draws the viewer’s yard bottom-left', () => {
+      render(<Board state={game()} turn={quarterTurns('green', 'left')} />)
+      expect(at(yard('green'))).toEqual(['4', '364'])
+    })
+
+    it('turns the pieces, markers and their buttons with the board', () => {
+      const move: Move = { kind: 'forward', piece: red0, to: track(8) }
+      const state = game()
+      state.players[0].pieces[0] = track(0)
+      // Red's start square (60, 260) turned twice is (540, 340).
+      render(<Board state={state} turn={2} movable={[red0]} targets={[move]} />)
+      const piece = screen.getAllByTestId('piece').find((el) => el.getAttribute('data-piece') === 'red-0')!
+      expect(piece.style.transform).toBe('translate(540px, 340px)')
+      const button = screen.getByRole('button', { name: 'Red piece 1, on square 1' })
+      expect(button.style.left).toBe('90%')
+      expect(button.style.top).toBe(`${(340 / 600) * 100}%`)
+      // Square 9 is (260, 100); turned twice, (340, 500).
+      const marker = screen.getByTestId('target-marker')
+      expect([marker.getAttribute('cx'), marker.getAttribute('cy')]).toEqual(['340', '500'])
+      const target = screen.getByRole('button', { name: 'Move on square 9' })
+      expect(target.style.top).toBe(`${(500 / 600) * 100}%`)
+    })
+
+    it('keeps text upright: no rotation anywhere on the board', () => {
+      const { container } = render(<Board state={game()} turn={1} />)
+      expect(container.innerHTML).not.toMatch(/rotate/)
+    })
+  })
+
+  describe('yard labels', () => {
+    const names = { red: 'You', green: 'Computer', yellow: 'Player 2', blue: 'Computer' }
+    const label = (color: string) => screen.getByTestId(`yard-label-${color}`)
+
+    it('names each seated player with their home count', () => {
+      const state = game()
+      state.players[1].pieces = [{ kind: 'home' }, { kind: 'home' }, { kind: 'base' }, { kind: 'base' }]
+      render(<Board state={state} names={names} you="red" active="red" />)
+      expect(label('green')).toHaveTextContent('Computer2 home')
+      expect(label('yellow')).toHaveTextContent('Player 20 home')
+    })
+
+    it('tags the active yard instead of its home count, and outlines it', () => {
+      render(<Board state={game()} names={names} you="red" active="red" />)
+      expect(label('red')).toHaveTextContent('YouYour turn')
+      expect(screen.getAllByTestId('active-yard')).toHaveLength(1)
+      expect(screen.getByTestId('active-yard')).toHaveAttribute('data-color', 'red')
+    })
+
+    it('names another player’s turn by colour', () => {
+      render(<Board state={game()} names={names} you="red" active="green" />)
+      expect(label('green')).toHaveTextContent("ComputerGreen's turn")
+      expect(label('red')).toHaveTextContent('You0 home')
+    })
+
+    it('shows a finished player’s place', () => {
+      const state = game()
+      state.players[2].finishedPlace = 1
+      render(<Board state={state} names={names} you="red" active="red" />)
+      expect(label('yellow')).toHaveTextContent('Player 21st')
+    })
+
+    it('labels only seated colours, at the turned yard', () => {
+      render(<Board state={game(2)} names={{ red: 'You', yellow: 'Computer' }} you="red" turn={quarterTurns('red', 'left')} />)
+      expect(screen.queryByTestId('yard-label-green')).toBeNull()
+      // Red's yard is bottom-left: its top edge starts at (4, 364).
+      expect(label('red').style.left).toBe(`${(4 / 600) * 100}%`)
+      expect(label('red').style.top).toBe(`${(364 / 600) * 100}%`)
+    })
+
+    it('puts the Labourer line along the bottom of the victim’s yard', () => {
+      const state = game()
+      state.labourers = { yellow: 'green' }
+      render(<Board state={state} names={names} you="red" />)
+      expect(screen.getByTestId('labourer-yellow')).toHaveTextContent('Labourer to Green')
+      expect(screen.getByTestId('labourer-yellow').style.top).toBe(`${(560 / 600) * 100}%`)
+    })
   })
 })
