@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test",
-    "deploy": "npm run build && wrangler deploy"
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@ludo/engine": "*",
@@ -30,7 +29,6 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^4.1.12",
-    "wrangler": "^4.158.0"
+    "vitest": "^4.1.12"
   }
 }
