@@ -10,7 +10,9 @@ A Ludo game whose standout feature is Ghanaian house rules (Back Kick, Line Kick
 - **Server:** rolls the die, accepts a move only if it appears in `legalMoves`, and keeps the event log.
 - **Client:** shows legal moves and results immediately, using the same code.
 
-Guiding principle: **kicks are shortcuts.** A piece's route is decided only by where it physically is, never by how far it has travelled.
+Guiding principles:
+- **A kick means landing on a piece.** What sets this game apart is *where* you can land: counts can run **backwards** as well as forwards, and they can go **into the middle lanes**, which most games treat as safe. Line Kick (the side kick) is the one special case.
+- **Kicks are shortcuts.** A piece's route is decided only by where it physically is, never by how far it has travelled. A backward count runs the route in reverse.
 
 ## Rules
 
@@ -19,7 +21,11 @@ Guiding principle: **kicks are shortcuts.** A piece's route is decided only by w
 - 2–4 players, each with 4 pieces. One die.
 - A 6 brings a piece from base onto the player's start square.
 - A 6 gives another roll. Three 6s in a row carry no penalty.
-- Kicking or getting a piece home gives no bonus roll.
+- Getting a piece home gives no bonus roll.
+- **After a kick** is a game setting, `afterKick`:
+  - `endsTurn`: any kick ends the turn, even on a 6. Kicks other than a Front Kick are optional, so a player can skip one to keep their extra roll.
+  - `normal`: a kick changes nothing, so a 6 still rolls again.
+  - `bonusRoll`: a kick always earns another roll. This only applies when the kicker is the player whose turn it is, not a Labourer owner playing someone else's roll.
 - Reaching home needs an exact roll.
 - There are no safe squares. That includes start squares and, when Home Kick is on, home lanes.
 - **Blocks:** two pieces of the same colour on one square form a block.
@@ -41,7 +47,8 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 - Moving backwards just to reposition isn't allowed.
 - A backwards move can go past the player's own start square.
 - A piece that has just entered the board can Back Kick straight away.
-- Pieces in their own home lane can't move backwards.
+- **Wicked move:** a piece in its own home lane can count backwards out of it (R4 → R3 → R2 → R1 → lane entry → back along the track) to land on and kick a piece. It then carries on from wherever it landed.
+- A piece in an *opponent's* lane can't move backwards (deeper into that lane).
 - Optional.
 
 ### Line Kick (toggle)
@@ -49,7 +56,7 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 - Each arm of the board has two outer track columns with a middle column between them.
   - In rows 1–5 of an arm, the middle squares are that arm's home lane squares 1–5.
   - In row 0, the outer tip, the middle square is a track square. **Row 0 never Line Kicks.**
-- The Line Kick is checked after a forward or backward move whose landing square is empty or holds the mover's own piece. If that square is in rows 1–5 and a lone opponent sits on the matching square across the arm, the mover may Line Kick.
+- The Line Kick is checked after an enter, forward or backward move whose landing square is empty or holds the mover's own piece. If that square is in rows 1–5 and a lone opponent sits on the matching square across the arm, the mover may Line Kick.
 - The lane square between the two must be empty.
 - On a Line Kick, **the mover jumps across onto the opponent's square and stays there.** The opponent goes to base.
 - It works across any colour's lane, including the mover's own. Across your own lane, it can be a huge shortcut.
@@ -60,7 +67,9 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 ### Home Kick (toggle)
 
 - An opponent's piece inside their own home lane can be kicked.
-- If counting forward reaches an opponent's lane entry (the row-0 tip square) and then continues into their lane to land exactly on a lone opponent, the mover may turn into that lane and kick them.
+- If a count, forward or backward, reaches an opponent's lane entry and then continues into their lane to land exactly on a lone opponent, the mover may turn into that lane and kick them. This includes a piece that starts its move on the lane entry.
+- Counting backwards into a lane needs **both** Home Kick and Back Kick on.
+- A piece already in an opponent's lane can't turn back into it during the same move.
 - The kicking piece stays on that lane square. While it's there, the lane's owner can kick it.
 - To leave, the piece moves **back out toward the main track** and then carries on along its own route. It can kick a lone opponent it lands on exactly on the way out.
 - Optional.
@@ -110,6 +119,7 @@ type Settings = {
   players: 2 | 3 | 4
   rules: { backKick: boolean; lineKick: boolean; homeKick: boolean; labourer: boolean }
   endCondition: 'firstWins' | 'playForPlaces'
+  afterKick: 'endsTurn' | 'normal' | 'bonusRoll'
 }
 
 type GameState = {
@@ -148,9 +158,9 @@ type Move =
 - **Whose pieces:** normally the current player's. If the current player is a Labourer victim and rolled under 6, the owner's.
 - `enter`: a roll of 6 and a piece in base. The start square isn't an opponent block. A lone opponent on the start square is kicked.
 - `forward`: a legal path. Landing on a lone opponent kicks them. Landing on your own piece forms a block.
-- `back`: Back Kick is on, the piece is on the track, it lands exactly on a lone opponent, and the path is legal.
+- `back`: Back Kick is on, the piece is on the track or in its own lane, it lands exactly on a lone opponent, and the path is legal.
 - `line`: Line Kick is on. The `via` square comes from a legal forward or backward move and is empty or holds the mover's own piece. A `lineAcross` entry exists for `via`, the `between` square is empty, and a lone opponent is on `across`.
-- `homeKick`: Home Kick is on, and counting forward through an opponent's lane entry lands exactly on a lone opponent in their lane.
+- `homeKick`: Home Kick is on, and counting forward (or backward, with Back Kick also on) through an opponent's lane entry lands exactly on a lone opponent in their lane.
 - **Duplicates are merged:** moves with the same piece, destination and result collapse into one.
 
 ### Turn flow
@@ -161,7 +171,11 @@ type Move =
 4. The move is applied, and kicked pieces go to base.
 5. If Labourer is on and the kick left the victim with no pieces in play, a new Labourer is created.
 6. If all 4 of the mover's pieces are home, they get the next place, and the end condition is checked.
-7. On a 6, the roller goes again. That's still true if the 6 was wasted. Otherwise play passes to the next unfinished player after the roller.
+7. Next roll:
+   - If the move kicked and `afterKick` is `endsTurn`, play passes to the next player.
+   - If the move kicked, `afterKick` is `bonusRoll` and the kicker is the turn player, the roller goes again.
+   - Otherwise, on a 6 the roller goes again. That's still true if the 6 was wasted.
+   - Otherwise play passes to the next unfinished player after the roller.
 
 ## Testing (Vitest)
 
@@ -180,6 +194,8 @@ type Move =
 - **Replay test:** replaying `log` rebuilds the same state.
 
 ## Out of scope (separate specs)
+
+- Game modes: named presets of `Settings`, such as a Ghana Classic mode with every kick on. These can be added on top of the engine without changing it.
 
 - Board UI and animation: React with an SVG board, as a PWA, wrapped with Capacitor for the app stores.
 - Online multiplayer: one Cloudflare Durable Object per game room, WebSockets, server-side dice, turn timers, reconnects, bots.
