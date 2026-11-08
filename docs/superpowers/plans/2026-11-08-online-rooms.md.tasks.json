@@ -73,7 +73,7 @@
     {
       "id": 8,
       "subject": "Task 9: Web: the connection and `useOnlineGame`",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** A device identity, the API calls, a reconnecting socket, and the online controller: the same shape as `useGame`, with the room's state on top.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/api.ts\", \"packages/web/src/online/socket.ts\", \"packages/web/src/online/useOnlineGame.ts\", \"packages/web/src/online/socket.test.ts\", \"packages/web/src/online/useOnlineGame.test.ts\", \"packages/web/src/storage.ts\", \"packages/web/src/storage.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"device ID and nickname kept\", \"socket reconnects with backoff, close stops it\", \"room/event/clock/reaction/error handled as specified\", \"own seat controlled only when not covered, paused or waiting\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         7
@@ -82,7 +82,7 @@
     {
       "id": 9,
       "subject": "Task 10: Web: Play online, create, join, lobby and room links",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** People get from the home screen into a room by creating one, typing a code or opening a link, then sit, share and start.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/PlayOnline.tsx\", \"packages/web/src/online/Lobby.tsx\", \"packages/web/src/online/RoomScreen.tsx\", \"packages/web/src/online/OnlineGame.tsx\", \"packages/web/src/screens/Home.tsx\", \"packages/web/src/screens/Setup.tsx\", \"packages/web/src/App.tsx\", \"packages/web/src/update.ts\", \"packages/web/src/styles.css\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"Play online with nickname, create, join by code\", \"Setup online mode with turn timer\", \"lobby seats, share, host settings and start sheet\", \"room links and address bar\", \"error screens; old_version forces update\", \"online room counts as playing for updates\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         8
@@ -91,7 +91,7 @@
     {
       "id": 10,
       "subject": "Task 11: Web: the online game screen",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The game itself online, with the existing board plus names and away players, the turn clock, reactions, the host's pause, watching, connection state, leaving, and rematch.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/OnlineGame.tsx\", \"packages/web/src/online/TurnClock.tsx\", \"packages/web/src/online/Reactions.tsx\", \"packages/web/src/online/OnlineResults.tsx\", \"packages/web/src/screens/GameView.tsx\", \"packages/web/src/components/Board.tsx\", \"packages/web/src/labels.ts\", \"packages/web/src/styles.css\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"names, away, Computer on yards; names in turn label; Watching\", \"turn clock ring with warning\", \"reactions tray and bubbles\", \"host left notice and pause/carry on\", \"reconnecting note\", \"Leave room, no restart\", \"online results with host rematch\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         9
@@ -107,5 +107,5 @@
       ]
     }
   ],
-  "lastUpdated": "2026-11-08T14:04:22.447132+00:00"
+  "lastUpdated": "2026-11-08T14:37:51.914391+00:00"
 }
