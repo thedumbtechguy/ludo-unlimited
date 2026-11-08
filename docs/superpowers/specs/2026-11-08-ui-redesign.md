@@ -73,7 +73,8 @@ Each yard shows:
 
 **Kick callouts:**
 - Big text over the centre of the board in the kicker's colour, Inter 900, with a thick white outline (`-webkit-text-stroke` plus `paint-order: stroke fill`).
-- The text is "Kick!", "Back kick!", "Line kick!", "Home kick!" or "Wicked!" (a back kick out of the player's own home lane).
+- The text is "Kick!", "Back kick!", "Line kick!" or "Home kick!".
+- When the kick was the wicked move (it sends a piece on its way home round the board again; see the board UI spec), a "Wicked!" callout follows the kick's own callout.
 - A smaller outlined line underneath, e.g. "Red sent Yellow back to base".
 - It fades in and out over about 1.4s and isn't clickable. Round 2 effects will build on it.
 

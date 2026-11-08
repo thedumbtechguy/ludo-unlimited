@@ -4,13 +4,13 @@
     {
       "id": 0,
       "subject": "Task 0: Engine \u2014 progress, bot and movePath",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 0: Engine \u2014 progress, bot and movePath.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd packages/engine && npx vitest run && npx tsc --noEmit\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```"
     },
     {
       "id": 1,
       "subject": "Task 1: Scaffold packages/web",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 1: Scaffold packages/web.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"npm test && npm run typecheck\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         0
@@ -19,7 +19,7 @@
     {
       "id": 2,
       "subject": "Task 2: Board layout, theme and labels",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 2: Board layout, theme and labels.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd packages/web && npx vitest run src/layout.test.ts src/labels.test.ts\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         1
@@ -28,7 +28,7 @@
     {
       "id": 3,
       "subject": "Task 3: Board component",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 3: Board component.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd packages/web && npx vitest run src/components/Board.test.tsx\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         2
@@ -37,7 +37,7 @@
     {
       "id": 4,
       "subject": "Task 4: Dice, saving and the useGame hook",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 4: Dice, saving and the useGame hook.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd packages/web && npx vitest run src/dice.test.ts src/storage.test.ts src/useGame.test.ts\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         3
@@ -46,7 +46,7 @@
     {
       "id": 5,
       "subject": "Task 5: Screens and App flow",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 5: Screens and App flow.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd packages/web && npx vitest run && npx tsc --noEmit\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         4
@@ -55,7 +55,7 @@
     {
       "id": 6,
       "subject": "Task 6: PWA",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 6: PWA.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"npm run build -w @ludo/web && ls packages/web/dist/manifest.webmanifest packages/web/dist/sw.js\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         5
@@ -64,7 +64,7 @@
     {
       "id": 7,
       "subject": "Task 7: Browser test (Playwright)",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 7: Browser test (Playwright).\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"npm run e2e -w @ludo/web\", \"acceptanceCriteria\": [], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         6
@@ -73,12 +73,12 @@
     {
       "id": 8,
       "subject": "Task 8: The user plays it",
-      "status": "pending",
+      "status": "completed",
       "description": "See docs/superpowers/plans/2026-11-08-board-ui-round1.md \u2014 Task 8: The user plays it.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"Ludo Unlimited is running at the URL above. Play a few turns (try a kick). Does Round 1 work and feel right?\"}\n```",
       "blockedBy": [
         7
       ]
     }
   ],
-  "lastUpdated": "2026-11-08T00:55:38.038006"
+  "lastUpdated": "2026-11-08T12:51:44.759622+00:00"
 }

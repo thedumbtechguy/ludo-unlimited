@@ -18,13 +18,12 @@ Make Ludo Unlimited playable on one device: 2–4 seats, each Human or Computer,
 - Setup with modes and rule toggles.
 - Saving and resuming a game.
 - An installable PWA.
-- Round 2: effects, plus a hook for sound effects.
+- Round 2: effects, sound effects and background music.
 
 **Out (later specs):**
 - Online multiplayer: Cloudflare Durable Objects with dice rolled on the server.
 - Accounts.
 - Capacitor app-store builds.
-- The sounds themselves.
 - More bot difficulty levels.
 - Alternative themes, such as a kente theme.
 
@@ -126,7 +125,9 @@ describeMove(before: GameState, move: Move, after: GameState): GameEffect[]
 describeRoll(before: GameState, after: GameState): GameEffect[]
 
 type GameEffect =
-  | { type: 'kick'; kind: 'front' | 'back' | 'line' | 'home' | 'wicked'; at: Position; kicker: PieceId; victim: PieceId }
+  // via: a line kick's crossing square; from: the square a back kick stepped off
+  | { type: 'kick'; kind: 'front' | 'back' | 'line' | 'home'; at: Position; kicker: PieceId; victim: PieceId; via?: Position; from?: Position }
+  | { type: 'wicked'; piece: PieceId; at: Position }         // straight after the kick, when it was the wicked move
   | { type: 'sixStreak'; color: Color; count: number }        // the turn player's run of consecutive 6s
   | { type: 'streakEnded'; color: Color; count: number }
   | { type: 'labourerStart'; victim: Color; owner: Color }
@@ -137,7 +138,12 @@ type GameEffect =
   | { type: 'gameOver' }
 ```
 
-- **Kick kinds:** `wicked` is a `back` move whose piece started in its own home lane. A `forward`/`enter` kick is `front`. The `line` and `homeKick` move kinds map to `line` and `home`.
+- **Kick kinds:** a `forward`/`enter` kick is `front`. The `back`, `line` and `homeKick` move kinds map to `back`, `line` and `home`.
+- **Wicked is not a kind of kick.** It's a separate effect that follows the kick's own effect (`isWicked` in the engine). It happens when a kick lands a piece that was on its way home in a spot that means going round the board again:
+  - The piece was on its home stretch, at least 44 squares into its lap. For a line kick, the square it crossed from counts too.
+  - It ends up more than half a lap (26 squares) further back.
+  - Examples: a back kick counted out of the player's own home lane, past the entrance and onto the main route; or a line kick from row 8 that lands on row 6.
+  - A back kick that stays on the way home (down row 8) is an ordinary back kick.
 - **Six streak:** count the turn player's consecutive 6 rolls in the log since their turn began.
 - These are pure functions, tested like the rest of the engine.
 
@@ -150,14 +156,14 @@ type GameEffect =
 | Back Kick | A "BACK KICK!" stamp. |
 | Line Kick | A lightning zap across the lane. |
 | Home Kick | A shockwave ripples down the lane. |
-| Wicked | Dark smoke and a "WICKED!" stamp, the most dramatic effect. |
+| Wicked | After the kick's own effect: dark smoke and a "WICKED!" stamp, the most dramatic effect. |
 | Labourer | Chains slam over the victim's yard. When the victim is freed, the chains shatter. |
 | Block formed | A shield shimmer. |
 | Piece home | A sparkle fountain from the centre. |
 | Win | Fireworks and confetti. |
 
 - **Tech:**
-  - **Motion** (`motion` package) for the text stamps, screen shake and arcs.
+  - The browser's Web Animations API (`element.animate`) for the text stamps, screen shake and arcs, with no animation library.
   - One full-screen `<canvas>` particle system (written in-house, `requestAnimationFrame`) for fire, sparks, smoke and confetti.
   - The particle cap is about 400, and the system pauses when the tab is hidden.
 - **Settings:**
