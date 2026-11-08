@@ -106,7 +106,8 @@ describe('useGame', () => {
   })
 
   it('forgets a wasted roll once the next roll counts', () => {
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3, 6]), timing: FAST_TIMING }))
+    const dice = fixedDice([3, 6])
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING }))
     act(() => result.current.roll())
     expect(result.current.wasted).toEqual({ color: 'red', value: 3 })
     act(() => result.current.roll())
