@@ -22,7 +22,9 @@ Guiding principles:
 - A 6 brings a piece from base onto the player's start square.
 - **Roll your sixes first** (always on, except in `endsTurn` mode):
   - A player keeps rolling while they roll 6s, and stops at the first non-6. Three or more 6s carry no penalty.
-  - The rolls are then played **in the order rolled**, one move per roll. Rolls are never added together.
+  - The rolls are then played **in the order rolled**, one move per roll.
+  - **Combining for a kick:** the current roll plus the next queued roll(s), in order, can be added together into ONE move, but only if that move kicks (any kick kind: front, back, line or home). Example: rolled 6 then 4, opponent 10 behind → one Back Kick of 10 uses both rolls. Blocks on the path still stop it. A single-roll move with the same result is preferred. A Labourer owner never combines.
+  - **Stopping early:** after rolling a 6, the player may choose to stop rolling and play the rolls they have. The turn then ends when those rolls are used, with no further rolling.
   - When a roll's turn comes and it has no legal move, it's skipped and play moves to the next roll.
   - When all the rolls are used, play passes to the next player.
   - If the player finishes while rolls remain, the remaining rolls are dropped.
