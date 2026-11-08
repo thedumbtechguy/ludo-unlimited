@@ -21,8 +21,9 @@ export function seatNames(seats: Seats, colors: Color[]): Partial<Record<Color, 
   )
 }
 
-/** The tag on the active yard. */
-export const turnTag = (color: Color, you?: Color): string => (color === you ? 'Your turn' : `${COLOR_NAME[color]}'s turn`)
+/** The turn label: "Your turn", or the player's name (online) or colour. */
+export const turnTag = (color: Color, you?: Color, names?: Partial<Record<Color, string>>): string =>
+  color === you ? 'Your turn' : `${names?.[color] ?? COLOR_NAME[color]}'s turn`
 
 /** A roll that had no legal move, and who rolled it. */
 export type Wasted = { color: Color; value: number }

@@ -24,15 +24,19 @@ class FakeSocket implements SocketLike {
   }
 }
 
+/** The socket opens on the next microtask. */
+const opened = () => Promise.resolve()
+
 describe('openConnection', () => {
   afterEach(() => {
     vi.useRealTimers()
     FakeSocket.made = []
   })
 
-  it('passes messages both ways once open', () => {
+  it('passes messages both ways once open', async () => {
     const onMessage = vi.fn()
     const conn = openConnection({ url: () => 'ws://x', onMessage, onStatus: vi.fn(), create: () => new FakeSocket() })
+    await opened()
     const socket = FakeSocket.made[0]
     expect(conn.send({ t: 'roll' })).toBe(false) // not open yet
     socket.open()
@@ -42,10 +46,11 @@ describe('openConnection', () => {
     expect(onMessage).toHaveBeenCalledWith({ t: 'error', code: 'illegal' })
   })
 
-  it('reconnects with a growing wait, and stops for good on close()', () => {
+  it('reconnects with a growing wait, and stops for good on close()', async () => {
     vi.useFakeTimers()
     const onStatus = vi.fn()
     const conn = openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
+    await opened()
     FakeSocket.made[0].close()
     expect(onStatus).toHaveBeenLastCalledWith('reconnecting')
     vi.advanceTimersByTime(499)
@@ -63,9 +68,10 @@ describe('openConnection', () => {
     expect(onStatus).toHaveBeenLastCalledWith('closed')
   })
 
-  it('caps the wait at 8 s and starts over once open', () => {
+  it('caps the wait at 8 s and starts over once open', async () => {
     vi.useFakeTimers()
     openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus: vi.fn(), create: () => new FakeSocket() })
+    await opened()
     for (const wait of [500, 1000, 2000, 4000, 8000, 8000]) {
       const count = FakeSocket.made.length
       FakeSocket.made[count - 1].close()
@@ -81,7 +87,7 @@ describe('openConnection', () => {
     expect(FakeSocket.made).toHaveLength(8)
   })
 
-  it('builds the URL afresh on each reconnect', () => {
+  it('builds the URL afresh on each reconnect', async () => {
     vi.useFakeTimers()
     const urls: string[] = []
     let name = 'Ama'
@@ -94,16 +100,26 @@ describe('openConnection', () => {
         return new FakeSocket()
       },
     })
+    await opened()
     name = 'Kofi'
     FakeSocket.made[0].close()
     vi.advanceTimersByTime(500)
     expect(urls).toEqual(['ws://x?name=Ama', 'ws://x?name=Kofi'])
   })
 
-  it.each([4000, 4001])('does not reconnect when the room closes it with %i', (code) => {
+  it("a connection closed straight away never opens a socket, as with React's dev double effects", async () => {
+    const onStatus = vi.fn()
+    openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() }).close()
+    await opened()
+    expect(FakeSocket.made).toHaveLength(0)
+    expect(onStatus).toHaveBeenLastCalledWith('closed')
+  })
+
+  it.each([4000, 4001])('does not reconnect when the room closes it with %i', async (code) => {
     vi.useFakeTimers()
     const onStatus = vi.fn()
     openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
+    await opened()
     FakeSocket.made[0].open()
     FakeSocket.made[0].close(code)
     vi.advanceTimersByTime(10_000)

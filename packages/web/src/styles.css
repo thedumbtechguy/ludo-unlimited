@@ -24,6 +24,8 @@
   --tile: #ffffff;
   /* The "×4" streak count next to the dice. */
   --streak: #C2410C;
+  /* The turn clock's last 10 seconds. */
+  --warn: #FF3B30;
   color-scheme: light;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 600;
@@ -53,6 +55,7 @@
   --board: #000000;
   --tile: #1C1C1E;
   --streak: #F76B15;
+  --warn: #FF453A;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -215,7 +218,7 @@ button.row { cursor: pointer; }
 /* Players live on their yards: name and home count on the top edge, Labourer along the bottom. */
 .yard-label, .yard-labourer { position: absolute; width: calc(232 * var(--u)); height: calc(36 * var(--u)); display: flex; align-items: center; pointer-events: none; white-space: nowrap; }
 .yard-label { justify-content: space-between; padding: 0 calc(12 * var(--u)) 0 calc(16 * var(--u)); }
-.yard-name { font-weight: 800; font-size: calc(17 * var(--u)); }
+.yard-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 800; font-size: calc(17 * var(--u)); }
 .yard-label.active .yard-name { font-weight: 900; font-size: calc(18 * var(--u)); }
 .yard-home { font-weight: 600; font-size: calc(14 * var(--u)); padding-right: calc(4 * var(--u)); }
 .yard-place { font-weight: 800; font-size: calc(15 * var(--u)); padding-right: calc(4 * var(--u)); }
@@ -346,3 +349,25 @@ p.row { margin: 0; }
 .setup-error + .start { margin-top: 0; }
 .message { align-items: center; justify-content: center; min-height: 60vh; gap: 16px; text-align: center; font-size: 17px; }
 .message .primary, .message .secondary { min-width: 160px; }
+
+/* The online game. */
+/* Notices sit under the top bar as a plain line, with their button on the right. */
+.notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; flex: none; font-weight: 700; font-size: 15px; line-height: 1.3; }
+.notice.quiet { min-height: 0; color: var(--muted); font-weight: 600; font-size: 14px; }
+.notice button { flex: none; min-height: 40px; padding: 0 14px; font-size: 15px; }
+/* The turn clock: a thin ring just clear of the dice's corners. */
+/* The 8px under the turn label keeps the ring off it. */
+.dice-wrap { position: relative; display: grid; place-items: center; margin-top: 8px; }
+.turn-clock { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); transform: rotate(-90deg); pointer-events: none; }
+.turn-clock circle { fill: none; stroke: var(--button-bg); stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.25s linear; }
+.turn-clock.warn circle { stroke: var(--warn); stroke-width: 4; }
+.react-button { min-height: 44px; padding: 0 18px; font-size: 16px; }
+.reaction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 0 12px; }
+.reaction-choice { min-height: 60px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; }
+/* The emoji read small at text size. */
+.reaction-choice:nth-child(-n+4) { font-size: 28px; }
+/* A reaction pops over its sender's yard for two seconds. */
+.reaction-bubble { position: absolute; z-index: 4; transform: translate(-50%, -50%); padding: calc(10 * var(--u)) calc(20 * var(--u)); border-radius: 999px; background: var(--sheet-bg); color: var(--text); font-weight: 800; font-size: calc(30 * var(--u)); white-space: nowrap; pointer-events: none; animation: bubble 2s ease-out forwards; }
+@keyframes bubble { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .reaction-bubble { animation: none; } }
+.results-waiting { margin: 0; min-height: 52px; display: grid; place-items: center; color: var(--muted); font-size: 17px; }

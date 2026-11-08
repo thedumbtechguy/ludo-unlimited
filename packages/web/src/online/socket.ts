@@ -28,13 +28,15 @@ export function openConnection(o: {
   create?: (url: string) => SocketLike
 }): Connection {
   const create = o.create ?? ((url: string) => new WebSocket(url) as unknown as SocketLike)
-  let socket: SocketLike
+  let current: SocketLike | undefined
   let wait = FIRST_WAIT
   let closed = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
   function open() {
-    socket = create(o.url())
+    if (closed) return
+    const socket = create(o.url())
+    current = socket
     socket.onopen = () => {
       wait = FIRST_WAIT
       o.onStatus('open')
@@ -54,17 +56,18 @@ export function openConnection(o: {
   }
 
   o.onStatus('connecting')
-  open()
+  // On the next microtask, so a connection closed straight away (React's dev double effects) never reaches the room.
+  queueMicrotask(open)
   return {
     send(msg) {
-      if (socket.readyState !== 1) return false
-      socket.send(JSON.stringify(msg))
+      if (current?.readyState !== 1) return false
+      current.send(JSON.stringify(msg))
       return true
     },
     close() {
       closed = true
       clearTimeout(timer)
-      socket.close()
+      current?.close()
       o.onStatus('closed')
     },
   }

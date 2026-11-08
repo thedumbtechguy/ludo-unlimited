@@ -9,6 +9,7 @@ import { useOnlineGame } from './useOnlineGame'
 
 vi.mock('./useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
 vi.mock('../update', () => ({ updateNow: vi.fn() }))
+vi.mock('./OnlineGame', () => ({ OnlineGame: () => <p>Game in progress</p> }))
 
 const ROOM: RoomView = {
   code: 'KQMZ',
@@ -97,9 +98,16 @@ describe('RoomScreen', () => {
     expect(screen.getByText('KQMZ')).toBeInTheDocument()
   })
 
-  it('shows the game once it starts', () => {
+  it('shows the game once it starts, and the lobby again after a rematch', () => {
     given({ room: { ...ROOM, phase: 'playing' }, you: HOST })
-    renderRoom()
+    const { rerender } = render(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} prefs={prefs} />)
     expect(screen.getByText('Game in progress')).toBeInTheDocument()
+    given({ room: { ...ROOM, phase: 'finished' }, you: { id: 2, seat: 'yellow', host: false } })
+    rerender(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} prefs={prefs} />)
+    expect(screen.getByText('Game in progress')).toBeInTheDocument()
+    given({ room: ROOM, you: { id: 2, seat: 'yellow', host: false } })
+    rerender(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} prefs={prefs} />)
+    expect(screen.queryByText('Game in progress')).toBeNull()
+    expect(screen.getByText('KQMZ')).toBeInTheDocument()
   })
 })

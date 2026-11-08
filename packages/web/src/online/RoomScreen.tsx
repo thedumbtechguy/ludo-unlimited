@@ -42,7 +42,7 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
     }
     return <Lobby room={room} you={you} send={online.send} onSettings={() => setEditing(true)} onLeave={onLeave} />
   }
-  return <OnlineGame {...prefs} online={online} onLeave={onLeave} />
+  return <OnlineGame {...prefs} online={online} animated={timing.step > 0} onLeave={onLeave} />
 }
 
 function Message({ text, onHome }: { text: string; onHome?: () => void }) {

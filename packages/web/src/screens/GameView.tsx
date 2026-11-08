@@ -1,5 +1,5 @@
 import { currentMover, type Color, type GameState, type Move, type Rules } from '@ludo/engine'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Board } from '../components/Board'
 import { resultsDelay } from '../fx/actions'
 import { BoardFx } from '../fx/BoardFx'
@@ -40,6 +40,19 @@ export type GameViewProps = {
   onSound: (on: boolean) => void
   music: boolean
   onMusic: (on: boolean) => void
+  /** Online extras: drawn over the board (reactions), and under the top bar (notices). */
+  overlay?: ReactNode
+  notice?: ReactNode
+  /** Drawn round the dice (the turn clock). */
+  diceRing?: ReactNode
+  /** Replaces the turn label's text ("Watching"). */
+  turnText?: string
+  /** In the action slot while there's nothing to say there (the reaction button). */
+  side?: ReactNode
+  /** Names for the turn label ("Kofi's turn"); the local game keeps colour names. */
+  turnNames?: Partial<Record<Color, string>>
+  /** Seats whose player has disconnected, marked on their yard. */
+  away?: Color[]
 }
 
 const HAND_NAME: Record<Hand, string> = { right: 'Right', left: 'Left' }
@@ -48,7 +61,35 @@ const NEXT_THEME: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark
 const EFFECTS_NAME: Record<EffectsLevel, string> = { full: 'Full', reduced: 'Reduced' }
 
 /** A game's screen, from any controller: this device's, or a room's. */
-export function GameView({ g, viewer, you, names, animated, rules, quitLabel, onQuit, onRestart, onFinish, hand, onHand, theme, onTheme, effectsLevel, onEffectsLevel, sound, onSound, music, onMusic }: GameViewProps) {
+export function GameView({
+  g,
+  viewer,
+  you,
+  names,
+  animated,
+  rules,
+  quitLabel,
+  onQuit,
+  onRestart,
+  onFinish,
+  hand,
+  onHand,
+  theme,
+  onTheme,
+  effectsLevel,
+  onEffectsLevel,
+  sound,
+  onSound,
+  music,
+  onMusic,
+  overlay,
+  notice,
+  diceRing,
+  turnText,
+  side,
+  turnNames,
+  away,
+}: GameViewProps) {
   const { game } = g
   // The destination being hovered or focused, so the tray can light up the rolls it would use.
   const [preview, setPreview] = useState<Move>()
@@ -82,7 +123,7 @@ export function GameView({ g, viewer, you, names, animated, rules, quitLabel, on
         : 'Tap a marked square'
       : ''
   // Only a person's own wasted roll is worth a word; a computer's is just noise.
-  const noMove = g.wasted && g.controls(g.wasted.color) ? wastedText(g.wasted, viewer) : undefined
+  const noMove = g.wasted && g.controls(g.wasted.color) ? wastedText(g.wasted, you) : undefined
 
   return (
     // Effects are skipped when timing is instant (the browser tests' ?fast), so they never slow a game down.
@@ -98,6 +139,7 @@ export function GameView({ g, viewer, you, names, animated, rules, quitLabel, on
             <span aria-hidden="true">Menu</span>
           </button>
         </header>
+        {notice}
 
         <div className="play" ref={play}>
           {/* Phones: the empty table above the board, where "On fire" goes. */}
@@ -117,10 +159,12 @@ export function GameView({ g, viewer, you, names, animated, rules, quitLabel, on
             turn={turn}
             names={names}
             you={you}
+            away={away}
             active={game.status === 'playing' ? mover : undefined}
           >
             <KickCallout callout={g.callout} />
             <BoardFx effects={g.effects} state={game} turn={turn} area={play} />
+            {overlay}
           </Board>
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
           {/* On phones the dice sits under the playing hand's thumb. */}
@@ -131,11 +175,14 @@ export function GameView({ g, viewer, you, names, animated, rules, quitLabel, on
                 {game.status === 'playing' && (
                   <>
                     <span className="turn-dot" aria-hidden="true" />
-                    {turnTag(mover, viewer)}
+                    {turnText ?? turnTag(mover, you, turnNames)}
                   </>
                 )}
               </p>
-              <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
+              <span className="dice-wrap">
+                {diceRing}
+                <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
+              </span>
               <OnFire count={streak.count} place="desk" />
               <StreakLabel count={streak.count} />
             </div>
@@ -152,6 +199,8 @@ export function GameView({ g, viewer, you, names, animated, rules, quitLabel, on
                       Stop
                     </button>
                   </div>
+                ) : side && !hint && !noMove ? (
+                  side
                 ) : (
                   <p className="hint">
                     {noMove && <span className="hint-note">{noMove}</span>}

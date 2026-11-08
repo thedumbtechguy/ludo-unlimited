@@ -37,6 +37,8 @@ export type BoardProps = {
   names?: Partial<Record<Color, string>>
   /** The first human seat, whose turn tag reads "Your turn". */
   you?: Color
+  /** Seats whose player has disconnected: "Kofi (away)". */
+  away?: Color[]
   /** Whose yard is tagged and outlined as taking the turn. */
   active?: Color
   /** Drawn over everything, in board units (e.g. the kick callout). */
@@ -139,6 +141,7 @@ export function Board({
   turn = 0,
   names,
   you,
+  away = [],
   active,
   children,
 }: BoardProps) {
@@ -416,7 +419,10 @@ export function Board({
               className={color === active ? 'yard-label active' : 'yard-label'}
               style={{ left: pct(o.x + 4), top: pct(o.y + 4), color: ON_COLOR[color] }}
             >
-              <span className="yard-name">{names[color]}</span>
+              <span className="yard-name">
+                {names[color]}
+                {away.includes(color) && ' (away)'}
+              </span>
               {/* Whose turn it is shows above the dice; the active yard is only outlined. */}
               {finishedPlace ? (
                 <span className="yard-place">{ORDINAL[finishedPlace - 1]}</span>

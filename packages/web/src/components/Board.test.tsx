@@ -297,6 +297,12 @@ describe('Board', () => {
       expect(label('red').style.top).toBe(`${(364 / 600) * 100}%`)
     })
 
+    it('marks a player who has gone as away', () => {
+      render(<Board state={game(2)} names={{ red: 'Kofi', yellow: 'Ama' }} away={['red']} />)
+      expect(label('red')).toHaveTextContent('Kofi (away)')
+      expect(label('yellow')).toHaveTextContent('Ama0 home')
+    })
+
     it('puts the Labourer line along the bottom of the victim’s yard', () => {
       const state = game()
       state.labourers = { yellow: 'green' }

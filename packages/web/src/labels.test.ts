@@ -53,6 +53,8 @@ describe('labels', () => {
     expect(turnTag('red', 'red')).toBe('Your turn')
     expect(turnTag('green', 'red')).toBe("Green's turn")
     expect(turnTag('green', undefined)).toBe("Green's turn")
+    expect(turnTag('green', 'red', { red: 'Ama', green: 'Kofi' })).toBe("Kofi's turn")
+    expect(turnTag('red', 'red', { red: 'Ama' })).toBe('Your turn')
   })
 
   it('names the rules', () => {
