@@ -1,7 +1,7 @@
 import { lane, track, type GameEffect } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { positionPoint } from '../layout'
-import { cameFrom, effectActions, SHARDS, SMOKE, SPARKS, SPEED_LINES } from './actions'
+import { cameFrom, effectActions, FINISH_BURST, FOUNTAIN, SHARDS, SMOKE, SPARKS, SPEED_LINES, yardCentre } from './actions'
 
 const red0 = { color: 'red', index: 0 } as const
 const yellow0 = { color: 'yellow', index: 0 } as const
@@ -68,6 +68,16 @@ describe('effect actions', () => {
     ])
     expect(types(effectActions(event({ type: 'labourerStart', victim: 'green', owner: 'red' }), 'reduced'))).toEqual(['chains'])
     expect(effectActions(event({ type: 'labourerFreed', victim: 'green' }), 'full')).toEqual([{ type: 'shatter', victim: 'green', count: SHARDS }])
+  })
+
+  it('a new block shimmers; a piece home throws a fountain from the centre; a finished player gets a burst', () => {
+    expect(effectActions(event({ type: 'blockFormed', color: 'red', at: track(5) }, 9), 'full')).toEqual([{ type: 'shimmer', at: track(5), color: 'red', id: 9 }])
+    expect(effectActions(event({ type: 'pieceHome', piece: red0 }), 'full')).toEqual([
+      { type: 'fountain', at: positionPoint({ kind: 'home' }, red0), color: 'red', count: FOUNTAIN },
+    ])
+    expect(effectActions(event({ type: 'playerFinished', color: 'yellow', place: 1 }), 'reduced')).toEqual([
+      { type: 'burst', at: yardCentre('yellow'), color: 'yellow', count: FINISH_BURST },
+    ])
   })
 
   it('the six streak is shown elsewhere', () => {

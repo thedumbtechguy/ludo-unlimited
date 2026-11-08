@@ -269,11 +269,14 @@ button.row { cursor: pointer; }
 /* Board effects: an overlay in board units for what's drawn on the board itself (chains, shimmer). */
 .board-fx { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 /* Labourer chains: slam down over the yard with a thud, then sit faint while it lasts. */
-.chains { color: #24262b; opacity: 0.35; }
+.chains { opacity: 0.6; }
 .chains.slam { animation: chains-slam 900ms cubic-bezier(.3, .7, .4, 1) both; }
 .chains.fade { animation: chains-fade 400ms ease-out both; }
-@keyframes chains-slam { 0% { opacity: 0; transform: scale(1.6); } 22% { opacity: 1; transform: scale(0.95); } 34% { transform: scale(1.02); } 44% { opacity: 1; transform: scale(1); } 100% { opacity: 0.35; transform: scale(1); } }
+@keyframes chains-slam { 0% { opacity: 0; transform: scale(1.6); } 22% { opacity: 1; transform: scale(0.95); } 34% { transform: scale(1.02); } 44% { opacity: 1; transform: scale(1); } 100% { opacity: 0.6; transform: scale(1); } }
 @keyframes chains-fade { from { opacity: 0; } }
+/* A new block: one bright band sweeps across its pieces. */
+.shimmer-band { opacity: 0.85; animation: shimmer 520ms cubic-bezier(.4, 0, .3, 1) both; }
+@keyframes shimmer { from { transform: translateX(-44px); } to { transform: translateX(40px); } }
 @media (prefers-reduced-motion: reduce) {
-  .chains.slam, .chains.fade { animation: none; }
+  .chains.slam, .chains.fade, .shimmer-band { animation: none; }
 }

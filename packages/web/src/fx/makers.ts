@@ -98,15 +98,15 @@ export const smoke =
     }
   }
 
-const STEEL = ['#2a2c31', '#4b4f57', '#2a2c31'].map(hex)
-
 /**
- * Broken chain: dark steel shards from anywhere along the two chains crossing a yard (`reach` px
+ * Broken chain: shards in the chain's colour (the Labourer's owner), from anywhere along the two
+ * chains crossing a yard (`reach` px
  * from its centre along each axis), thrown outwards, tumbling and falling.
  */
 export const shard =
-  (reach: number, u: number): Make =>
+  (color: string, reach: number, u: number): Make =>
   (rand) => {
+    const rgb = hex(color)
     const d = (rand() * 2 - 1) * reach
     const sign = rand() < 0.5 ? 1 : -1
     const x = d
@@ -120,7 +120,7 @@ export const shard =
       vy: Math.sin(out) * speed - 140 * u,
       life: 0.5 + rand() * 0.3,
       size: (3.5 + rand() * 3) * u,
-      colors: STEEL,
+      colors: rand() < 0.25 ? [WHITE, rgb] : [rgb, rgb, deepen(rgb, 0.7)],
       hold: 3,
       gravity: 900 * u,
       drag: 1.2,
@@ -128,5 +128,47 @@ export const shard =
       aspect: 0.55,
       angle: rand() * Math.PI,
       spin: (rand() - 0.5) * 24,
+    }
+  }
+
+/** A fountain of sparkles thrown up from a point and falling back: a piece home. */
+export const sparkle =
+  (color: string, u: number): Make =>
+  (rand) => {
+    const rgb = hex(color)
+    return {
+      x: (rand() - 0.5) * 10 * u,
+      y: 0,
+      vx: (rand() - 0.5) * 240 * u,
+      vy: -(330 + rand() * 200) * u,
+      life: 0.65 + rand() * 0.35,
+      size: (2.8 + rand() * 2.2) * u,
+      endSize: 0.8 * u,
+      colors: rand() < 0.3 ? [WHITE, rgb] : [rgb, rgb, deepen(rgb, 0.7)],
+      hold: 2.5,
+      gravity: 720 * u,
+      drag: 0.6,
+    }
+  }
+
+/** One short radial pop in a colour, with some white: a player finishing. */
+export const pop =
+  (color: string, u: number): Make =>
+  (rand) => {
+    const rgb = hex(color)
+    const angle = rand() * Math.PI * 2
+    const speed = (150 + rand() * 200) * u
+    return {
+      x: Math.cos(angle) * 20 * u,
+      y: Math.sin(angle) * 20 * u,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.45 + rand() * 0.3,
+      size: (3 + rand() * 2.5) * u,
+      endSize: 0.8 * u,
+      colors: rand() < 0.35 ? [WHITE, rgb] : [rgb, deepen(rgb, 0.75)],
+      hold: 2,
+      gravity: 220 * u,
+      drag: 3,
     }
   }

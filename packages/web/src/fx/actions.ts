@@ -19,11 +19,17 @@ export type FxAction =
   /** Chains slam over the victim's yard (`id` tells one Labourer from the next). */
   | { type: 'chains'; victim: Color; id: number }
   | { type: 'shatter'; victim: Color; count: number }
+  /** A white shimmer sweeping across a new block's pieces. */
+  | { type: 'shimmer'; at: Position; color: Color; id: number }
+  | { type: 'fountain'; at: Point; color: Color; count: number }
+  | { type: 'burst'; at: Point; color: Color; count: number }
 
 export const SPARKS = 44
 export const SPEED_LINES = 10
 export const SMOKE = 28
 export const SHARDS = 48
+export const FOUNTAIN = 60
+export const FINISH_BURST = 40
 const LANE = [1, 2, 3, 4, 5]
 
 /** The middle of a colour's yard. */
@@ -79,6 +85,12 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel): FxActio
       return [{ type: 'chains', victim: effect.victim, id: effect.id }, ...shake(3, 140)]
     case 'labourerFreed':
       return [{ type: 'shatter', victim: effect.victim, count: SHARDS }]
+    case 'blockFormed':
+      return [{ type: 'shimmer', at: effect.at, color: effect.color, id: effect.id }]
+    case 'pieceHome':
+      return [{ type: 'fountain', at: positionPoint({ kind: 'home' }, effect.piece), color: effect.piece.color, count: FOUNTAIN }]
+    case 'playerFinished':
+      return [{ type: 'burst', at: yardCentre(effect.color), color: effect.color, count: FINISH_BURST }]
     default:
       return []
   }

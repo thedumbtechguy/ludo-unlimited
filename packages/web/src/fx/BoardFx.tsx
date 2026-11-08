@@ -1,12 +1,12 @@
-import type { Color, GameState } from '@ludo/engine'
-import { useRef, useState, type RefObject } from 'react'
-import { BOARD_SIZE, boardToScreen, turnPoint, type Point } from '../layout'
+import { posKey, positionOf, type Color, type GameState } from '@ludo/engine'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import { BOARD_SIZE, boardToScreen, placements, turnPoint, type Point } from '../layout'
 import { COLOR_HEX } from '../theme'
 import { effectActions, yardCentre, type FxAction } from './actions'
 import { CHAIN_REACH, chainLinks } from './chains'
 import { useFx, type Fx } from './FxLayer'
 import { lightning, shakeFrames } from './geometry'
-import { shard, smoke, spark, speedLine } from './makers'
+import { pop, shard, smoke, spark, sparkle, speedLine } from './makers'
 import { hex } from './particles'
 import { useEffectStream, type EffectEvent } from './stream'
 
@@ -24,10 +24,18 @@ function stageOf(area: HTMLElement | null, board: Element | null | undefined, tu
   return { area, board, turn, toScreen: (p) => boardToScreen(p, rect, turn), u: rect.width / BOARD_SIZE }
 }
 
-/** What the overlay shows besides particles: which yards' chains have just slammed on. */
-type Overlay = { chains: (victim: Color, id: number) => void }
+/** How long a fountain keeps spouting. */
+const FOUNTAIN_S = 0.38
+/** How long the block shimmer takes to sweep across. */
+export const SHIMMER_MS = 520
 
-function run(action: Exclude<FxAction, { type: 'chains' }>, fx: Fx, stage: Stage): void {
+/** A shimmer sweeping over a block's pieces, at their (turned) board points. */
+type Shimmer = { id: number; points: Point[] }
+
+/** Who each Labourer victim works for, as last drawn: the chains' colour, still known once freed. */
+type Owners = GameState['labourers']
+
+function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, stage: Stage, owners: Owners): void {
   const { toScreen, u } = stage
   switch (action.type) {
     case 'flash': {
@@ -82,7 +90,19 @@ function run(action: Exclude<FxAction, { type: 'chains' }>, fx: Fx, stage: Stage
     }
     case 'shatter': {
       const { x, y } = toScreen(yardCentre(action.victim))
-      fx.burst(x, y, action.count, shard(CHAIN_REACH * u, u))
+      const owner = owners[action.victim]
+      if (owner) fx.burst(x, y, action.count, shard(COLOR_HEX[owner], CHAIN_REACH * u, u))
+      return
+    }
+    case 'fountain': {
+      const at = toScreen(action.at)
+      const handle = fx.emitter({ rate: action.count / FOUNTAIN_S, at: () => at, make: sparkle(COLOR_HEX[action.color], u) })
+      setTimeout(handle.stop, FOUNTAIN_S * 1000)
+      return
+    }
+    case 'burst': {
+      const { x, y } = toScreen(action.at)
+      fx.burst(x, y, action.count, pop(COLOR_HEX[action.color], u))
       return
     }
     case 'smoke': {
@@ -98,53 +118,118 @@ function run(action: Exclude<FxAction, { type: 'chains' }>, fx: Fx, stage: Stage
  * play area (`area`, which holds the board). Goes inside the Board, as its overlay. Nothing at all
  * while effects are off.
  */
-export function BoardFx({
-  effects,
-  labourers,
-  turn,
-  area,
-}: {
-  effects: EffectEvent[]
-  labourers: GameState['labourers']
-  turn: number
-  area: RefObject<HTMLElement>
-}) {
+export function BoardFx({ effects, state, turn, area }: { effects: EffectEvent[]; state: GameState; turn: number; area: RefObject<HTMLElement> }) {
   const fx = useFx()
   const svg = useRef<SVGSVGElement>(null)
   // Labourers that started while we watched slam on; ones already running (a resumed game) are just there.
   const [slammed, setSlammed] = useState<Partial<Record<Color, number>>>({})
-  const overlay: Overlay = { chains: (victim, id) => setSlammed((s) => ({ ...s, [victim]: id })) }
+  const [shimmers, setShimmers] = useState<Shimmer[]>([])
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  const owners = useRef<Owners>(state.labourers)
+
   useEffectStream(effects, (effect) => {
     if (!fx.enabled) return
     const stage = stageOf(area.current, svg.current?.parentElement, turn)
     for (const action of effectActions(effect, fx.level)) {
-      if (action.type === 'chains') overlay.chains(action.victim, action.id)
-      else if (stage) run(action, fx, stage)
+      if (action.type === 'chains') {
+        setSlammed((s) => ({ ...s, [action.victim]: action.id }))
+      } else if (action.type === 'shimmer') {
+        // The block's pieces where they're drawn now, fanned out as a stack.
+        const key = posKey(action.at)
+        const points = placements(state)
+          .filter(({ piece }) => piece.color === action.color && posKey(positionOf(state, piece)) === key)
+          .map((p) => turnPoint(p.point, turn))
+        const { id } = action
+        setShimmers((s) => [...s, { id, points }])
+        timers.current.push(setTimeout(() => setShimmers((s) => s.filter((x) => x.id !== id)), SHIMMER_MS + 80))
+      } else if (stage) {
+        run(action, fx, stage, owners.current)
+      }
     }
   })
+  // After the effects above, so a Labourer freed in this render still finds its owner.
+  useEffect(() => {
+    owners.current = state.labourers
+  }, [state.labourers])
   if (!fx.enabled) return null
   const entrance = fx.level === 'full' ? 'slam' : 'fade'
   return (
     <svg ref={svg} className="board-fx" viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true">
-      {(Object.keys(labourers) as Color[]).map((victim) => (
-        <Chains key={`${victim}-${slammed[victim] ?? 0}`} victim={victim} turn={turn} entrance={slammed[victim] ? entrance : undefined} />
+      {shimmers.map((shimmer) => (
+        <BlockShimmer key={shimmer.id} {...shimmer} />
+      ))}
+      {(Object.keys(state.labourers) as Color[]).map((victim) => (
+        <Chains
+          key={`${victim}-${slammed[victim] ?? 0}`}
+          victim={victim}
+          owner={state.labourers[victim]!}
+          turn={turn}
+          entrance={slammed[victim] ? entrance : undefined}
+        />
       ))}
     </svg>
   )
 }
 
-/** Two dark chains crossed over a Labourer's yard, held faint while it lasts. */
-function Chains({ victim, turn, entrance }: { victim: Color; turn: number; entrance?: 'slam' | 'fade' }) {
+/**
+ * Two chains crossed over a Labourer's yard in the owner's colour, each link outlined in white so
+ * they read on any yard, held faint while it lasts.
+ */
+function Chains({ victim, owner, turn, entrance }: { victim: Color; owner: Color; turn: number; entrance?: 'slam' | 'fade' }) {
   const centre = turnPoint(yardCentre(victim), turn)
   return (
-    <g data-testid={`chains-${victim}`} className={entrance ? `chains ${entrance}` : 'chains'} style={{ transformOrigin: `${centre.x}px ${centre.y}px` }}>
-      {chainLinks(centre).map(({ x, y, angle, flat }, i) =>
-        flat ? (
-          <rect key={i} x={x - 10} y={y - 6} width="20" height="12" rx="6" fill="none" stroke="currentColor" strokeWidth="3.6" transform={`rotate(${angle} ${x} ${y})`} />
-        ) : (
-          <rect key={i} x={x - 9} y={y - 2.2} width="18" height="4.4" rx="2.2" fill="currentColor" transform={`rotate(${angle} ${x} ${y})`} />
-        ),
-      )}
+    <g
+      data-testid={`chains-${victim}`}
+      className={entrance ? `chains ${entrance}` : 'chains'}
+      style={{ color: COLOR_HEX[owner], transformOrigin: `${centre.x}px ${centre.y}px` }}
+    >
+      {/* White under the colour: every link first as a slightly fatter white outline. */}
+      {(['outline', 'link'] as const).map((layer) => (
+        <g key={layer} stroke={layer === 'outline' ? '#ffffff' : 'currentColor'}>
+          {chainLinks(centre).map(({ x, y, angle, flat }, i) =>
+            flat ? (
+              <rect key={i} x={x - 10} y={y - 6} width="20" height="12" rx="6" fill="none" strokeWidth={layer === 'outline' ? 6.4 : 3.6} transform={`rotate(${angle} ${x} ${y})`} />
+            ) : (
+              <rect
+                key={i}
+                x={x - 9}
+                y={y - 2.2}
+                width="18"
+                height="4.4"
+                rx="2.2"
+                fill={layer === 'outline' ? '#ffffff' : 'currentColor'}
+                strokeWidth={layer === 'outline' ? 2.8 : 0}
+                transform={`rotate(${angle} ${x} ${y})`}
+              />
+            ),
+          )}
+        </g>
+      ))}
+    </g>
+  )
+}
+
+/** A bright band sweeping once across the stacked pieces of a new block, clipped to the pieces. */
+function BlockShimmer({ id, points }: Shimmer) {
+  if (points.length === 0) return null
+  const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length
+  const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length
+  return (
+    <g data-testid="shimmer">
+      <clipPath id={`shimmer-${id}`}>
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="17" />
+        ))}
+      </clipPath>
+      <g clipPath={`url(#shimmer-${id})`}>
+        <g transform={`translate(${cx} ${cy}) rotate(25)`}>
+          <g className="shimmer-band">
+            <rect x="-9" y="-40" width="18" height="80" fill="#ffffff" />
+            <rect x="13" y="-40" width="5" height="80" fill="#ffffff" />
+          </g>
+        </g>
+      </g>
     </g>
   )
 }
