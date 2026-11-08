@@ -89,7 +89,7 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
       diceRing={ring}
       turnText={online.watching ? 'Watching' : undefined}
       turnNames={names}
-      overlay={<ReactionBubbles reactions={online.reactions} turn={quarterTurns(viewer, prefs.hand)} />}
+      overlay={<ReactionBubbles reactions={online.reactions} turn={quarterTurns(viewer, prefs.hand)} names={names} />}
       side={you.seat && <ReactionButton onReact={(id) => send({ t: 'react', id })} />}
       away={away}
     />

@@ -1,4 +1,4 @@
-import type { Reaction } from '@ludo/engine'
+import type { Color, Reaction } from '@ludo/engine'
 import { useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { yardCentre } from '../fx/actions'
@@ -39,14 +39,22 @@ export function ReactionButton({ onReact }: { onReact: (id: Reaction) => void })
 
 const pct = (v: number) => `${(v / BOARD_SIZE) * 100}%`
 
+type BubblesProps = { reactions: ShownReaction[]; turn: number; names: Partial<Record<Color, string>> }
+
 /** Each reaction pops over its sender's yard, wherever the board is turned. */
-export function ReactionBubbles({ reactions, turn }: { reactions: ShownReaction[]; turn: number }) {
+export function ReactionBubbles({ reactions, turn, names }: BubblesProps) {
   return (
     <>
       {reactions.map((r) => {
         const { x, y } = turnPoint(yardCentre(r.color), turn)
         return (
-          <span key={r.id} className="reaction-bubble" style={{ left: pct(x), top: pct(y) }} role="status">
+          <span
+            key={r.id}
+            className="reaction-bubble"
+            style={{ left: pct(x), top: pct(y) }}
+            role="status"
+            aria-label={`${names[r.color]}: ${REACTION_TEXT[r.reaction]}`}
+          >
             {REACTION_TEXT[r.reaction]}
           </span>
         )

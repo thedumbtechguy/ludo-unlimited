@@ -16,12 +16,17 @@ describe('reactions', () => {
   })
 
   it('pops each reaction over its sender’s yard, turned with the board', () => {
-    const { rerender } = render(<ReactionBubbles reactions={[{ id: 1, color: 'red', reaction: 'hurry' }]} turn={0} />)
+    const { rerender } = render(<ReactionBubbles reactions={[{ id: 1, color: 'red', reaction: 'hurry' }]} turn={0} names={{ red: 'Ama' }} />)
     const bubble = screen.getByText('Hurry up')
     // Red's yard is top-left unturned, so its middle is at (120, 120).
     expect(bubble.style.left).toBe('20%')
     expect(bubble.style.top).toBe('20%')
-    rerender(<ReactionBubbles reactions={[{ id: 1, color: 'red', reaction: 'hurry' }]} turn={1} />)
+    rerender(<ReactionBubbles reactions={[{ id: 1, color: 'red', reaction: 'hurry' }]} turn={1} names={{ red: 'Ama' }} />)
     expect(screen.getByText('Hurry up').style.left).toBe('80%')
+  })
+
+  it('names the sender for screen readers', () => {
+    render(<ReactionBubbles reactions={[{ id: 1, color: 'yellow', reaction: 'fire' }]} turn={0} names={{ yellow: 'Kofi' }} />)
+    expect(screen.getByRole('status', { name: 'Kofi: 🔥' })).toBeInTheDocument()
   })
 })
