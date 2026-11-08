@@ -1,10 +1,10 @@
-import { createGame, HOME, settingsFor, track } from '@ludo/engine'
+import { createGame, HOME, lane, settingsFor, track } from '@ludo/engine'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixedDice, seededDice } from './dice'
 import * as sound from './fx/sound'
 import { useEffectStream } from './fx/stream'
-import { FAST_TIMING, useGame } from './useGame'
+import { FAST_TIMING, useGame, WICKED_DELAY } from './useGame'
 
 const classic2 = settingsFor('classic', 2, 'firstWins')
 const humans = { red: 'human', yellow: 'human' } as const
@@ -96,6 +96,28 @@ describe('useGame', () => {
     expect(result.current.callout).toBeUndefined()
     act(() => result.current.play(result.current.targets.find((m) => m.kind === 'forward')!))
     expect(result.current.callout).toBeUndefined()
+  })
+
+  it('a wicked kick calls the back kick first, then "Wicked!" on top a moment later', () => {
+    vi.useFakeTimers()
+    const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+    // Lane 2 → 1 → the tip (50) → round past the entrance onto 51.
+    initial.players[0].pieces = [lane('red', 2), HOME, HOME, HOME]
+    initial.players[1].pieces[0] = track(51)
+    const timing = { botRoll: 0, botMove: 0, step: 100, roll: 0 }
+    const { result } = renderHook(() => useGame({ settings: initial.settings, seats: humans, dice: fixedDice([3]), timing, initial }))
+    act(() => result.current.roll())
+    act(() => result.current.play(result.current.targets.find((m) => m.kind === 'back')!))
+    for (let i = 0; i < 3; i++) act(() => vi.advanceTimersByTime(100))
+    expect(result.current.moving).toBeUndefined()
+    expect(result.current.callout).toMatchObject({ title: 'Back kick!', kind: 'back' })
+    // Yellow's last piece in play was kicked, so the Labourer starts with the kick too.
+    expect(result.current.effects.map((e) => e.type)).toEqual(['kick', 'labourerStart'])
+    act(() => vi.advanceTimersByTime(WICKED_DELAY - 1))
+    expect(result.current.callout?.title).toBe('Back kick!')
+    act(() => vi.advanceTimersByTime(1))
+    expect(result.current.callout).toMatchObject({ title: 'Wicked!', wicked: true, color: 'red' })
+    expect(result.current.effects.map((e) => e.type)).toEqual(['kick', 'labourerStart', 'wicked'])
   })
 
   it('a wasted roll says so and passes the turn', () => {

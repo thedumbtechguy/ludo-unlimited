@@ -1,4 +1,4 @@
-import { MODES, positionOf, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
+import { isWicked, MODES, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
 import type { Seats } from './types'
 
 export const COLOR_NAME: Record<Color, string> = { red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue' }
@@ -117,16 +117,15 @@ const KICK_TITLE: Record<Move['kind'], string> = {
   homeKick: 'Home kick!',
 }
 
+export type KickCalloutText = { title: string; line: string; wicked?: boolean }
+
 /**
- * The big callout for a kick, worked out from the state before the move: a back kick by a piece
- * that started in its own home lane is the wicked move.
+ * The big callouts for a kick, in the order they show, worked out from the state before the move:
+ * the kick itself, then "Wicked!" on top when it was the wicked move.
  */
-export function kickCallout(move: Move, before: GameState): { title: string; line: string } | undefined {
-  if (!move.kick) return undefined
-  const from = positionOf(before, move.piece)
-  const wicked = move.kind === 'back' && from.kind === 'lane' && from.owner === move.piece.color
-  return {
-    title: wicked ? 'Wicked!' : KICK_TITLE[move.kind],
-    line: `${COLOR_NAME[move.piece.color]} sent ${COLOR_NAME[move.kick.color]} back to base`,
-  }
+export function kickCallouts(move: Move, before: GameState): KickCalloutText[] {
+  if (!move.kick) return []
+  const line = `${COLOR_NAME[move.piece.color]} sent ${COLOR_NAME[move.kick.color]} back to base`
+  const kick = { title: KICK_TITLE[move.kind], line }
+  return isWicked(before, move) ? [kick, { title: 'Wicked!', line, wicked: true }] : [kick]
 }

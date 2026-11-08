@@ -27,12 +27,12 @@ describe('KickCallout', () => {
     expect(screen.getByText('Line kick!')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(1))
     expect(screen.queryByText('Line kick!')).toBeNull()
-    rerender(<KickCallout callout={{ ...callout, id: 2, title: 'Wicked!', kind: 'wicked' }} />)
+    rerender(<KickCallout callout={{ ...callout, id: 2, title: 'Wicked!', wicked: true }} />)
     expect(screen.getByText('Wicked!')).toBeInTheDocument()
   })
 
   it('calls out the wicked move in near-black, whoever made it', () => {
-    render(<KickCallout callout={{ ...callout, title: 'Wicked!', kind: 'wicked' }} />)
+    render(<KickCallout callout={{ ...callout, title: 'Wicked!', wicked: true }} />)
     expect(screen.getByText('Wicked!')).toHaveStyle({ color: WICKED_INK })
     expect(screen.getByText('Wicked!').parentElement).toHaveClass('wicked')
   })

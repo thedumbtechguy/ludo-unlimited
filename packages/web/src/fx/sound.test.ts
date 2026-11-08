@@ -26,7 +26,10 @@ describe('soundsFor', () => {
     expect(soundsFor(kick('back'))).toEqual(['kick', 'whoosh'])
     expect(soundsFor(kick('line'))).toEqual(['kick', 'zap', 'whoosh'])
     expect(soundsFor(kick('home'))).toEqual(['kick', 'thud', 'whoosh'])
-    expect(soundsFor(kick('wicked'))).toEqual(['kick', 'wicked', 'whoosh'])
+  })
+
+  it('plays the wicked hit on top of the kick, for the wicked effect that follows it', () => {
+    expect(soundsFor({ type: 'wicked', piece: red0, at: track(0) })).toEqual(['wicked'])
   })
 
   it('whooshes once when "On fire" appears, at the fourth 6', () => {
@@ -62,7 +65,7 @@ describe('soundsFor', () => {
 describe('ducksMusic', () => {
   it('dips the music for kicks, "On fire" and the end of the game only', () => {
     expect(ducksMusic(kick('front'))).toBe(true)
-    expect(ducksMusic(kick('wicked'))).toBe(true)
+    expect(ducksMusic({ type: 'wicked', piece: red0, at: track(0) })).toBe(true)
     expect(ducksMusic({ type: 'gameOver' })).toBe(true)
     expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 4 })).toBe(true)
     expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 5 })).toBe(false)

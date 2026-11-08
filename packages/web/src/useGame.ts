@@ -26,7 +26,7 @@ import { realChoices } from './choices'
 import type { Dice } from './dice'
 import { playSound, type SoundEvent } from './fx/sound'
 import type { EffectEvent } from './fx/stream'
-import { kickCallout, kickMessage, type Wasted } from './labels'
+import { kickCallouts, kickMessage, type KickCalloutText, type Wasted } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
@@ -46,7 +46,7 @@ export type GameOptions = {
 }
 
 /**
- * `effects` play, and a kick's `callout` shows, when the piece arrives. `fromBase`: the first square
+ * `effects` play, and a kick's `callouts` show, when the piece arrives. `fromBase`: the first square
  * is where it comes out of its yard.
  */
 type Animation = {
@@ -55,7 +55,7 @@ type Animation = {
   step: number
   next: GameState
   effects: GameEffect[]
-  callout?: CalloutText
+  callouts: CalloutText[]
   fromBase: boolean
 }
 
@@ -68,9 +68,12 @@ const stepSound = ({ path, fromBase }: Animation, step: number): SoundEvent => (
 /** Enough recent effects for any listener a render or two behind. */
 const KEPT_EFFECTS = 32
 
-/** A kick to call out over the board; `id` tells one kick from the next. */
-export type Callout = { id: number; title: string; line: string; color: Color; kind: KickKind }
+/** A kick to call out over the board; `id` tells one callout from the next. */
+export type Callout = KickCalloutText & { id: number; color: Color; kind: KickKind }
 type CalloutText = Omit<Callout, 'id'>
+
+/** How long after a wicked kick lands "Wicked!" comes in on top of it, with its smoke and sound. */
+export const WICKED_DELAY = 350
 
 const samePiece = (a: PieceId, b: PieceId) => a.color === b.color && a.index === b.index
 
@@ -86,10 +89,17 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const [rollingTo, setRollingTo] = useState<number>()
   const rolling = rollingTo !== undefined
   const rollTimer = useRef<ReturnType<typeof setTimeout>>()
+  const wickedTimer = useRef<ReturnType<typeof setTimeout>>()
   const [effects, setEffects] = useState<EffectEvent[]>([])
   const effectId = useRef(0)
 
-  useEffect(() => () => clearTimeout(rollTimer.current), [])
+  useEffect(
+    () => () => {
+      clearTimeout(rollTimer.current)
+      clearTimeout(wickedTimer.current)
+    },
+    [],
+  )
 
   const seatOf = (color: Color) => seats[color] ?? 'computer'
   const busy = animation !== undefined || rolling
@@ -142,21 +152,36 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     setWasted(undefined)
     setMessage(kickMessage(move))
     const landed = describeMove(game, move, next)
-    const kick = kickCallout(move, game)
     const kind = landed.find((e) => e.type === 'kick')?.kind
-    const callout = kick && kind ? { ...kick, color: move.piece.color, kind } : undefined
+    const callouts = kind ? kickCallouts(move, game).map((text) => ({ ...text, color: move.piece.color, kind })) : []
+    if (callouts.length === 0) setCallout(undefined)
     if (timing.step === 0) {
-      showCallout(callout)
-      emit(landed)
+      land(landed, callouts)
       setGame(next)
     } else {
       // The callout lands with the kick, together with the flash and the kicked piece flying home.
-      if (!callout) setCallout(undefined)
       const fromBase = positionOf(game, move.piece).kind === 'base'
-      const start: Animation = { piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed, callout, fromBase }
+      const start: Animation = { piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed, callouts, fromBase }
       playSound(stepSound(start, 0))
       setAnimation(start)
     }
+  }
+
+  /**
+   * A move's effects and callouts as the piece lands: the kick's at once, then a wicked move's
+   * "Wicked!", smoke and sound on top, a moment later (straight away with no animation).
+   */
+  function land(effects: GameEffect[], [kick, wicked]: CalloutText[]) {
+    if (kick) showCallout(kick)
+    emit(effects.filter((e) => e.type !== 'wicked'))
+    const onTop = effects.filter((e) => e.type === 'wicked')
+    if (onTop.length === 0) return
+    const later = () => {
+      if (wicked) showCallout(wicked)
+      emit(onTop)
+    }
+    if (timing.step === 0) later()
+    else wickedTimer.current = setTimeout(later, WICKED_DELAY)
   }
 
   function showCallout(text?: CalloutText) {
@@ -189,8 +214,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
         setAnimation({ ...animation, step: animation.step + 1 })
       } else {
         setAnimation(undefined)
-        if (animation.callout) showCallout(animation.callout)
-        emit(animation.effects)
+        land(animation.effects, animation.callouts)
         setGame(animation.next)
       }
     }, timing.step)

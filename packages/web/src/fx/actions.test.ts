@@ -1,7 +1,7 @@
 import { createGame, lane, settingsFor, track, type GameEffect } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { positionPoint } from '../layout'
-import { cameFrom, CONFETTI, effectActions, FINISH_BURST, resultsDelay, ROCKETS, SHELL, FOUNTAIN, SHARDS, SMOKE, SPARKS, SPEED_LINES, yardCentre } from './actions'
+import { CONFETTI, effectActions, FINISH_BURST, resultsDelay, ROCKETS, SHELL, FOUNTAIN, SHARDS, SMOKE, SPARKS, SPEED_LINES, yardCentre } from './actions'
 
 const state = createGame(settingsFor('ghana', 4, 'firstWins'))
 const red0 = { color: 'red', index: 0 } as const
@@ -22,7 +22,7 @@ describe('effect actions', () => {
   })
 
   it('shakes at most 6px, for about 200ms', () => {
-    for (const kind of ['front', 'back', 'line', 'home', 'wicked'] as const) {
+    for (const kind of ['front', 'back', 'line', 'home'] as const) {
       const shake = effectActions(kick(kind, kind === 'home' ? lane('yellow', 2) : track(15)), 'full', state).find((a) => a.type === 'shake')
       expect(shake).toMatchObject({ ms: 200 })
       expect((shake as { px: number }).px).toBeLessThanOrEqual(6)
@@ -33,20 +33,24 @@ describe('effect actions', () => {
     expect(types(effectActions(kick('front'), 'reduced', state))).toEqual(['flash', 'sparks'])
   })
 
-  it('a back kick whips: speed lines from the square it came off, one along the track', () => {
-    const actions = effectActions(kick('back'), 'full', state)
+  it('a back kick whips: speed lines from the square it stepped off', () => {
+    const actions = effectActions(event({ type: 'kick', kind: 'back', at: track(15), from: track(16), kicker: red0, victim: yellow0 }), 'full', state)
     expect(types(actions)).toEqual(['flash', 'sparks', 'shake', 'whip'])
     expect(actions[3]).toEqual({ type: 'whip', at: positionPoint(track(15), red0), from: positionPoint(track(16), red0), kicker: red0, count: SPEED_LINES })
   })
 
-  it('the wicked move whips out of the lane and leaves dark smoke', () => {
-    const actions = effectActions(kick('wicked', track(50)), 'full', state)
-    expect(types(actions)).toEqual(['flash', 'sparks', 'shake', 'whip', 'smoke'])
-    expect(actions[2]).toEqual({ type: 'shake', px: 6, ms: 200 })
-    expect(actions[4]).toMatchObject({ type: 'smoke', count: SMOKE })
-    // Red's entry square is 50: one step on along red's route is into its own lane.
-    expect(cameFrom('wicked', track(50), red0)).toEqual(lane('red', 1))
-    expect(cameFrom('back', track(51), red0)).toEqual(track(0))
+  it('a back kick straight out of the lane whips from the lane square', () => {
+    const actions = effectActions(event({ type: 'kick', kind: 'back', at: track(50), from: lane('red', 1), kicker: red0, victim: yellow0 }), 'full', state)
+    expect(actions[3]).toMatchObject({ type: 'whip', from: positionPoint(lane('red', 1), red0) })
+  })
+
+  it('wicked comes on top of the kick: dark smoke and a harder shake, no impact of its own', () => {
+    const actions = effectActions(event({ type: 'wicked', piece: red0, at: track(0) }), 'full', state)
+    expect(actions).toEqual([
+      { type: 'smoke', at: positionPoint(track(0), red0), count: SMOKE },
+      { type: 'shake', px: 6, ms: 200 },
+    ])
+    expect(types(effectActions(event({ type: 'wicked', piece: red0, at: track(0) }), 'reduced', state))).toEqual(['smoke'])
   })
 
   it('a line kick zaps from the square it crossed from, before the impact', () => {

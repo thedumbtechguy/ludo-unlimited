@@ -24,7 +24,7 @@ export function KickCallout({ callout }: { callout?: Callout }) {
   }, [callout?.id])
 
   if (!shown) return null
-  const wicked = shown.kind === 'wicked'
+  const wicked = shown.wicked
   return (
     <div key={shown.id} className={`kick-callout${slam ? ' slam' : ''}${wicked ? ' wicked' : ''}`} aria-hidden="true">
       <p className="kick-title" style={{ color: wicked ? WICKED_INK : COLOR_HEX[shown.color] }}>

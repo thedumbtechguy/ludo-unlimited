@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, firstHuman, kickCallout, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
+import { combinedRolls, describePosition, firstHuman, kickCallouts, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -73,21 +73,30 @@ describe('labels', () => {
     const line = 'Red sent Yellow back to base'
 
     it('names each kind of kick', () => {
-      expect(kickCallout({ kind: 'forward', piece, to: track(13), kick }, before())).toEqual({ title: 'Kick!', line })
-      expect(kickCallout({ kind: 'enter', piece, to: track(0), kick }, before({ kind: 'base' }))).toEqual({ title: 'Kick!', line })
-      expect(kickCallout({ kind: 'back', piece, to: track(7), kick }, before())).toEqual({ title: 'Back kick!', line })
-      expect(kickCallout({ kind: 'line', piece, via: track(7), to: track(15), kick }, before())).toEqual({ title: 'Line kick!', line })
-      expect(kickCallout({ kind: 'homeKick', piece, to: track(3), kick }, before())).toEqual({ title: 'Home kick!', line })
+      expect(kickCallouts({ kind: 'forward', piece, to: track(13), kick }, before())).toEqual([{ title: 'Kick!', line }])
+      expect(kickCallouts({ kind: 'enter', piece, to: track(0), kick }, before({ kind: 'base' }))).toEqual([{ title: 'Kick!', line }])
+      expect(kickCallouts({ kind: 'back', piece, to: track(7), kick }, before())).toEqual([{ title: 'Back kick!', line }])
+      expect(kickCallouts({ kind: 'line', piece, via: track(7), to: track(15), kick }, before())).toEqual([{ title: 'Line kick!', line }])
+      expect(kickCallouts({ kind: 'homeKick', piece, to: track(3), kick }, before())).toEqual([{ title: 'Home kick!', line }])
     })
 
-    it('calls a back kick out of the player’s own home lane wicked', () => {
-      expect(kickCallout({ kind: 'back', piece, to: track(49), kick }, before(lane('red', 2)))).toEqual({ title: 'Wicked!', line })
-      // Out of someone else's lane, it's an ordinary back kick.
-      expect(kickCallout({ kind: 'back', piece, to: track(49), kick }, before(lane('yellow', 2)))?.title).toBe('Back kick!')
+    it('calls the kick first, then "Wicked!" for a kick that takes the piece round past its own entrance', () => {
+      expect(kickCallouts({ kind: 'back', piece, to: track(0), kick }, before(lane('red', 4)))).toEqual([
+        { title: 'Back kick!', line },
+        { title: 'Wicked!', line, wicked: true },
+      ])
+      expect(kickCallouts({ kind: 'line', piece, via: track(46), to: track(2), kick }, before(track(44))).map((c) => c.title)).toEqual([
+        'Line kick!',
+        'Wicked!',
+      ])
+    })
+
+    it('backing out of the lane along the arm is just a back kick', () => {
+      expect(kickCallouts({ kind: 'back', piece, to: track(49), kick }, before(lane('red', 2)))).toEqual([{ title: 'Back kick!', line }])
     })
 
     it('has nothing to say about a move without a kick', () => {
-      expect(kickCallout({ kind: 'forward', piece, to: track(13) }, before())).toBeUndefined()
+      expect(kickCallouts({ kind: 'forward', piece, to: track(13) }, before())).toEqual([])
     })
   })
 

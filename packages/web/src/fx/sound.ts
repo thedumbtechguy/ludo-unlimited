@@ -48,7 +48,6 @@ const KICK_EXTRA: Record<KickKind, SoundId[]> = {
   back: [],
   line: ['zap'],
   home: ['thud'],
-  wicked: ['wicked'],
 }
 
 /** The sounds for a moment, in the order they start (together). */
@@ -65,6 +64,9 @@ export function soundsFor(event: SoundEvent): SoundId[] {
     case 'kick':
       // The impact, the kind's own hit, and the kicked piece whooshing back to its yard.
       return ['kick', ...KICK_EXTRA[event.kind], 'whoosh']
+    // The wicked hit, on top of the kick it follows.
+    case 'wicked':
+      return ['wicked']
     case 'sixStreak':
       return event.count === ON_FIRE ? ['on-fire'] : []
     case 'labourerStart':
@@ -86,9 +88,9 @@ export function crackleVolume(count: number): number {
   return Math.min(0.5, 0.15 + 0.08 * (count - 2))
 }
 
-/** The big moments the music dips under: kicks, "On fire" and the end of the game. */
+/** The big moments the music dips under: kicks (and wicked on top), "On fire" and the end of the game. */
 export function ducksMusic(event: SoundEvent): boolean {
-  return event.type === 'kick' || event.type === 'gameOver' || (event.type === 'sixStreak' && event.count === ON_FIRE)
+  return event.type === 'kick' || event.type === 'wicked' || event.type === 'gameOver' || (event.type === 'sixStreak' && event.count === ON_FIRE)
 }
 
 /** Called once for every effect as it plays, and for the screen's own moments. */

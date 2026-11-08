@@ -1,4 +1,4 @@
-import { forwardPath, track, TRACK, type Color, type GameState, type PieceId, type Position } from '@ludo/engine'
+import type { Color, GameState, PieceId, Position } from '@ludo/engine'
 import { positionPoint, yardOrigin, type Point } from '../layout'
 import type { EffectsLevel } from '../types'
 import type { EffectEvent } from './stream'
@@ -47,15 +47,6 @@ export const yardCentre = (color: Color): Point => {
 /** The square a piece stands on (any piece will do off the base and home). */
 const square = (at: Position, piece: PieceId): Point => positionPoint(at, piece)
 
-/**
- * The square a backward-moving kicker stepped off to land on `at`: the next one along the track,
- * or for the wicked move (out of its own lane), the next one along its own route.
- */
-export function cameFrom(kind: 'back' | 'wicked', at: Position, kicker: PieceId): Position | undefined {
-  if (at.kind !== 'track') return undefined
-  return kind === 'back' ? track((at.index + 1) % TRACK.length) : forwardPath(kicker.color, at, 1)?.[0]
-}
-
 /** `state` is the game as it is with the effect applied (whose win it was). */
 export function effectActions(effect: EffectEvent, level: EffectsLevel, state: GameState): FxAction[] {
   const full = level === 'full'
@@ -68,16 +59,14 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel, state: G
       const impact: FxAction[] = [
         { type: 'flash', at, color },
         { type: 'sparks', at, color, count: SPARKS },
-        ...shake(kind === 'wicked' ? 6 : 5, 200),
+        ...shake(5, 200),
       ]
       switch (kind) {
         case 'front':
           return impact
-        case 'back':
-        case 'wicked': {
-          const from = cameFrom(kind, effect.at, kicker)
-          const whip: FxAction[] = from ? [{ type: 'whip', at, from: square(from, kicker), kicker, count: SPEED_LINES }] : []
-          return kind === 'back' ? [...impact, ...whip] : [...impact, ...whip, { type: 'smoke', at, count: SMOKE }]
+        case 'back': {
+          const whip: FxAction[] = effect.from ? [{ type: 'whip', at, from: square(effect.from, kicker), kicker, count: SPEED_LINES }] : []
+          return [...impact, ...whip]
         }
         case 'line':
           return effect.via ? [{ type: 'bolt', from: square(effect.via, kicker), to: at, color }, ...impact] : impact
@@ -88,6 +77,9 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel, state: G
         }
       }
     }
+    // On top of the kick it follows: dark smoke rolling up, and a harder shake.
+    case 'wicked':
+      return [{ type: 'smoke', at: square(effect.at, effect.piece), count: SMOKE }, ...shake(6, 200)]
     case 'labourerStart':
       return [{ type: 'chains', victim: effect.victim, id: effect.id }, ...shake(3, 140)]
     case 'labourerFreed':
