@@ -114,6 +114,25 @@ describe('useGame', () => {
     expect(result.current.wasted).toBeUndefined()
   })
 
+  it('calls out a kick as the piece lands on it, not as it sets off', () => {
+    vi.useFakeTimers()
+    const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+    initial.players[0].pieces[0] = track(5)
+    initial.players[1].pieces[0] = track(8)
+    const timing = { botRoll: 0, botMove: 0, step: 100, roll: 0 }
+    const { result } = renderHook(() => useGame({ settings: initial.settings, seats: humans, dice: fixedDice([3]), timing, initial }))
+    act(() => result.current.roll())
+    act(() => result.current.play(result.current.targets.find((m) => m.kind === 'forward')!))
+    expect(result.current.callout).toBeUndefined()
+    act(() => vi.advanceTimersByTime(100))
+    act(() => vi.advanceTimersByTime(100))
+    expect(result.current.moving?.at).toEqual(track(8))
+    expect(result.current.callout).toBeUndefined()
+    act(() => vi.advanceTimersByTime(100))
+    expect(result.current.moving).toBeUndefined()
+    expect(result.current.callout).toMatchObject({ title: 'Kick!', color: 'red', kind: 'front' })
+  })
+
   it('animates a move square by square before applying it', () => {
     vi.useFakeTimers()
     const initial = createGame(classic2)

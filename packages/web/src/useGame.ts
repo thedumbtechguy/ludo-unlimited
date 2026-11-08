@@ -15,6 +15,7 @@ import {
   type GameEffect,
   type GameEvent,
   type GameState,
+  type KickKind,
   type Move,
   type PieceId,
   type Position,
@@ -43,8 +44,19 @@ export type GameOptions = {
   onChange?: (game: GameState) => void
 }
 
-/** `effects` play when the piece arrives. `fromBase`: the first square is where it comes out of its yard. */
-type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState; effects: GameEffect[]; fromBase: boolean }
+/**
+ * `effects` play, and a kick's `callout` shows, when the piece arrives. `fromBase`: the first square
+ * is where it comes out of its yard.
+ */
+type Animation = {
+  piece: PieceId
+  path: Position[]
+  step: number
+  next: GameState
+  effects: GameEffect[]
+  callout?: CalloutText
+  fromBase: boolean
+}
 
 const stepSound = ({ path, fromBase }: Animation, step: number): SoundEvent => ({
   type: 'pieceStep',
@@ -56,7 +68,8 @@ const stepSound = ({ path, fromBase }: Animation, step: number): SoundEvent => (
 const KEPT_EFFECTS = 32
 
 /** A kick to call out over the board; `id` tells one kick from the next. */
-export type Callout = { id: number; title: string; line: string; color: Color }
+export type Callout = { id: number; title: string; line: string; color: Color; kind: KickKind }
+type CalloutText = Omit<Callout, 'id'>
 
 const samePiece = (a: PieceId, b: PieceId) => a.color === b.color && a.index === b.index
 
@@ -127,18 +140,26 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     setSelected(undefined)
     setWasted(undefined)
     setMessage(kickMessage(move))
-    const kick = kickCallout(move, game)
-    setCallout((last) => (kick ? { id: (last?.id ?? 0) + 1, color: move.piece.color, ...kick } : undefined))
     const landed = describeMove(game, move, next)
+    const kick = kickCallout(move, game)
+    const kind = landed.find((e) => e.type === 'kick')?.kind
+    const callout = kick && kind ? { ...kick, color: move.piece.color, kind } : undefined
     if (timing.step === 0) {
+      showCallout(callout)
       emit(landed)
       setGame(next)
     } else {
+      // The callout lands with the kick, together with the flash and the kicked piece flying home.
+      if (!callout) setCallout(undefined)
       const fromBase = positionOf(game, move.piece).kind === 'base'
-      const start: Animation = { piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed, fromBase }
+      const start: Animation = { piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed, callout, fromBase }
       playSound(stepSound(start, 0))
       setAnimation(start)
     }
+  }
+
+  function showCallout(text?: CalloutText) {
+    setCallout((last) => (text ? { id: (last?.id ?? 0) + 1, ...text } : undefined))
   }
 
   function select(piece: PieceId) {
@@ -167,6 +188,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
         setAnimation({ ...animation, step: animation.step + 1 })
       } else {
         setAnimation(undefined)
+        if (animation.callout) showCallout(animation.callout)
         emit(animation.effects)
         setGame(animation.next)
       }

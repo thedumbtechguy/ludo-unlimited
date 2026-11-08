@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { burst, colorAt, createWorld, isIdle, look, spawn, step, type Emitter, type ParticleInit } from './particles'
+import { boltFlash, burst, colorAt, createWorld, isIdle, look, markProgress, scaledCount, spawn, step, type Emitter, type ParticleInit } from './particles'
 
 const rand = () => 0.5
 const dot = (over: Partial<ParticleInit> = {}): ParticleInit => ({ x: 0, y: 0, vx: 0, vy: 0, life: 1, size: 2, colors: [[255, 0, 0]], ...over })
@@ -111,5 +111,52 @@ describe('particles', () => {
     expect(now.rgb).toEqual([255, 127.5, 0])
     expect(now.alpha).toBeCloseTo(0.75)
     expect(colorAt([[0, 0, 0], [100, 100, 100], [200, 0, 0]], 1)).toEqual([200, 0, 0])
+  })
+})
+
+describe('one colour', () => {
+  it('stays that colour all its life', () => {
+    expect(colorAt([[10, 20, 30]], 0)).toEqual([10, 20, 30])
+    expect(colorAt([[10, 20, 30]], 0.5)).toEqual([10, 20, 30])
+  })
+})
+
+describe('a new world', () => {
+  it('is idle, with nothing alive and no marks', () => {
+    const world = createWorld()
+    expect(world.marks).toEqual([])
+    expect(isIdle(world)).toBe(true)
+  })
+})
+
+describe('marks', () => {
+  it('a ring waits out its delay, plays for its duration, then is gone and the world is idle', () => {
+    const world = createWorld()
+    world.marks.push({ kind: 'ring', x: 0, y: 0, from: 1, to: 10, width: 2, rgb: [255, 255, 255], delay: 0.1, duration: 0.3, age: 0 })
+    step(world, 0.05, rand)
+    expect(markProgress(world.marks[0])).toBeLessThan(0)
+    step(world, 0.2, rand)
+    expect(markProgress(world.marks[0])).toBeCloseTo(0.5)
+    step(world, 0.16, rand)
+    expect(world.marks).toEqual([])
+    expect(isIdle(world)).toBe(true)
+  })
+
+  it('a bolt flickers: lit, dark, lit again, and dark once over', () => {
+    expect(boltFlash(0.1, 3)).toBe(0)
+    expect(boltFlash(0.3, 3)).toBe(-1)
+    expect(boltFlash(0.4, 3)).toBe(1)
+    expect(boltFlash(0.7, 3)).toBe(2)
+    expect(boltFlash(1, 3)).toBe(-1)
+    expect(boltFlash(-0.1, 3)).toBe(-1)
+  })
+})
+
+describe('reduced effects', () => {
+  it('make a tenth of the particles, at least one', () => {
+    expect(scaledCount(120, false)).toBe(120)
+    expect(scaledCount(120, true)).toBe(12)
+    expect(scaledCount(36, true)).toBe(4)
+    expect(scaledCount(3, true)).toBe(1)
   })
 })

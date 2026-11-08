@@ -1,5 +1,9 @@
 import { COLORS, posKey, positionOf, type Color, type GameState, type Move, type PieceId } from '@ludo/engine'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { anchor } from '../fx/fire'
+import { useFx, type Fx } from '../fx/FxLayer'
+import { arcFrames } from '../fx/geometry'
+import { trail } from '../fx/makers'
 import { BOARD_SIZE, CELL, TILES, placements, positionPoint, turnPoint, yardOrigin, type Moving, type Point } from '../layout'
 import {
   COLOR_NAME,
@@ -79,6 +83,43 @@ const CENTER: [Color, Point[]][] = [
 
 const YARD = 240
 
+/** How long a kicked piece takes to fly back to its yard. */
+export const FLIGHT_MS = 450
+const FLIGHT_FRAMES = 16
+
+const pieceKey = (piece: PieceId) => `${piece.color}-${piece.index}`
+
+/** Pieces that were out on the board in `before` and are back in their yard in `after`: kicked. */
+export function kickedHome(before: GameState, after: GameState): PieceId[] {
+  return after.players.flatMap((player, p) =>
+    player.pieces.flatMap((pos, index) =>
+      pos.kind === 'base' && before.players[p].pieces[index].kind !== 'base' ? [{ color: player.color, index }] : [],
+    ),
+  )
+}
+
+/**
+ * Throws each kicked piece back to its yard along an arc, growing as it rises, with a short trail
+ * on the effects layer. The piece is already drawn in its yard; the animation plays over that.
+ */
+function flyHome(svg: SVGSVGElement, before: GameState, after: GameState, turn: number, fx: Fx): void {
+  const kicked = kickedHome(before, after)
+  if (kicked.length === 0) return
+  const pointIn = (state: GameState, piece: PieceId) => turnPoint(placements(state).find((p) => samePiece(p.piece, piece))!.point, turn)
+  for (const piece of kicked) {
+    const el = svg.querySelector<SVGGElement>(`[data-piece="${pieceKey(piece)}"]`)
+    if (!el) continue
+    const frames = arcFrames(pointIn(before, piece), pointIn(after, piece), FLIGHT_FRAMES).map(({ x, y, scale }) => ({
+      transform: `translate(${x}px, ${y}px) scale(${scale})`,
+    }))
+    el.animate(frames, { duration: FLIGHT_MS, easing: 'linear' })
+    const u = svg.getBoundingClientRect().width / BOARD_SIZE
+    const body = el.querySelector('.body')
+    const tail = fx.emitter({ rate: 110, at: () => anchor(body, 0.5), make: trail(COLOR_HEX[piece.color], u) })
+    setTimeout(tail.stop, FLIGHT_MS - 60)
+  }
+}
+
 /** The top-left corner of a box of `size` whose unturned top-left is `at`, once the board is turned. */
 const turnedBox = (at: Point, size: number, turn: number): Point => {
   const c = turnPoint({ x: at.x + size / 2, y: at.y + size / 2 }, turn)
@@ -101,6 +142,15 @@ export function Board({
   active,
   children,
 }: BoardProps) {
+  const fx = useFx()
+  const svg = useRef<SVGSVGElement>(null)
+  const shown = useRef(state)
+  useLayoutEffect(() => {
+    const before = shown.current
+    shown.current = state
+    if (fx.enabled && before !== state && svg.current) flyHome(svg.current, before, state, turn, fx)
+  }, [state])
+
   const pieces = placements(state, moving).map((p) => ({ ...p, point: turnPoint(p.point, turn) }))
   const pointOf = (piece: PieceId) => pieces.find((p) => samePiece(p.piece, piece))!.point
   const yardAt = (color: Color) => turnedBox(yardOrigin(color), YARD, turn)
@@ -142,7 +192,7 @@ export function Board({
         if (e.key === 'Escape') setChoosing(undefined)
       }}
     >
-      <svg viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true">
+      <svg ref={svg} viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true">
         <defs>
           <filter id="piece-shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#0f172a" floodOpacity="0.35" />
@@ -187,9 +237,9 @@ export function Board({
           const isMovable = movable.some((m) => samePiece(m, piece))
           return (
             <g
-              key={`${piece.color}-${piece.index}`}
+              key={pieceKey(piece)}
               data-testid="piece"
-              data-piece={`${piece.color}-${piece.index}`}
+              data-piece={pieceKey(piece)}
               className={isMovable ? 'piece movable' : 'piece'}
               style={{ transform: `translate(${point.x}px, ${point.y}px)` }}
             >

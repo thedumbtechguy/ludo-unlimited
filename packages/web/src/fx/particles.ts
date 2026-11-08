@@ -3,8 +3,11 @@
 export type Rgb = readonly [number, number, number]
 export type Point = { x: number; y: number }
 export type Blend = 'source-over' | 'lighter'
-/** A crisp dot, or a soft glowing puff (flames, smoke). */
-export type Shape = 'dot' | 'soft'
+/**
+ * A crisp dot, a soft glowing puff (flames, smoke), a flat spinning rectangle (confetti, shards) or a
+ * streak: a short line drawn along the direction of travel (speed lines, rockets).
+ */
+export type Shape = 'dot' | 'soft' | 'rect' | 'streak'
 
 export type ParticleInit = {
   x: number
@@ -29,9 +32,17 @@ export type ParticleInit = {
   drag?: number
   blend?: Blend
   shape?: Shape
+  /** Rects: the starting angle (radians), spin (radians per second) and height as a fraction of the width. */
+  angle?: number
+  spin?: number
+  aspect?: number
+  /** Streaks: the line's length, as seconds of travel at the current speed. */
+  stretch?: number
+  /** Burst into these when the life runs out (a firework rocket). */
+  pop?: { count: number; make: Make }
 }
 
-export type Particle = Required<ParticleInit> & { age: number }
+export type Particle = Required<Omit<ParticleInit, 'pop'>> & Pick<ParticleInit, 'pop'> & { age: number }
 
 /** Makes one particle; x and y are offsets from wherever it is spawned. */
 export type Make = (rand: () => number) => ParticleInit
@@ -49,12 +60,33 @@ export type Emitter = {
   done: boolean
 }
 
-export type World = { particles: Particle[]; emitters: Emitter[]; cap: number }
+/**
+ * A drawn shape with a fixed timeline, rather than a moving particle: an expanding ring, or a
+ * lightning bolt that flickers. Times are seconds; it waits `delay`, then plays over `duration`.
+ */
+export type Mark =
+  | { kind: 'ring'; x: number; y: number; from: number; to: number; width: number; rgb: Rgb; edge?: Rgb; delay: number; duration: number }
+  | {
+      kind: 'bolt'
+      /** One jagged line per flicker, so each flash is a fresh crack. */
+      paths: Point[][]
+      width: number
+      rgb: Rgb
+      edge: Rgb
+      delay: number
+      duration: number
+    }
+export type LiveMark = Mark & { age: number }
+
+export type World = { particles: Particle[]; emitters: Emitter[]; marks: LiveMark[]; cap: number }
 
 export const FULL_CAP = 400
 export const REDUCED_CAP = 40
 
-export const createWorld = (cap = FULL_CAP): World => ({ particles: [], emitters: [], cap })
+export const createWorld = (cap = FULL_CAP): World => ({ particles: [], emitters: [], marks: [], cap })
+
+/** How many of `count` particles to make at an effects level: all of them, or a tenth (at least one). */
+export const scaledCount = (count: number, reduced: boolean): number => (reduced ? Math.ceil(count * 0.1) : count)
 
 /** Adds a particle unless the world is at its cap. */
 export function spawn(world: World, init: ParticleInit): boolean {
@@ -67,6 +99,10 @@ export function spawn(world: World, init: ParticleInit): boolean {
     drag: 0,
     blend: 'source-over',
     shape: 'dot',
+    angle: 0,
+    spin: 0,
+    aspect: 0.5,
+    stretch: 0.04,
     ...init,
     age: 0,
   })
@@ -84,7 +120,7 @@ export function burst(world: World, x: number, y: number, count: number, make: M
   return spawned
 }
 
-export const isIdle = (world: World): boolean => world.particles.length === 0 && world.emitters.length === 0
+export const isIdle = (world: World): boolean => world.particles.length === 0 && world.emitters.length === 0 && world.marks.length === 0
 
 /** Advance by `dt` seconds: emitters spawn, particles move and age, the dead and finished go. */
 export function step(world: World, dt: number, rand: () => number): void {
@@ -115,15 +151,35 @@ export function step(world: World, dt: number, rand: () => number): void {
     p.vy = p.vy * keep + p.gravity * dt
     p.x += p.vx * dt
     p.y += p.vy * dt
+    p.angle += p.spin * dt
   }
+  const dead = world.particles.filter((p) => p.age >= p.life)
   world.particles = world.particles.filter((p) => p.age < p.life)
+  for (const p of dead) if (p.pop) burst(world, p.x, p.y, p.pop.count, p.pop.make, rand)
+
+  for (const mark of world.marks) mark.age += dt
+  world.marks = world.marks.filter((m) => m.age < m.delay + m.duration)
+}
+
+/** How far through its timeline a mark is: below 0 while it waits, 1 at the end. */
+export const markProgress = (mark: LiveMark): number => (mark.age - mark.delay) / mark.duration
+
+/**
+ * Which of a bolt's `flashes` is lit at progress `t` (0–1), or -1 between flashes. Each flash is on
+ * for the first 60% of its slot and dark for the rest, so it reads as a flicker, not a fade.
+ */
+export function boltFlash(t: number, flashes: number): number {
+  if (t < 0 || t >= 1) return -1
+  const slot = t * flashes
+  const i = Math.floor(slot)
+  return slot - i < 0.6 ? i : -1
 }
 
 /** How far through its life a particle is, 0 to 1. */
 export const progress = (p: Particle): number => Math.min(1, p.age / p.life)
 
 export function colorAt(colors: readonly Rgb[], t: number): Rgb {
-  if (t >= 1) return colors[colors.length - 1]
+  if (t >= 1 || colors.length === 1) return colors[colors.length - 1]
   const scaled = Math.max(0, t) * (colors.length - 1)
   const i = Math.floor(scaled)
   const f = scaled - i

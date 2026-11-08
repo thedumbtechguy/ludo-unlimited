@@ -127,9 +127,16 @@ button.row { cursor: pointer; }
 .kick-callout p { position: absolute; left: 0; right: 0; margin: 0; text-align: center; paint-order: stroke fill; white-space: nowrap; }
 .kick-title { top: 40%; font-weight: 900; font-size: calc(55 * var(--u)); letter-spacing: calc(-1.7 * var(--u)); -webkit-text-stroke: calc(8.5 * var(--u)) #ffffff; text-shadow: 0 calc(5 * var(--u)) calc(15 * var(--u)) rgba(0, 0, 0, 0.35); }
 .kick-line { top: 54%; font-weight: 800; font-size: calc(17 * var(--u)); color: var(--ink); -webkit-text-stroke: calc(4.3 * var(--u)) #ffffff; }
-@keyframes callout { 0% { opacity: 0; transform: scale(0.92); } 15% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes callout { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+/* Full effects: the title slams down onto the board, overshooting a little, and the line follows. */
+.kick-callout.slam { animation-name: callout-slam; }
+.kick-callout.slam .kick-title { animation: slam 300ms cubic-bezier(.3, .7, .4, 1) both; }
+.kick-callout.slam .kick-line { animation: slam-line 300ms 90ms ease-out both; }
+@keyframes callout-slam { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes slam { 0% { opacity: 0; transform: scale(1.4); } 45% { opacity: 1; transform: scale(0.95); } 70% { transform: scale(1.02); } 100% { transform: scale(1); } }
+@keyframes slam-line { from { opacity: 0; transform: translateY(calc(-6 * var(--u))); } }
 @media (prefers-reduced-motion: reduce) {
-  .kick-callout { animation: none; }
+  .kick-callout, .kick-callout.slam .kick-title, .kick-callout.slam .kick-line { animation: none; }
 }
 
 /* Bottom sheets: the menu, pickers and the rules sheet slide up over the dimmed table. */
@@ -252,3 +259,6 @@ button.row { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .on-fire, .on-fire.leaving { animation: none; }
 }
+
+/* Board effects: an overlay in board units for what's drawn on the board itself (chains, shimmer). */
+.board-fx { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; overflow: visible; }

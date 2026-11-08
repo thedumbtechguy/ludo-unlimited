@@ -1,6 +1,28 @@
+// @refresh reset
+// The particle world lives in a ref; when this module or the simulation it imports hot-reloads, start
+// a fresh world built by the current createWorld rather than keep one shaped by the old code.
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { EffectsLevel } from '../types'
-import { burst, createWorld, FULL_CAP, isIdle, look, REDUCED_CAP, step, type Emitter, type Make, type Particle, type Point, type Rgb } from './particles'
+import {
+  boltFlash,
+  burst,
+  createWorld,
+  FULL_CAP,
+  isIdle,
+  look,
+  markProgress,
+  REDUCED_CAP,
+  scaledCount,
+  step,
+  type Emitter,
+  type LiveMark,
+  type Make,
+  type Mark,
+  type Particle,
+  type Point,
+  type Rgb,
+  type World,
+} from './particles'
 
 export type EmitterOptions = {
   /** Particles per second (a tenth of it with reduced effects). */
@@ -24,10 +46,12 @@ export type Fx = {
   /** `count` particles around a screen point (a tenth of them with reduced effects). */
   burst: (x: number, y: number, count: number, make: Make) => void
   emitter: (options: EmitterOptions) => EmitterHandle
+  /** A ring or bolt in screen px, drawn at every level (it isn't a particle). */
+  mark: (mark: Mark) => void
 }
 
 const noop = () => {}
-const NO_FX: Fx = { enabled: false, level: 'reduced', burst: noop, emitter: () => ({ set: noop, fade: noop, stop: noop }) }
+const NO_FX: Fx = { enabled: false, level: 'reduced', burst: noop, emitter: () => ({ set: noop, fade: noop, stop: noop }), mark: noop }
 const FxContext = createContext<Fx>(NO_FX)
 
 export const useFx = (): Fx => useContext(FxContext)
@@ -44,7 +68,7 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
   const world = useRef(createWorld(level === 'full' ? FULL_CAP : REDUCED_CAP))
   const frame = useRef<number>()
   const last = useRef<number>()
-  const scale = level === 'full' ? 1 : 0.1
+  const reduced = level !== 'full'
 
   useEffect(() => {
     world.current.cap = level === 'full' ? FULL_CAP : REDUCED_CAP
@@ -58,7 +82,7 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
       const dt = last.current === undefined ? 1 / 60 : Math.min(MAX_DT, (now - last.current) / 1000)
       last.current = now
       step(world.current, dt, Math.random)
-      draw(el, world.current.particles)
+      draw(el, world.current)
       if (isIdle(world.current)) {
         last.current = undefined
         return
@@ -69,20 +93,32 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
       if (frame.current === undefined && !document.hidden) frame.current = requestAnimationFrame(tick)
     }
     if (!enabled) return { fx: { ...NO_FX, level }, wake }
+    // A rocket's burst is cut down with the rest.
+    const scaled =
+      (make: Make): Make =>
+      (rand) => {
+        const p = make(rand)
+        return p.pop ? { ...p, pop: { count: scaledCount(p.pop.count, reduced), make: p.pop.make } } : p
+      }
+    const rate = (r: number) => (reduced ? r * 0.1 : r)
     const fx: Fx = {
       enabled: true,
       level,
       burst: (x, y, count, make) => {
-        burst(world.current, x, y, Math.ceil(count * scale), make, Math.random)
+        burst(world.current, x, y, scaledCount(count, reduced), scaled(make), Math.random)
         wake()
       },
-      emitter: ({ rate, at, make }) => {
-        const emitter: Emitter = { rate: rate * scale, at, make, owed: 0, done: false }
+      mark: (mark) => {
+        world.current.marks.push({ ...mark, age: 0 })
+        wake()
+      },
+      emitter: ({ rate: r, at, make }) => {
+        const emitter: Emitter = { rate: rate(r), at, make, owed: 0, done: false }
         world.current.emitters.push(emitter)
         wake()
         return {
           set: (options) => {
-            if (options.rate !== undefined) emitter.rate = options.rate * scale
+            if (options.rate !== undefined) emitter.rate = rate(options.rate)
             if (options.make) emitter.make = options.make
           },
           fade: (ms) => {
@@ -95,7 +131,7 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
       },
     }
     return { fx, wake }
-  }, [enabled, level, scale])
+  }, [enabled, level, reduced])
 
   // Keep the backing store at the device pixel ratio, and pause with the tab.
   useEffect(() => {
@@ -134,13 +170,62 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
   )
 }
 
-function draw(el: HTMLCanvasElement, particles: Particle[]) {
+const rgba = (rgb: Rgb, alpha: number) => `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${alpha})`
+
+function draw(el: HTMLCanvasElement, world: World) {
   const ctx = el.getContext('2d')
   if (!ctx) return
   const dpr = el.width / window.innerWidth
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, el.width, el.height)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  for (const mark of world.marks) drawMark(ctx, mark)
+  drawParticles(ctx, world.particles)
+}
+
+function drawMark(ctx: CanvasRenderingContext2D, mark: LiveMark) {
+  const t = markProgress(mark)
+  if (t < 0 || t >= 1) return
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  if (mark.kind === 'ring') {
+    // Out fast, then fading and thinning as it slows.
+    const eased = 1 - (1 - t) ** 3
+    const radius = mark.from + (mark.to - mark.from) * eased
+    const width = mark.width * (1 - t * 0.7)
+    const alpha = (1 - t) ** 1.5
+    ctx.beginPath()
+    ctx.arc(mark.x, mark.y, radius, 0, Math.PI * 2)
+    if (mark.edge) {
+      ctx.strokeStyle = rgba(mark.edge, alpha)
+      ctx.lineWidth = width + 3
+      ctx.stroke()
+    }
+    ctx.strokeStyle = rgba(mark.rgb, alpha)
+    ctx.lineWidth = width
+    ctx.stroke()
+    return
+  }
+  const flash = boltFlash(t, mark.paths.length)
+  if (flash < 0) return
+  const path = mark.paths[flash]
+  const trace = () => {
+    ctx.beginPath()
+    path.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+  }
+  // A coloured body with a white-hot core.
+  trace()
+  ctx.strokeStyle = rgba(mark.edge, 0.9)
+  ctx.lineWidth = mark.width * 2.4
+  ctx.stroke()
+  trace()
+  ctx.strokeStyle = rgba(mark.rgb, 1)
+  ctx.lineWidth = mark.width
+  ctx.stroke()
+}
+
+function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
   for (const p of particles) {
     const { radius, rgb, alpha } = look(p)
     if (radius <= 0 || alpha <= 0) continue
@@ -151,8 +236,26 @@ function draw(el: HTMLCanvasElement, particles: Particle[]) {
       ctx.globalAlpha = alpha
       ctx.drawImage(puff(rgb), p.x - size / 2, p.y - size / 2, size, size)
       ctx.globalAlpha = 1
+    } else if (p.shape === 'rect') {
+      // Spinning about its long axis too: the height swings, like a flat strip tumbling.
+      const w = radius * 2
+      const h = w * p.aspect * Math.abs(Math.cos(p.angle * 1.7))
+      ctx.save()
+      ctx.translate(p.x, p.y)
+      ctx.rotate(p.angle)
+      ctx.fillStyle = rgba(rgb, alpha)
+      ctx.fillRect(-w / 2, -h / 2, w, Math.max(0.6, h))
+      ctx.restore()
+    } else if (p.shape === 'streak') {
+      ctx.strokeStyle = rgba(rgb, alpha)
+      ctx.lineWidth = radius
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y)
+      ctx.lineTo(p.x - p.vx * p.stretch, p.y - p.vy * p.stretch)
+      ctx.stroke()
     } else {
-      ctx.fillStyle = `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${alpha})`
+      ctx.fillStyle = rgba(rgb, alpha)
       ctx.beginPath()
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
       ctx.fill()

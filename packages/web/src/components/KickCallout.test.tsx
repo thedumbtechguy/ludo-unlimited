@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KickCallout } from './KickCallout'
 
-const callout = { id: 1, title: 'Line kick!', line: 'Red sent Yellow back to base', color: 'red' } as const
+const callout = { id: 1, title: 'Line kick!', line: 'Red sent Yellow back to base', color: 'red', kind: 'line' } as const
 
 describe('KickCallout', () => {
   afterEach(() => vi.useRealTimers())
@@ -27,7 +27,7 @@ describe('KickCallout', () => {
     expect(screen.getByText('Line kick!')).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(1))
     expect(screen.queryByText('Line kick!')).toBeNull()
-    rerender(<KickCallout callout={{ ...callout, id: 2, title: 'Wicked!' }} />)
+    rerender(<KickCallout callout={{ ...callout, id: 2, title: 'Wicked!', kind: 'wicked' }} />)
     expect(screen.getByText('Wicked!')).toBeInTheDocument()
   })
 
