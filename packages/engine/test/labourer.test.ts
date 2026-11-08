@@ -46,11 +46,17 @@ describe('labourer', () => {
     expect(s.turn).toBe('blue')
   })
 
-  it('a 6 ends it, and the victim plays the 6 and rolls again', () => {
+  it('a 6 ends it, and the victim rolls on and plays every roll', () => {
     const s = roll(setup({ ...owned, pieces: { red: [5] } }), 6)
     expect(s.labourers).toEqual({})
-    expect(legalMoves(s).every((m) => m.piece.color === 'yellow')).toBe(true)
-    expect(applyMove(s, legalMoves(s)[0]).turn).toBe('yellow')
+    expect(s.pendingRoll).toBeUndefined()
+    expect(s.turn).toBe('yellow')
+    const playing = roll(s, 3)
+    expect(legalMoves(playing).every((m) => m.piece.color === 'yellow')).toBe(true)
+    const afterSix = applyMove(playing, legalMoves(playing)[0])
+    expect(afterSix.pendingRoll).toBe(3)
+    expect(legalMoves(afterSix).every((m) => m.piece.color === 'yellow')).toBe(true)
+    expect(applyMove(afterSix, legalMoves(afterSix)[0]).turn).toBe('blue')
   })
 
   it('an owner can gain a second labourer with a victim’s roll', () => {

@@ -12,19 +12,25 @@ describe('useGame', () => {
   afterEach(() => vi.useRealTimers())
 
   it('a human with exactly one legal move has it played automatically', async () => {
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING }))
+    const dice = fixedDice([6, 3])
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING }))
     expect(result.current.humanToRoll).toBe(true)
     act(() => result.current.roll())
-    await waitFor(() => expect(result.current.game.players[0].pieces[0]).toEqual(track(0)))
-    expect(result.current.humanToRoll).toBe(true)
+    expect(result.current.humanToRoll).toBe(true) // a 6: roll again before moving
+    act(() => result.current.roll())
+    // The 6 can only enter and the 3 can only advance that piece: both play themselves.
+    await waitFor(() => expect(result.current.game.players[0].pieces[0]).toEqual(track(3)))
+    expect(result.current.game.turn).toBe('yellow')
   })
 
   it('auto-plays the single move after timing.botMove', () => {
     vi.useFakeTimers()
     const timing = { botRoll: 0, botMove: 400, step: 0, roll: 0 }
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing }))
+    const dice = fixedDice([6, 3])
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing }))
     act(() => result.current.roll())
-    expect(result.current.game.pendingRoll).toBeDefined()
+    act(() => result.current.roll())
+    expect(result.current.game.pendingRoll).toBe(6)
     act(() => vi.advanceTimersByTime(399))
     expect(result.current.game.players[0].pieces[0]).toEqual({ kind: 'base' })
     act(() => vi.advanceTimersByTime(1))
@@ -34,9 +40,11 @@ describe('useGame', () => {
   it('with several legal moves the human still chooses', () => {
     const initial = createGame(classic2)
     initial.players[0].pieces[0] = track(5)
+    const dice = fixedDice([6, 3])
     const { result } = renderHook(() =>
-      useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING, initial }),
+      useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING, initial }),
     )
+    act(() => result.current.roll())
     act(() => result.current.roll())
     expect(result.current.movable).toHaveLength(2)
     expect(result.current.game.pendingRoll).toBeDefined()

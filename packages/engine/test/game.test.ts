@@ -29,9 +29,10 @@ describe('turn flow', () => {
     expect(s.turn).toBe('green')
   })
 
-  it('a wasted 6 still rolls again', () => {
+  it('a 6 lets you roll again, even with no move for it', () => {
     const s = roll(setup({ pieces: { red: [lane('red', 3), HOME, HOME, HOME] } }), 6)
     expect(s.pendingRoll).toBeUndefined()
+    expect(s.queuedRolls).toEqual([6])
     expect(s.turn).toBe('red')
   })
 
@@ -43,10 +44,12 @@ describe('turn flow', () => {
     expect(next.pendingRoll).toBeUndefined()
   })
 
-  it('a 6 gives another roll', () => {
+  it('a 6 lets you roll again before moving', () => {
     const s = roll(setup({ pieces: { red: [5] } }), 6)
-    const move = legalMoves(s).find((m) => m.kind === 'forward')!
-    expect(applyMove(s, move).turn).toBe('red')
+    expect(s.turn).toBe('red')
+    expect(s.pendingRoll).toBeUndefined()
+    expect(legalMoves(s)).toEqual([])
+    expect(roll(s, 3).pendingRoll).toBe(6)
   })
 
   it('a kick sends the opponent to base', () => {
@@ -66,9 +69,10 @@ describe('turn flow', () => {
     expect(s).toEqual(before)
   })
 
-  it('pass drops the pending roll and moves on, even after a 6', () => {
-    const s = pass(roll(setup({ pieces: { red: [5] } }), 6))
+  it('pass drops the pending and queued rolls and moves on, even after a 6', () => {
+    const s = pass(roll(roll(setup({ pieces: { red: [5] } }), 6), 3))
     expect(s.pendingRoll).toBeUndefined()
+    expect(s.queuedRolls).toEqual([])
     expect(s.turn).toBe('green')
     expect(s.log.at(-1)).toEqual({ type: 'pass' })
   })
@@ -82,7 +86,7 @@ describe('turn flow', () => {
   })
 
   it('an enter that kicks sends the opponent to base', () => {
-    const s = roll(setup({ pieces: { yellow: [0] } }), 6)
+    const s = roll(roll(setup({ pieces: { yellow: [0] } }), 6), 3)
     const next = applyMove(s, legalMoves(s).find((m) => m.kind === 'enter')!)
     expect(getPlayer(next, 'red').pieces[0]).toEqual(track(0))
     expect(getPlayer(next, 'yellow').pieces[0]).toEqual(BASE)
@@ -106,11 +110,13 @@ describe('turn flow', () => {
 
 
 describe('after a kick', () => {
+  /** Red on 5 kicks yellow on 5 + value; outside endsTurn mode a 6 is followed by a 1, played after the kick. */
   const kickOn = (afterKick: 'endsTurn' | 'normal' | 'bonusRoll', value: number) => {
-    // Red on 5 kicks yellow on 5 + value.
-    const s = roll(setup({ afterKick, pieces: { red: [5], yellow: [5 + value] } }), value)
-    const move = legalMoves(s).find((m) => m.kick)!
-    return applyMove(s, move).turn
+    let s = roll(setup({ afterKick, pieces: { red: [5, HOME, HOME, HOME], yellow: [5 + value] } }), value)
+    if (value === 6 && afterKick !== 'endsTurn') s = roll(s, 1)
+    s = applyMove(s, legalMoves(s).find((m) => m.kick)!)
+    while (s.pendingRoll !== undefined) s = applyMove(s, legalMoves(s)[0])
+    return s.turn
   }
 
   it('endsTurn: a kick passes play on, even on a 6', () => {
@@ -119,8 +125,15 @@ describe('after a kick', () => {
   })
 
   it('normal: a kick changes nothing', () => {
-    expect(kickOn('normal', 6)).toBe('red')
+    expect(kickOn('normal', 6)).toBe('green')
     expect(kickOn('normal', 3)).toBe('green')
+  })
+
+  it('normal: a kick on a 6 still lets the rolls after it be played', () => {
+    const s = roll(roll(setup({ pieces: { red: [5, HOME, HOME, HOME], yellow: [11] } }), 6), 1)
+    const next = applyMove(s, legalMoves(s).find((m) => m.kick)!)
+    expect(next.turn).toBe('red')
+    expect(next.pendingRoll).toBe(1)
   })
 
   it('bonusRoll: a kick earns another roll', () => {

@@ -22,6 +22,14 @@ function checkInvariants(state: GameState): void {
     if (move.kick) expect(piecesAt(state, positionOf(state, move.kick))).toHaveLength(1)
   }
 
+  if (state.status === 'playing' && state.pendingRoll === undefined) {
+    if (state.settings.afterKick === 'endsTurn') expect(state.queuedRolls).toEqual([])
+    else expect(state.queuedRolls.every((r) => r === 6)).toBe(true)
+  }
+  if (state.pendingRoll !== undefined) expect(legalMoves(state).length).toBeGreaterThan(0)
+  if (state.settings.afterKick === 'endsTurn') expect(state.queuedRolls).toEqual([])
+  if (state.status === 'finished') expect(state.queuedRolls).toEqual([])
+
   for (const [victim, owner] of Object.entries(state.labourers) as [Color, Color][]) {
     expect(victim).not.toBe(owner)
     expect(hasPiecesInPlay(state, victim)).toBe(false)

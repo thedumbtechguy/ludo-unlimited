@@ -12,6 +12,8 @@ export function createGame(settings: Settings): GameState {
     settings,
     players: SEATS[settings.players].map((color) => ({ color, pieces: [BASE, BASE, BASE, BASE] })),
     turn: SEATS[settings.players][0],
+    queuedRolls: [],
+    kickedThisTurn: false,
     labourers: {},
     log: [],
     status: 'playing',

@@ -4,15 +4,20 @@ import { BASE } from './position'
 import { cloneState, createGame, getPlayer } from './state'
 import type { Color, GameEvent, GameState, Move, PieceId, Position, Settings } from './types'
 
+/**
+ * Outside `endsTurn` mode a 6 keeps the player rolling; the first non-6 starts playing the rolls in order.
+ * In `endsTurn` mode every roll is played straight away.
+ */
 export function roll(state: GameState, value: number): GameState {
   if (state.status !== 'playing') throw new Error('game is over')
   if (state.pendingRoll !== undefined) throw new Error('roll already pending')
   if (!Number.isInteger(value) || value < 1 || value > 6) throw new Error('invalid roll')
   const next = cloneState(state)
   next.log.push({ type: 'roll', value })
-  next.pendingRoll = value
+  next.queuedRolls.push(value)
   if (value === 6) delete next.labourers[next.turn]
-  if (legalMoves(next).length === 0) endTurn(next, value)
+  if (value === 6 && next.settings.afterKick !== 'endsTurn') return next
+  advance(next, value)
   return next
 }
 
@@ -31,8 +36,10 @@ export function applyMove(state: GameState, move: Move): GameState {
       next.labourers[legal.kick.color] = legal.piece.color
     }
   }
+  if (legal.kick && legal.piece.color === next.turn) next.kickedThisTurn = true
   if (getPlayer(next, legal.piece.color).pieces.every((p) => p.kind === 'home')) finish(next, legal.piece.color)
-  endTurn(next, rolled, legal.kick && legal.piece.color)
+  if (next.status !== 'playing' || getPlayer(next, next.turn).finishedPlace !== undefined) next.queuedRolls = []
+  advance(next, rolled, legal.kick && legal.piece.color)
   return next
 }
 
@@ -42,6 +49,8 @@ export function pass(state: GameState): GameState {
   const next = cloneState(state)
   next.log.push({ type: 'pass' })
   next.pendingRoll = undefined
+  next.queuedRolls = []
+  next.kickedThisTurn = false
   next.turn = nextActive(next, next.turn)
   return next
 }
@@ -73,19 +82,33 @@ function nextActive(state: GameState, after: Color): Color {
   return after
 }
 
-/** `kicker` is the colour that kicked on this move, if any. */
-function endTurn(state: GameState, rolled: number | undefined, kicker?: Color): void {
+/**
+ * Take the next queued roll that has a legal move as `pendingRoll`, dropping any without one.
+ * When the queue runs out, the turn ends. `last` is the roll just played or dropped, and `kicker`
+ * the colour that kicked with it, if any; only `endsTurn` mode looks at them.
+ */
+function advance(state: GameState, last: number | undefined, kicker?: Color): void {
   state.pendingRoll = undefined
   if (state.status !== 'playing') return
-  if (getPlayer(state, state.turn).finishedPlace === undefined && rollsAgain(state, rolled, kicker)) return
-  state.turn = nextActive(state, state.turn)
+  while (state.queuedRolls.length > 0) {
+    state.pendingRoll = state.queuedRolls.shift()
+    if (legalMoves(state).length > 0) return
+    last = state.pendingRoll
+    kicker = undefined
+    state.pendingRoll = undefined
+  }
+  endTurn(state, last, kicker)
 }
 
-function rollsAgain(state: GameState, rolled: number | undefined, kicker?: Color): boolean {
-  const { afterKick } = state.settings
-  if (kicker && afterKick === 'endsTurn') return false
-  if (kicker === state.turn && afterKick === 'bonusRoll') return true
-  return rolled === 6
+function endTurn(state: GameState, last: number | undefined, kicker?: Color): void {
+  const again = getPlayer(state, state.turn).finishedPlace === undefined && rollsAgain(state, last, kicker)
+  state.kickedThisTurn = false
+  if (!again) state.turn = nextActive(state, state.turn)
+}
+
+function rollsAgain(state: GameState, last: number | undefined, kicker?: Color): boolean {
+  if (state.settings.afterKick === 'endsTurn') return !kicker && last === 6
+  return state.settings.afterKick === 'bonusRoll' && state.kickedThisTurn
 }
 
 function finish(state: GameState, color: Color): void {

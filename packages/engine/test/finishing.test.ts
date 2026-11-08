@@ -24,15 +24,16 @@ describe('finishing', () => {
     expect(() => roll(next, 3)).toThrow('game is over')
   })
 
-  it('playForPlaces keeps going and skips the finished player, even after a 6', () => {
+  it('playForPlaces keeps going and skips the finished player, even with rolls left', () => {
     const s = roll(
-      setup({ players: 3, endCondition: 'playForPlaces', pieces: { red: [50, HOME, HOME, HOME] } }),
-      6,
+      roll(setup({ players: 3, endCondition: 'playForPlaces', pieces: { red: [50, HOME, HOME, HOME] } }), 6),
+      3,
     )
     const next = applyMove(s, legalMoves(s)[0])
     expect(next.status).toBe('playing')
     expect(getPlayer(next, 'red').finishedPlace).toBe(1)
     expect(next.turn).toBe('green')
+    expect(next.queuedRolls).toEqual([])
   })
 
   it('playForPlaces ends when one player is left', () => {

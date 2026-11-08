@@ -49,7 +49,12 @@ export type GameState = {
   settings: Settings
   players: PlayerState[]
   turn: Color
+  /** The roll being played now. */
   pendingRoll?: number
+  /** While rolling (no pendingRoll): every roll so far. While playing: the rolls after pendingRoll. */
+  queuedRolls: number[]
+  /** The turn player kicked during this turn; feeds `afterKick: 'bonusRoll'`. */
+  kickedThisTurn: boolean
   labourers: Partial<Record<Color, Color>> // victim → owner
   log: GameEvent[]
   status: 'playing' | 'finished'
