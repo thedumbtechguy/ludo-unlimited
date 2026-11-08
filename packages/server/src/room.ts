@@ -197,7 +197,7 @@ function back(ctx: Ctx, seat: Color | undefined, wasIdle: boolean): void {
 /** Now, or later while devices are still showing the last event. */
 const readyAt = (ctx: Ctx) => Math.max(ctx.room.readyAt ?? ctx.now, ctx.now)
 
-/** Forget watchers who have left. Seated members stay, so their seat can be rejoined. */
+/** Forget watchers who have left. Seated members stay, so their seat is still theirs when they come back. */
 function prune(room: Room): void {
   room.members = room.members.filter((m) => m.connected || m.seat || m.device === room.host)
 }
@@ -234,8 +234,8 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       if (room.phase !== 'lobby') return refuse(ctx, device, 'illegal')
       m.seat = undefined
       return broadcastRoom(ctx)
-    case 'rejoin':
-      return rejoin(ctx, m, msg.color)
+    case 'takeover':
+      return takeover(ctx, m, msg.color)
     case 'settings': {
       if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer)) return refuse(ctx, device, 'illegal')
       room.settings = cleanSettings(msg.settings)
@@ -259,17 +259,18 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
   }
 }
 
-/** "Rejoin as …": take over a seat whose player has gone. */
-function rejoin(ctx: Ctx, m: Member, color: Color): void {
+/**
+ * "Play as Blue": a watcher takes a computer seat, its pieces where they stand. The computer
+ * finishes a turn it has begun; the seat is the watcher's from its next turn.
+ */
+function takeover(ctx: Ctx, m: Member, color: Color): void {
   const { room } = ctx
-  const old = room.members.find((o) => o.seat === color)
-  const inGame = SEATS[room.settings.players].includes(color)
-  if (room.phase === 'lobby' || !inGame || !old || old.connected || old === m || m.seat) return refuse(ctx, m.device, 'illegal')
+  if (room.phase !== 'playing' || !room.computers.includes(color) || m.seat) return refuse(ctx, m.device, 'illegal')
   const wasIdle = !anyoneSeatedConnected(room)
-  old.seat = undefined
+  room.computers = room.computers.filter((c) => c !== color)
+  // Covered until its next turn starts, like a player who is back.
+  room.covering.push(color)
   m.seat = color
-  if (room.host === old.device) room.host = m.device
-  prune(room)
   back(ctx, color, wasIdle)
   broadcastRoom(ctx)
 }

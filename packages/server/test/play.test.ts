@@ -109,14 +109,6 @@ describe('playing', () => {
     expect(room.deadline).toBe(T0 + TIMER_SECONDS.normal * 1000)
   })
 
-  it('rejoining a seat in a room nobody seated is in restarts the clock', () => {
-    let room = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'kofi' }, { type: 'disconnect', device: 'host' }]).room
-    expect(room.botAt).toBeUndefined()
-    room = run(room, [say('esi', { t: 'rejoin', color: 'red' })], T0 + 50).room
-    // It's the start of red's turn, so Esi plays it herself; Kofi is still covered.
-    expect([room.covering, room.deadline]).toEqual([['yellow'], T0 + 50 + TIMER_SECONDS.normal * 1000])
-  })
-
   it('pause stops every clock; resume restarts it from now', () => {
     let room = run(started(), [say('host', { t: 'pause' })], T0 + 100).room
     expect([room.paused, room.deadline, room.botAt]).toEqual([true, undefined, undefined])
@@ -156,24 +148,6 @@ describe('playing', () => {
     expect([step.room.paused, sentTo(step, 'kofi')[0]]).toEqual([true, { t: 'error', code: 'illegal' }])
   })
 
-  it('rejoin takes only a game seat whose player has gone', () => {
-    let room = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'kofi' }, say('host', { t: 'pause', for: 'yellow' })]).room
-    for (const msg of [{ t: 'rejoin' } as unknown as ClientMessage, { t: 'rejoin', color: 'green' } as const, { t: 'rejoin', color: 'red' } as const]) {
-      const step = run(room, [say('esi', msg)])
-      expect(sentTo(step, 'esi')[0]).toEqual({ t: 'error', code: 'illegal' })
-      expect([step.room.paused, step.room.host, seatOf(step.room, 'esi')]).toEqual([true, 'host', undefined])
-    }
-    room = run(room, [say('esi', { t: 'rejoin', color: 'yellow' })]).room
-    expect([room.paused, seatOf(room, 'esi')]).toEqual([false, 'yellow'])
-    expect(room.members.map((m) => m.name)).toEqual(['Ama', 'Esi']) // Kofi has no seat now, so he is forgotten
-  })
-
-  it('rejoin is refused in the lobby', () => {
-    const step = run(lobby(2), [join('host'), join('kofi'), say('host', { t: 'sit', color: 'red' }), say('kofi', { t: 'rejoin', color: 'red' })])
-    expect(sentTo(step, 'kofi')[0]).toEqual({ t: 'error', code: 'illegal' })
-    expect(seatOf(step.room, 'kofi')).toBeUndefined()
-  })
-
   it('the host role passes on during a game, to the seated player', () => {
     let room = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'host' }]).room
     expect(room.host).toBe('kofi')
@@ -181,7 +155,7 @@ describe('playing', () => {
     expect([room.host, room.paused]).toEqual(['kofi', true])
   })
 
-  it('watchers who leave are forgotten; seated players are kept for rejoining', () => {
+  it('watchers who leave are forgotten; seated players are kept for coming back', () => {
     const room = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'esi' }, { type: 'disconnect', device: 'kofi' }]).room
     expect(room.members.map((m) => [m.name, m.connected])).toEqual([
       ['Ama', true],
@@ -306,3 +280,95 @@ describe('playing', () => {
     expect(alarm(room, room.lastActive + DAY).remove).toBe(true)
   })
 })
+
+/** Ama (red) against the computer (yellow) in a 2-player classic room, with Esi watching. */
+function withComputer(): Room {
+  const room = lobby(2)
+  room.settings = settingsFor('classic', 2, 'firstWins')
+  return run(room, [join('host', 'Ama'), say('host', { t: 'sit', color: 'red' }), say('host', { t: 'start', empty: 'computers' }), join('esi', 'Esi')]).room
+}
+/** Ama rolls a 3, which passes the turn to yellow. */
+const amaPasses = (room: Room, at = room.lastActive + 10) => run(room, [say('host', { t: 'roll' })], at, fixedRandom([die(3)])).room
+
+describe('taking over a computer seat', () => {
+  it('a watcher takes it off turn and plays its next turn', () => {
+    let room = run(withComputer(), [say('esi', { t: 'takeover', color: 'yellow' })], T0 + 5).room
+    expect([room.computers, room.covering, seatOf(room, 'esi')]).toEqual([[], ['yellow'], 'yellow'])
+    expect(room.deadline).toBe(T0 + TIMER_SECONDS.normal * 1000) // Ama's clock is left alone
+    room = amaPasses(room)
+    expect(gameOf(room).turn).toBe('yellow')
+    expect([room.covering, room.botAt, room.deadline !== undefined]).toEqual([[], undefined, true])
+    room = run(room, [say('esi', { t: 'roll' })], room.lastActive + 5000, fixedRandom([die(3)])).room
+    expect(room.log.at(-1)).toEqual({ type: 'roll', value: 3 })
+  })
+
+  it('taken just as its turn starts, the watcher plays that turn', () => {
+    let room = amaPasses(withComputer())
+    expect(room.botAt).toBeDefined()
+    room = run(room, [say('esi', { t: 'takeover', color: 'yellow' })], room.lastActive + 5).room
+    expect([room.covering, room.botAt, room.deadline !== undefined]).toEqual([[], undefined, true])
+  })
+
+  it('taken mid-turn, the computer finishes the turn first', () => {
+    let room = amaPasses(withComputer())
+    room = alarm(room, room.botAt!, fixedRandom([die(6)])).room // yellow rolls a 6
+    room = run(room, [say('esi', { t: 'takeover', color: 'yellow' })], room.lastActive + 5).room
+    expect([room.covering, room.botAt !== undefined]).toEqual([['yellow'], true])
+    expect(sentTo(run(room, [say('esi', { t: 'move', move: chooseMove(gameOf(room), () => 0)! })]), 'esi')[0]).toEqual({ t: 'error', code: 'not_your_turn' })
+    while (gameOf(room).turn === 'yellow') room = alarm(room, room.botAt!).room
+    expect(room.covering).toEqual(['yellow'])
+    room = amaPasses(room, room.lastActive + 5000)
+    expect([room.covering, room.botAt, room.deadline !== undefined]).toEqual([[], undefined, true])
+  })
+
+  it('a seat taken over is the player’s own: covered while they are gone, theirs when they are back', () => {
+    let room = run(withComputer(), [say('esi', { t: 'takeover', color: 'yellow' }), join('yaw', 'Yaw')]).room
+    room = amaPasses(room)
+    room = run(room, [{ type: 'disconnect', device: 'esi' }], room.lastActive + 5).room
+    expect([room.covering, seatOf(room, 'esi')]).toEqual([['yellow'], 'yellow'])
+    const step = run(room, [say('yaw', { t: 'takeover', color: 'yellow' })])
+    expect(sentTo(step, 'yaw')[0]).toEqual({ t: 'error', code: 'illegal' })
+    room = run(room, [join('esi', 'Esi')], room.lastActive + 10).room
+    expect([room.covering, room.botAt, room.deadline !== undefined]).toEqual([[], undefined, true])
+  })
+
+  it('in a room nobody seated is in, taking a seat restarts the clock', () => {
+    let room = run(withComputer(), [{ type: 'disconnect', device: 'host' }]).room
+    expect([room.covering, room.botAt]).toEqual([['red'], undefined])
+    room = run(room, [say('esi', { t: 'takeover', color: 'yellow' })], T0 + 50).room
+    // Red (covered) acts; yellow is Esi's from its next turn.
+    expect([room.covering, room.botAt]).toEqual([['red', 'yellow'], T0 + 50 + ANIMATION_TIMING.botRoll])
+  })
+
+  it('refused for a seat whose player left, for a seated player, for a colour the computer doesn’t play, and in the lobby', () => {
+    const left = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'kofi' }]).room
+    const refused = (room: Room, device: string, msg: ClientMessage) => {
+      const step = run(room, [say(device, msg)])
+      expect(sentTo(step, device)[0]).toEqual({ t: 'error', code: 'illegal' })
+      return step.room
+    }
+    expect(seatOf(refused(left, 'esi', { t: 'takeover', color: 'yellow' }), 'esi')).toBeUndefined()
+    const computer = withComputer()
+    expect(refused(computer, 'host', { t: 'takeover', color: 'yellow' }).computers).toEqual(['yellow'])
+    expect(seatOf(refused(computer, 'esi', { t: 'takeover', color: 'red' }), 'esi')).toBeUndefined()
+    expect(seatOf(refused(computer, 'esi', { t: 'takeover', color: 'green' }), 'esi')).toBeUndefined()
+    const inLobby = run(lobby(2), [join('host'), join('kofi'), say('host', { t: 'sit', color: 'red' })]).room
+    expect(seatOf(refused(inLobby, 'kofi', { t: 'takeover', color: 'yellow' }), 'kofi')).toBeUndefined()
+  })
+
+  it('the old rejoin message is refused', () => {
+    const left = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'kofi' }]).room
+    const step = run(left, [say('esi', { t: 'rejoin', color: 'yellow' } as unknown as ClientMessage)])
+    expect(sentTo(step, 'esi')[0]).toEqual({ t: 'error', code: 'illegal' })
+    expect([seatOf(step.room, 'esi'), seatOf(step.room, 'kofi')]).toEqual([undefined, 'yellow'])
+  })
+
+  it('a watcher who took a seat is kept when they leave; a rematch keeps them on it', () => {
+    let room = run(withComputer(), [say('esi', { t: 'takeover', color: 'yellow' }), { type: 'disconnect', device: 'esi' }]).room
+    expect(room.members.map((m) => [m.name, m.seat])).toEqual([['Ama', 'red'], ['Esi', 'yellow']])
+    room = run(room, [join('esi', 'Esi')]).room
+    room = run({ ...room, phase: 'finished', deadline: undefined, botAt: undefined }, [say('host', { t: 'rematch' })]).room
+    expect(room.members.map((m) => m.seat)).toEqual(['red', 'yellow'])
+  })
+})
+

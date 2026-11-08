@@ -125,6 +125,7 @@ type Room = {
 | `{ t: 'start', empty: 'computers' \| 'drop' }` | host | lobby, 2+ players once filled or dropped |
 | `{ t: 'roll' }` / `{ t: 'move', move }` / `{ t: 'stop' }` | the seat that has to act | playing, not paused |
 | `{ t: 'pause' }` / `{ t: 'resume' }` | host | playing |
+| `{ t: 'takeover', color }` | a watcher | playing, `color` a computer seat |
 | `{ t: 'react', id }` | seated players | any time; 1 per 3s |
 | `{ t: 'rematch' }` | host | finished |
 | `{ t: 'rename', name }` | anyone | any time |
@@ -142,7 +143,7 @@ type Room = {
 | `{ t: 'reaction', color, id }` | Show a reaction over that yard. |
 | `{ t: 'error', code }` | `not_found`, `old_version`, `not_your_turn`, `illegal`, `too_fast`, `replaced` (opened in another tab). |
 
-**Old versions:** when `v` doesn't match, the room sends `old_version` and closes. The app shows "Update to keep playing" and reloads, which picks up the new service worker.
+**Old versions:** when `v` doesn't match, the room sends `old_version` and closes. `PROTOCOL_VERSION` is 2 since `rejoin` was replaced by `takeover`. The app shows "Update to keep playing" and reloads, which picks up the new service worker.
 
 ## Room rules
 
@@ -163,17 +164,16 @@ type Room = {
   - The allowance is the time devices need to animate the last event. It uses the existing `NORMAL_TIMING`: the roll animation, plus a step per square moved, plus effect pauses. Those numbers move into a shared module so the room and the app agree.
 - **Timeout:** the computer plays that one decision (roll, move or stop), and the clock starts again for the next one. The player stays in their seat and acts themselves next time.
 - **Disconnect:** the seat is added to `covering`, and the computer plays its decisions straight away, still paced by the allowance. The host gets the notice.
-- **Reconnect** (same device ID, or "Rejoin as …"): the seat leaves `covering` at the start of the seat's next decision, so a turn the computer is in the middle of is finished by the computer.
+- **Reconnect** (same device ID): the seat leaves `covering` at the start of the seat's next turn, so a turn the computer is in the middle of is finished by the computer. Only that player gets the seat back: nobody else can take the seat of a player who left.
 - **Pause:** host only. It stops the clock and computer moves until the host taps **Carry on**, or a covered player whose disconnect caused the pause comes back.
 - **Nobody connected:** when no human is connected, the room pauses itself. It carries on when someone returns.
 - **Computer seats:** they act after the same allowance, with the existing bot (`chooseMove`).
+- **Taking over a computer seat** ("Play as Blue"): a watcher can take a seat in `computers`, one seat per person, while playing. The seat leaves `computers` and goes into `covering`, so the watcher plays it from its next turn with its pieces where they stand; if the computer is mid-turn it finishes that turn, and at the very start of the turn (nothing decided yet) it is the watcher's at once. From then on it is a human seat like any other: covered while its player is gone, theirs again when they're back.
 - **Refused actions:** an out-of-turn or illegal action, or one sent while paused, is refused with an `error`, and that device is sent the full state.
 
 **Finished**
 - **Results:** everyone sees the results.
 - **Rematch** (host only): it keeps the members, seats and settings, empties the log and goes back to the lobby. Seats of players who have left are free again.
-
-**Rejoin as …:** on a room link, any seat whose player is disconnected offers "Rejoin as Kofi". Taking it moves that seat to the new device ID. This is fine for private rooms among friends, and open rooms (step 2) will need something stricter.
 
 ## Screens
 
@@ -195,7 +195,7 @@ Device-only settings stay per device, as now: playing hand, theme, sound, music 
   - **Turn label:** names the player: "Your turn" or "Kofi's turn".
   - **Reactions:** a reaction button opens 6 presets: 😂 👏 😱 🔥 "Hurry up" "Wicked!". The pick pops over the sender's yard for about 2 seconds on every screen.
   - **Host notice:** "Kofi left. A computer is playing for them", with **Pause and wait**. While paused, a bar shows "Paused, waiting for Kofi" and the host's **Carry on**.
-  - **Watchers:** the same board without dice control. The label above the dice says "Watching".
+  - **Watchers:** the same board without dice control. The label above the dice says "Watching". With computer seats in the game, the notice offers **Play as Blue** (one button per computer seat, under "Want to play?", or beside the pause notice), hidden while reconnecting.
   - **Connection:** "Reconnecting…" while offline. The menu's **Quit** becomes **Leave room**.
 - **Results:** the existing results. The host gets **Rematch**; the others see "Waiting for host" and **Leave**.
 
@@ -215,16 +215,16 @@ Device-only settings stay per device, as now: playing hand, theme, sound, music 
 
 ## Testing
 
-- **Room logic** (`packages/server/test/room.test.ts`, Vitest, no network): join and watch, sit and stand, settings, start (fill and drop, seat remapping, the minimum players), act, out-of-turn and illegal actions, timeout, disconnect and covering, reconnect at the next decision, rejoin as, pause and resume, the self-pause when nobody is connected, host handover, reactions and their limit, rematch, expiry. A fixed clock and fixed dice make it deterministic.
+- **Room logic** (`packages/server/test/room.test.ts`, Vitest, no network): join and watch, sit and stand, settings, start (fill and drop, seat remapping, the minimum players), act, out-of-turn and illegal actions, timeout, disconnect and covering, reconnect at the next turn, taking over a computer seat, pause and resume, the self-pause when nobody is connected, host handover, reactions and their limit, rematch, expiry. A fixed clock and fixed dice make it deterministic.
 - **Durable Object** (`@cloudflare/vitest-pool-workers`): create over HTTP, two WebSockets join, sit, start, play a few events in order, then disconnect and reconnect with a sync.
 - **App:** `useOnlineGame` against a fake socket: events apply and animate, a gap triggers sync, the deadline shows, errors resync.
-- **Browser** (Playwright, run in CI): two browser contexts. One creates a room and the other joins by code; both sit and the host starts with computers. They play turns, one disconnects and rejoins, and both see the same board.
+- **Browser** (Playwright, run in CI): two browser contexts. One creates a room and the other joins by code; both sit and the host starts with computers. They play turns, one disconnects and reconnects, and both see the same board.
 - **Existing tests:** the local game, engine and web tests are untouched and still pass.
 
 ## Refinements made while planning
 
 1. **Turn clock:** messages carry `deadlineIn` (milliseconds left), not a server timestamp, so device clocks that disagree don't matter.
 2. **Fewer message types:** lobby changes and member changes are sent as a full personalised `room` message, instead of separate `members` and `lobby` messages. `clock` carries the deadline, pause and covering after each game event.
-3. **New messages:** `{ t: 'rejoin', color }` is added for "Rejoin as …", and `pause` takes an optional `for` colour, the player being waited for.
+3. **New messages:** `{ t: 'takeover', color }` lets a watcher take a computer seat (it replaced an earlier `rejoin`, which let anyone take a seat whose player had left), and `pause` takes an optional `for` colour, the player being waited for.
 4. **Rate limit:** Cloudflare's rate-limit binding only supports 10- or 60-second windows, so room creation is limited to 3 per minute per IP instead of 10 per hour.
 5. **Away players:** a disconnected player's yard name reads "Kofi (away)", instead of using a greyed dot.

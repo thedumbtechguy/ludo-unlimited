@@ -1,7 +1,7 @@
 import type { Color, GameEvent, Move, Settings } from './types'
 
 /** Bumped whenever messages change shape; a device on another version is asked to update. */
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 export type TurnTimer = 'relaxed' | 'normal' | 'quick' | 'off'
 export const TIMER_SECONDS: Record<Exclude<TurnTimer, 'off'>, number> = { relaxed: 60, normal: 30, quick: 15 }
@@ -37,7 +37,7 @@ export type RoomInfo = { phase: RoomView['phase']; players: number; seatsFree: n
 export type ClientMessage =
   | { t: 'sit'; color: Color }
   | { t: 'stand' }
-  | { t: 'rejoin'; color: Color }
+  | { t: 'takeover'; color: Color }
   | { t: 'settings'; settings: Settings; timer: TurnTimer }
   | { t: 'start'; empty: 'computers' | 'drop' }
   | { t: 'roll' }

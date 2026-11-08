@@ -32,11 +32,12 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
   const left = clock.covering.find((c) => away.includes(c))
   const nobodyHere = !room.members.some((m) => m.seat && m.connected)
   const send = online.send
-  // A watcher can take over a seat whose player has gone.
-  const rejoinable = !you.seat && online.status === 'open' ? away : []
-  const rejoin = rejoinable.map((c) => (
-    <button key={c} type="button" className="secondary" onClick={() => send({ t: 'rejoin', color: c })}>
-      Rejoin as {nameOf(c)}
+  // A watcher can take a computer's seat, from that colour's next turn. A seat whose player left stays theirs.
+  const stillPlaying = (c: Color) => game.players.some((p) => p.color === c && p.finishedPlace === undefined)
+  const takeable = !you.seat && online.status === 'open' && game.status === 'playing' ? room.computers.filter(stillPlaying) : []
+  const takeover = takeable.map((c) => (
+    <button key={c} type="button" className="secondary" onClick={() => send({ t: 'takeover', color: c })}>
+      Play as {COLOR_NAME[c]}
     </button>
   ))
 
@@ -64,23 +65,23 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
             Carry on
           </button>
         )}
-        {rejoin}
+        {takeover}
       </Notice>
     )
   } else if (nobodyHere && game.status === 'playing') {
     // The room doesn't play on with nobody seated, so nothing moves until someone is back.
-    notice = <Notice text="Waiting for players to come back">{rejoin}</Notice>
+    notice = <Notice text="Waiting for players to come back">{takeover}</Notice>
   } else if (host && left) {
     notice = (
       <Notice text={`${nameOf(left)} left. A computer is playing for them`}>
         <button type="button" className="secondary" onClick={() => send({ t: 'pause', for: left })}>
           Pause and wait
         </button>
-        {rejoin}
+        {takeover}
       </Notice>
     )
-  } else if (rejoin.length > 0) {
-    notice = <Notice text={rejoinable.length === 1 ? `${nameOf(rejoinable[0])} left` : 'Players left'}>{rejoin}</Notice>
+  } else if (takeover.length > 0) {
+    notice = <Notice text="Want to play?">{takeover}</Notice>
   }
 
   const total = room.timer === 'off' ? 0 : TIMER_SECONDS[room.timer] * 1000

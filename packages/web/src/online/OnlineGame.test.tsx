@@ -149,31 +149,41 @@ describe('OnlineGame', () => {
     expect(screen.queryByText(/A computer is playing/)).toBeNull()
   })
 
-  it('a watcher can rejoin as a player who has gone', async () => {
-    const { send } = renderOnline({
+  it('a watcher can play as a computer seat', async () => {
+    const { send } = renderOnline({ you: WATCHER, room: { members: [ROOM.members[0]], computers: ['yellow'] } })
+    expect(screen.getByText('Want to play?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Play as Yellow' }))
+    expect(send).toHaveBeenCalledWith({ t: 'takeover', color: 'yellow' })
+  })
+
+  it('offers each computer seat, even while paused', () => {
+    const four = settingsFor('classic', 4, 'firstWins')
+    renderOnline({
       you: WATCHER,
-      room: { members: [{ id: 1, name: 'Ama', connected: true, seat: 'red' }, { id: 2, name: 'Kofi', connected: false, seat: 'yellow' }] },
+      game: createGame(four),
+      room: { settings: four, members: [ROOM.members[0]], computers: ['green', 'yellow', 'blue'] },
+      clock: { paused: true },
+    })
+    expect(screen.getByText('Paused')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Play as/ }).map((b) => b.textContent)).toEqual(['Play as Green', 'Play as Yellow', 'Play as Blue'])
+  })
+
+  it('never offers the seat of a player who left', () => {
+    renderOnline({
+      you: WATCHER,
+      room: { members: [ROOM.members[0], { id: 2, name: 'Kofi', connected: false, seat: 'yellow' }] },
       clock: { covering: ['yellow'] },
     })
-    expect(screen.getByText('Kofi left')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Rejoin as Kofi' }))
-    expect(send).toHaveBeenCalledWith({ t: 'rejoin', color: 'yellow' })
+    expect(screen.queryByRole('button', { name: /^Play as|^Rejoin/ })).toBeNull()
+    expect(screen.queryByText('Want to play?')).toBeNull()
   })
 
-  it('offers every gone seat to a watcher when nobody is left playing', () => {
-    renderOnline({ you: WATCHER, room: { members: ROOM.members.map((m) => ({ ...m, connected: false })) }, clock: { covering: ['red', 'yellow'] } })
-    expect(screen.getByText('Waiting for players to come back')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Rejoin as/ }).map((b) => b.textContent)).toEqual(['Rejoin as Ama', 'Rejoin as Kofi'])
-  })
-
-  it('no rejoin for a seated player, for a seat whose player is here, or while reconnecting', () => {
-    const away = { members: [{ id: 1, name: 'Ama', connected: true, seat: 'red' as const }, { id: 2, name: 'Kofi', connected: false, seat: 'yellow' as const }] }
-    const { rerender } = renderOnline({ room: away })
-    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
-    rerender({ you: WATCHER })
-    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
-    rerender({ you: WATCHER, room: away, status: 'reconnecting' })
-    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
+  it('no Play as for a seated player, or while reconnecting', () => {
+    const computer = { members: [ROOM.members[0]], computers: ['yellow' as const] }
+    const { rerender } = renderOnline({ room: computer })
+    expect(screen.queryByRole('button', { name: /^Play as/ })).toBeNull()
+    rerender({ you: WATCHER, room: computer, status: 'reconnecting' })
+    expect(screen.queryByRole('button', { name: /^Play as/ })).toBeNull()
   })
 
   it('rings the dice while a person has the clock; not while paused', () => {
