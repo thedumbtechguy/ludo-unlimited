@@ -24,7 +24,8 @@ export type FxAction =
   | { type: 'fountain'; at: Point; color: Color; count: number }
   | { type: 'burst'; at: Point; color: Color; count: number }
   | { type: 'fireworks'; color: Color; rockets: number; count: number }
-  | { type: 'confetti'; count: number }
+  /** `waves` bursts of `count` each, falling one after another from the top of the board. */
+  | { type: 'confetti'; count: number; waves: number }
 
 export const SPARKS = 44
 export const SPEED_LINES = 10
@@ -35,7 +36,9 @@ export const FINISH_BURST = 40
 export const ROCKETS = 3
 /** Sparks in each rocket's burst. */
 export const SHELL = 56
-export const CONFETTI = 120
+/** Confetti in each of the win's waves. */
+export const CONFETTI = 60
+export const CONFETTI_WAVES = 3
 const LANE = [1, 2, 3, 4, 5]
 
 /** The middle of a colour's yard. */
@@ -88,15 +91,18 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel, state: G
       return [{ type: 'shimmer', at: effect.at, color: effect.color, id: effect.id }]
     case 'pieceHome':
       return [{ type: 'fountain', at: positionPoint({ kind: 'home' }, effect.piece), color: effect.piece.color, count: FOUNTAIN }]
-    case 'playerFinished':
-      return [{ type: 'burst', at: yardCentre(effect.color), color: effect.color, count: FINISH_BURST }]
-    case 'gameOver': {
-      const winner = state.players.find((p) => p.finishedPlace === 1)?.color ?? state.turn
+    case 'playerFinished': {
+      const burst: FxAction = { type: 'burst', at: yardCentre(effect.color), color: effect.color, count: FINISH_BURST }
+      // The winner gets the fireworks and confetti, even when play goes on for the other places.
+      if (effect.place !== 1) return [burst]
       return [
-        { type: 'fireworks', color: winner, rockets: ROCKETS, count: SHELL },
-        { type: 'confetti', count: CONFETTI },
+        burst,
+        { type: 'fireworks', color: effect.color, rockets: ROCKETS, count: SHELL },
+        { type: 'confetti', count: CONFETTI, waves: CONFETTI_WAVES },
       ]
     }
+    // Celebrated by the finish that ended it.
+    case 'gameOver':
     case 'sixStreak':
     case 'streakEnded':
       return []
@@ -104,10 +110,15 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel, state: G
 }
 
 /**
- * How long the finished board stays up before the results screen, so the win can play out: the
- * fireworks and confetti on full effects, their short reduced form otherwise, none with effects off.
+ * How long the finished board stays up before the results screen, so the last finish can play out:
+ * the win's fireworks, confetti and callout when the game ended on the win, or the shorter callout
+ * for a later place. None without animations (`?fast`).
  */
-export function resultsDelay(enabled: boolean, level: EffectsLevel): number {
+export function resultsDelay(enabled: boolean, wonNow: boolean): number {
   if (!enabled) return 0
-  return level === 'full' ? 1600 : 800
+  return (wonNow ? WIN_CALLOUT_MS : FINISH_CALLOUT_MS) + 300
 }
+
+/** How long a finish callout stays up: longer for the win. */
+export const WIN_CALLOUT_MS = 3400
+export const FINISH_CALLOUT_MS = 2000

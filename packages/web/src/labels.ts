@@ -1,4 +1,5 @@
-import { isWicked, MODES, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
+import { isWicked, MODES, type Color, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
+import { FINISH_CALLOUT_MS, WIN_CALLOUT_MS } from './fx/actions'
 import type { Seats } from './types'
 
 export const COLOR_NAME: Record<Color, string> = { red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue' }
@@ -117,7 +118,8 @@ const KICK_TITLE: Record<Move['kind'], string> = {
   homeKick: 'Home kick!',
 }
 
-export type KickCalloutText = { title: string; line: string; wicked?: boolean }
+/** `ms`: how long it stays up, if not the usual. `win`: the biggest text, for the winner. */
+export type KickCalloutText = { title: string; line: string; wicked?: boolean; win?: boolean; ms?: number }
 
 /**
  * The big callouts for a kick, in the order they show, worked out from the state before the move:
@@ -128,4 +130,27 @@ export function kickCallouts(move: Move, before: GameState): KickCalloutText[] {
   const line = `${COLOR_NAME[move.piece.color]} sent ${COLOR_NAME[move.kick.color]} back to base`
   const kick = { title: KICK_TITLE[move.kind], line }
   return isWicked(before, move) ? [kick, { title: 'Wicked!', line, wicked: true }] : [kick]
+}
+
+/**
+ * The callout when a move gets a player's last piece home: "Red wins!" for 1st place, "Green comes
+ * 2nd!" after that, and underneath what happens next. `effects` are the move's, `after` the game
+ * once it's made, `you` the first human seat (named "You").
+ */
+export function finishCallout(effects: GameEffect[], after: GameState, you?: Color): (KickCalloutText & { color: Color }) | undefined {
+  const finished = effects.flatMap((e) => (e.type === 'playerFinished' ? [e] : []))
+  if (finished.length === 0) return undefined
+  // When play for places ends, the one player left is placed last along with the finisher.
+  const [{ color, place }, last] = finished
+  const who = (c: Color) => (c === you ? 'You' : COLOR_NAME[c])
+  const comes = (c: Color) => (c === you ? 'come' : 'comes')
+  const title = place === 1 ? `${who(color)} ${color === you ? 'win' : 'wins'}!` : `${who(color)} ${comes(color)} ${ORDINAL[place - 1]}!`
+  const line =
+    after.status === 'playing'
+      ? `Play goes on for ${ORDINAL[place]} place`
+      : last
+        ? `${who(last.color)} ${comes(last.color)} ${ORDINAL[last.place - 1]}`
+        : 'All four pieces home'
+  const win = place === 1
+  return { title, line, color, win, ms: win ? WIN_CALLOUT_MS : FINISH_CALLOUT_MS }
 }

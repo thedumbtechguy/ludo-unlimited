@@ -45,6 +45,8 @@ const LAUNCHES = [
   { x: 0.5, top: 0.16, at: 0.52 },
 ]
 const PLAYER_COLORS = Object.values(COLOR_HEX)
+/** Time between the win's confetti waves. */
+const CONFETTI_GAP_MS = 800
 
 function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, stage: Stage, owners: Owners, later: Later): void {
   const { toScreen, u, rect } = stage
@@ -128,7 +130,9 @@ function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, 
     }
     case 'confetti': {
       const make = confetti(PLAYER_COLORS, rect.width, u)
-      later(() => fx.burst(rect.left + rect.width / 2, rect.top, action.count, make), 120)
+      for (let wave = 0; wave < action.waves; wave++) {
+        later(() => fx.burst(rect.left + rect.width / 2, rect.top, action.count, make), 120 + wave * CONFETTI_GAP_MS)
+      }
       return
     }
     case 'smoke': {

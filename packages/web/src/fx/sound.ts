@@ -75,8 +75,9 @@ export function soundsFor(event: SoundEvent): SoundId[] {
       return ['shatter']
     case 'pieceHome':
       return ['home']
-    case 'gameOver':
-      return ['fanfare']
+    // The fanfare is for the winner, even when play goes on for the other places.
+    case 'playerFinished':
+      return event.place === 1 ? ['fanfare'] : []
     default:
       return []
   }
@@ -88,9 +89,14 @@ export function crackleVolume(count: number): number {
   return Math.min(0.5, 0.15 + 0.08 * (count - 2))
 }
 
-/** The big moments the music dips under: kicks (and wicked on top), "On fire" and the end of the game. */
+/** The big moments the music dips under: kicks (and wicked on top), "On fire" and the win. */
 export function ducksMusic(event: SoundEvent): boolean {
-  return event.type === 'kick' || event.type === 'wicked' || event.type === 'gameOver' || (event.type === 'sixStreak' && event.count === ON_FIRE)
+  return (
+    event.type === 'kick' ||
+    event.type === 'wicked' ||
+    (event.type === 'playerFinished' && event.place === 1) ||
+    (event.type === 'sixStreak' && event.count === ON_FIRE)
+  )
 }
 
 /** Called once for every effect as it plays, and for the screen's own moments. */

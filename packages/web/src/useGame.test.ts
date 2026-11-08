@@ -110,7 +110,7 @@ describe('useGame', () => {
     act(() => result.current.play(result.current.targets.find((m) => m.kind === 'back')!))
     for (let i = 0; i < 3; i++) act(() => vi.advanceTimersByTime(100))
     expect(result.current.moving).toBeUndefined()
-    expect(result.current.callout).toMatchObject({ title: 'Back kick!', kind: 'back' })
+    expect(result.current.callout).toMatchObject({ title: 'Back kick!', color: 'red' })
     // Yellow's last piece in play was kicked, so the Labourer starts with the kick too.
     expect(result.current.effects.map((e) => e.type)).toEqual(['kick', 'labourerStart'])
     act(() => vi.advanceTimersByTime(WICKED_DELAY - 1))
@@ -152,7 +152,19 @@ describe('useGame', () => {
     expect(result.current.callout).toBeUndefined()
     act(() => vi.advanceTimersByTime(100))
     expect(result.current.moving).toBeUndefined()
-    expect(result.current.callout).toMatchObject({ title: 'Kick!', color: 'red', kind: 'front' })
+    expect(result.current.callout).toMatchObject({ title: 'Kick!', color: 'red' })
+  })
+
+  it('calls out the win when the last piece gets home: "You win!" for the first human seat', async () => {
+    const initial = createGame(classic2)
+    initial.players[0].pieces = [lane('red', 3), HOME, HOME, HOME]
+    const { result } = renderHook(() =>
+      useGame({ settings: classic2, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING, initial }),
+    )
+    act(() => result.current.roll())
+    await waitFor(() => expect(result.current.game.status).toBe('finished'))
+    expect(result.current.callout).toMatchObject({ title: 'You win!', line: 'All four pieces home', color: 'red', win: true })
+    expect(result.current.message).toBe('You win! All four pieces home')
   })
 
   it('animates a move square by square before applying it', () => {

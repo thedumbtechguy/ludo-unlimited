@@ -43,14 +43,15 @@ describe('soundsFor', () => {
     expect(soundsFor({ type: 'labourerFreed', victim: 'yellow' })).toEqual(['shatter'])
   })
 
-  it('chimes a piece home and plays the fanfare at the end', () => {
+  it('chimes a piece home and plays the fanfare for the winner, even when play goes on', () => {
     expect(soundsFor({ type: 'pieceHome', piece: red0 })).toEqual(['home'])
-    expect(soundsFor({ type: 'gameOver' })).toEqual(['fanfare'])
+    expect(soundsFor({ type: 'playerFinished', color: 'red', place: 1 })).toEqual(['fanfare'])
   })
 
   it('is quiet for the rest', () => {
     expect(soundsFor({ type: 'blockFormed', color: 'red', at: HOME })).toEqual([])
-    expect(soundsFor({ type: 'playerFinished', color: 'red', place: 1 })).toEqual([])
+    expect(soundsFor({ type: 'playerFinished', color: 'red', place: 2 })).toEqual([])
+    expect(soundsFor({ type: 'gameOver' })).toEqual([])
   })
 
   it('taps for a button', () => {
@@ -63,10 +64,12 @@ describe('soundsFor', () => {
 })
 
 describe('ducksMusic', () => {
-  it('dips the music for kicks, "On fire" and the end of the game only', () => {
+  it('dips the music for kicks, "On fire" and the win only', () => {
     expect(ducksMusic(kick('front'))).toBe(true)
     expect(ducksMusic({ type: 'wicked', piece: red0, at: track(0) })).toBe(true)
-    expect(ducksMusic({ type: 'gameOver' })).toBe(true)
+    expect(ducksMusic({ type: 'playerFinished', color: 'red', place: 1 })).toBe(true)
+    expect(ducksMusic({ type: 'playerFinished', color: 'red', place: 2 })).toBe(false)
+    expect(ducksMusic({ type: 'gameOver' })).toBe(false)
     expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 4 })).toBe(true)
     expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 5 })).toBe(false)
     expect(ducksMusic({ type: 'pieceHome', piece: red0 })).toBe(false)

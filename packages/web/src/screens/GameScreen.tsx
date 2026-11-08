@@ -53,8 +53,11 @@ export function GameScreen({ options, hand, onHand, theme, onTheme, effectsLevel
 
   useEffect(() => {
     if (game.status !== 'finished' || g.moving) return
-    // The win plays out on the board (fireworks, confetti) before the results take over.
-    const delay = resultsDelay(options.timing.step > 0, effectsLevel)
+    // The last finish plays out on the board (the win's fireworks and confetti, its callout) before the results take over.
+    const last = game.log.at(-1)
+    const winner = game.players.find((p) => p.finishedPlace === 1)?.color
+    const wonNow = last?.type === 'move' && last.move.piece.color === winner
+    const delay = resultsDelay(options.timing.step > 0, wonNow)
     if (delay === 0) return onFinish(game)
     const id = setTimeout(() => onFinish(game), delay)
     return () => clearTimeout(id)
@@ -117,9 +120,14 @@ export function GameScreen({ options, hand, onHand, theme, onTheme, effectsLevel
           {/* On phones the dice sits under the playing hand's thumb. */}
           <section className="controls" aria-label="Dice" data-hand={hand}>
             <div className="dice-slot" ref={dice}>
+              {/* Once the game is over it's nobody's turn; the space stays so nothing moves. */}
               <p className="turn-label" style={{ '--turn-color': COLOR_HEX[mover] } as CSSProperties}>
-                <span className="turn-dot" aria-hidden="true" />
-                {turnTag(mover, you)}
+                {game.status === 'playing' && (
+                  <>
+                    <span className="turn-dot" aria-hidden="true" />
+                    {turnTag(mover, you)}
+                  </>
+                )}
               </p>
               <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
               <OnFire count={streak.count} place="desk" />

@@ -1,7 +1,7 @@
 import { createGame, lane, settingsFor, track, type GameEffect } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { positionPoint } from '../layout'
-import { CONFETTI, effectActions, FINISH_BURST, resultsDelay, ROCKETS, SHELL, FOUNTAIN, SHARDS, SMOKE, SPARKS, SPEED_LINES, yardCentre } from './actions'
+import { CONFETTI, CONFETTI_WAVES, effectActions, FINISH_CALLOUT_MS, WIN_CALLOUT_MS, FINISH_BURST, resultsDelay, ROCKETS, SHELL, FOUNTAIN, SHARDS, SMOKE, SPARKS, SPEED_LINES, yardCentre } from './actions'
 
 const state = createGame(settingsFor('ghana', 4, 'firstWins'))
 const red0 = { color: 'red', index: 0 } as const
@@ -80,19 +80,22 @@ describe('effect actions', () => {
     expect(effectActions(event({ type: 'pieceHome', piece: red0 }), 'full', state)).toEqual([
       { type: 'fountain', at: positionPoint({ kind: 'home' }, red0), color: 'red', count: FOUNTAIN },
     ])
-    expect(effectActions(event({ type: 'playerFinished', color: 'yellow', place: 1 }), 'reduced', state)).toEqual([
+    expect(effectActions(event({ type: 'playerFinished', color: 'yellow', place: 2 }), 'reduced', state)).toEqual([
       { type: 'burst', at: yardCentre('yellow'), color: 'yellow', count: FINISH_BURST },
     ])
   })
 
-  it('the win: fireworks in the winner’s colour, then confetti', () => {
-    const won = createGame(settingsFor('ghana', 4, 'firstWins'))
-    won.players[2].finishedPlace = 1
-    expect(effectActions(event({ type: 'gameOver' }), 'full', won)).toEqual([
+  it('the win: the burst, fireworks in the winner’s colour, then waves of confetti, even when play goes on', () => {
+    expect(effectActions(event({ type: 'playerFinished', color: 'yellow', place: 1 }), 'full', state)).toEqual([
+      { type: 'burst', at: yardCentre('yellow'), color: 'yellow', count: FINISH_BURST },
       { type: 'fireworks', color: 'yellow', rockets: ROCKETS, count: SHELL },
-      { type: 'confetti', count: CONFETTI },
+      { type: 'confetti', count: CONFETTI, waves: CONFETTI_WAVES },
     ])
-    expect(CONFETTI).toBe(120)
+    expect(CONFETTI * CONFETTI_WAVES).toBe(180)
+  })
+
+  it('the end of the game adds nothing: the finish that ended it was celebrated', () => {
+    expect(effectActions(event({ type: 'gameOver' }), 'full', state)).toEqual([])
   })
 
   it('the six streak is shown elsewhere', () => {
@@ -100,15 +103,18 @@ describe('effect actions', () => {
   })
 })
 
-describe('the results screen after a win', () => {
-  it('waits about 1.6s on full effects so the fireworks and confetti play out', () => {
-    expect(resultsDelay(true, 'full')).toBe(1600)
+describe('the results screen after the last finish', () => {
+  it('waits for the win’s callout, confetti and fireworks when the game ended on the win', () => {
+    expect(resultsDelay(true, true)).toBeGreaterThan(WIN_CALLOUT_MS)
   })
 
-  it('waits less for the short reduced version, and not at all with effects off (?fast)', () => {
-    expect(resultsDelay(true, 'reduced')).toBeLessThan(1600)
-    expect(resultsDelay(true, 'reduced')).toBeGreaterThan(0)
-    expect(resultsDelay(false, 'full')).toBe(0)
-    expect(resultsDelay(false, 'reduced')).toBe(0)
+  it('waits for the shorter callout when it ended on a later place', () => {
+    expect(resultsDelay(true, false)).toBeGreaterThan(FINISH_CALLOUT_MS)
+    expect(resultsDelay(true, false)).toBeLessThan(resultsDelay(true, true))
+  })
+
+  it('does not wait without animations (?fast)', () => {
+    expect(resultsDelay(false, true)).toBe(0)
+    expect(resultsDelay(false, false)).toBe(0)
   })
 })

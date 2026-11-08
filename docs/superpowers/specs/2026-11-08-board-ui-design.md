@@ -55,7 +55,7 @@ Make Ludo Unlimited playable on one device: 2–4 seats, each Human or Computer,
    - A turn banner in the current player's colour, showing who is moving when a Labourer owner plays someone else's roll.
    - A Labourer badge on each victim's yard.
    - A short message after a kick, e.g. "Red Line Kicked Yellow!"
-4. **Results:** the placings, with Play again (same settings) and Home.
+4. **Results:** the placings, with Play again (same settings) and Home. It comes up once the last finish has played out on the board.
 
 ## Board (Look B: clean and modern)
 
@@ -160,7 +160,8 @@ type GameEffect =
 | Labourer | Chains slam over the victim's yard. When the victim is freed, the chains shatter. |
 | Block formed | A shield shimmer. |
 | Piece home | A sparkle fountain from the centre. |
-| Win | Fireworks and confetti. |
+| Win (1st place) | A "Red wins!" callout (about 3.4 s), fireworks in the winner's colour, three slow waves of confetti and the fanfare. This plays when 1st place finishes, even if play goes on for the other places. |
+| A later place | A burst over the yard and a callout such as "Green comes 2nd!" (about 2 s). Underneath: "Play goes on for 3rd place", or, when that settles the places, who came last. |
 
 - **Tech:**
   - The browser's Web Animations API (`element.animate`) for the text stamps, screen shake and arcs, with no animation library.

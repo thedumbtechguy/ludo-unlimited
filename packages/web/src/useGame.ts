@@ -15,7 +15,6 @@ import {
   type GameEffect,
   type GameEvent,
   type GameState,
-  type KickKind,
   type Move,
   type PieceId,
   type Position,
@@ -26,7 +25,7 @@ import { realChoices } from './choices'
 import type { Dice } from './dice'
 import { playSound, type SoundEvent } from './fx/sound'
 import type { EffectEvent } from './fx/stream'
-import { kickCallouts, kickMessage, type KickCalloutText, type Wasted } from './labels'
+import { finishCallout, firstHuman, kickCallouts, kickMessage, type KickCalloutText, type Wasted } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
@@ -68,8 +67,8 @@ const stepSound = ({ path, fromBase }: Animation, step: number): SoundEvent => (
 /** Enough recent effects for any listener a render or two behind. */
 const KEPT_EFFECTS = 32
 
-/** A kick to call out over the board; `id` tells one callout from the next. */
-export type Callout = KickCalloutText & { id: number; color: Color; kind: KickKind }
+/** A kick or a finish to call out over the board; `id` tells one callout from the next. */
+export type Callout = KickCalloutText & { id: number; color: Color }
 type CalloutText = Omit<Callout, 'id'>
 
 /** How long after a wicked kick lands "Wicked!" comes in on top of it, with its smoke and sound. */
@@ -150,10 +149,11 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     const next = applyMove(game, move)
     setSelected(undefined)
     setWasted(undefined)
-    setMessage(kickMessage(move))
     const landed = describeMove(game, move, next)
-    const kind = landed.find((e) => e.type === 'kick')?.kind
-    const callouts = kind ? kickCallouts(move, game).map((text) => ({ ...text, color: move.piece.color, kind })) : []
+    // A move that gets a player's last piece home can't kick, so it's one or the other.
+    const finish = finishCallout(landed, next, firstHuman(seats, game.players.map((p) => p.color)))
+    const callouts = finish ? [finish] : kickCallouts(move, game).map((text) => ({ ...text, color: move.piece.color }))
+    setMessage(finish ? `${finish.title} ${finish.line}` : kickMessage(move))
     if (callouts.length === 0) setCallout(undefined)
     if (timing.step === 0) {
       land(landed, callouts)

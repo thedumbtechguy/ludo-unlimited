@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, firstHuman, kickCallouts, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
+import { combinedRolls, describePosition, finishCallout, firstHuman, kickCallouts, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -103,5 +103,57 @@ describe('labels', () => {
   it('says whose roll had no move', () => {
     expect(wastedText({ color: 'red', value: 4 }, 'red')).toBe('No move with your 4')
     expect(wastedText({ color: 'green', value: 4 }, 'red')).toBe('Green had no move with a 4')
+  })
+})
+
+describe('finishCallout', () => {
+  const game = (endCondition: 'firstWins' | 'playForPlaces', status: 'playing' | 'finished') => ({
+    ...createGame(settingsFor('ghana', 4, endCondition)),
+    status,
+  })
+  const finished = (color: 'red' | 'green' | 'yellow' | 'blue', place: number) => ({ type: 'playerFinished' as const, color, place })
+
+  it('says nothing for a move that finishes no one', () => {
+    expect(finishCallout([{ type: 'pieceHome', piece: { color: 'red', index: 0 } }], game('firstWins', 'playing'))).toBeUndefined()
+  })
+
+  it('calls the win, and that the game is over, when the first home wins', () => {
+    expect(finishCallout([finished('red', 1), { type: 'gameOver' }], game('firstWins', 'finished'))).toMatchObject({
+      title: 'Red wins!',
+      line: 'All four pieces home',
+      color: 'red',
+      win: true,
+    })
+  })
+
+  it('says "You" for the first human seat', () => {
+    expect(finishCallout([finished('red', 1)], game('firstWins', 'finished'), 'red')?.title).toBe('You win!')
+    expect(finishCallout([finished('green', 2)], game('playForPlaces', 'playing'), 'green')?.title).toBe('You come 2nd!')
+  })
+
+  it('when play goes on for places, says which place is next', () => {
+    expect(finishCallout([finished('blue', 1)], game('playForPlaces', 'playing'))).toMatchObject({
+      title: 'Blue wins!',
+      line: 'Play goes on for 2nd place',
+      win: true,
+    })
+    expect(finishCallout([finished('green', 2)], game('playForPlaces', 'playing'))).toMatchObject({
+      title: 'Green comes 2nd!',
+      line: 'Play goes on for 3rd place',
+      win: false,
+    })
+  })
+
+  it('when the places are settled, names who came last too', () => {
+    expect(finishCallout([finished('green', 3), finished('red', 4), { type: 'gameOver' }], game('playForPlaces', 'finished'), 'red')).toMatchObject({
+      title: 'Green comes 3rd!',
+      line: 'You come 4th',
+    })
+  })
+
+  it('the win stays up longer than a later place', () => {
+    const win = finishCallout([finished('red', 1)], game('playForPlaces', 'playing'))!
+    const second = finishCallout([finished('red', 2)], game('playForPlaces', 'playing'))!
+    expect(win.ms).toBeGreaterThan(second.ms!)
   })
 })
