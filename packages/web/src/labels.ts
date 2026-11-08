@@ -1,4 +1,4 @@
-import type { Color, GameState, Move, PieceId, Position } from '@ludo/engine'
+import { MODES, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
 import type { Seats } from './types'
 
 export const COLOR_NAME: Record<Color, string> = { red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue' }
@@ -88,3 +88,17 @@ const KICK_VERB: Record<Move['kind'], string> = {
 
 export const kickMessage = (move: Move): string | undefined =>
   move.kick ? `${COLOR_NAME[move.piece.color]} ${KICK_VERB[move.kind]} ${COLOR_NAME[move.kick.color]}!` : undefined
+
+const sameRules = (a: Rules, b: Rules) => (Object.keys(a) as (keyof Rules)[]).every((key) => a[key] === b[key])
+
+/** The preset these rules match, if any. */
+export const modeOf = (rules: Rules): ModeName | undefined =>
+  (Object.keys(MODES) as ModeName[]).find((mode) => sameRules(rules, MODES[mode].rules))
+
+const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
+
+/** "Ghana rules", "Classic rules" or "Custom rules". */
+export const rulesName = (rules: Rules): string => {
+  const mode = modeOf(rules)
+  return mode ? MODE_RULES_NAME[mode] : 'Custom rules'
+}

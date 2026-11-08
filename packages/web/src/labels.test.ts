@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, firstHuman, kickMessage, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag } from './labels'
+import { combinedRolls, describePosition, firstHuman, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -53,5 +53,12 @@ describe('labels', () => {
     expect(turnTag('red', 'red')).toBe('Your turn')
     expect(turnTag('green', 'red')).toBe("Green's turn")
     expect(turnTag('green', undefined)).toBe("Green's turn")
+  })
+
+  it('names the rules', () => {
+    const plain = { backKick: false, lineKick: false, homeKick: false, labourer: false }
+    expect(rulesName({ backKick: true, lineKick: true, homeKick: true, labourer: true })).toBe('Ghana rules')
+    expect(rulesName(plain)).toBe('Classic rules')
+    expect(rulesName({ ...plain, lineKick: true })).toBe('Custom rules')
   })
 })

@@ -5,8 +5,8 @@ import { GameScreen } from './screens/GameScreen'
 import { Home } from './screens/Home'
 import { Results } from './screens/Results'
 import { Setup } from './screens/Setup'
-import { clearGame, loadGame, loadHand, saveGame } from './storage'
-import type { Seats } from './types'
+import { clearGame, loadGame, loadHand, saveGame, saveHand } from './storage'
+import type { Hand, Seats } from './types'
 import type { Timing } from './useGame'
 
 type Screen =
@@ -18,7 +18,11 @@ type Screen =
 export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
   const [screen, setScreen] = useState<Screen>({ name: 'home' })
   const [saved, setSaved] = useState(loadGame)
-  const [hand] = useState(loadHand)
+  const [hand, setHand] = useState(loadHand)
+  const changeHand = (next: Hand) => {
+    saveHand(next)
+    setHand(next)
+  }
 
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) =>
     setScreen({ name: 'game', settings, seats, log, key: Date.now() })
@@ -51,7 +55,9 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
             onChange: (game) => saveGame({ settings: screen.settings, seats: screen.seats, log: game.log }),
           }}
           hand={hand}
+          onHand={changeHand}
           onQuit={goHome}
+          onRestart={() => startGame(screen.settings, screen.seats)}
           onFinish={(game) => {
             clearGame()
             setSaved(undefined)
