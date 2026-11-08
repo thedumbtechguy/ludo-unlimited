@@ -24,7 +24,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
 import { playSound, type SoundEvent } from './fx/sound'
 import type { EffectEvent } from './fx/stream'
-import { kickCallout, kickMessage } from './labels'
+import { kickCallout, kickMessage, type Wasted } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
@@ -66,6 +66,8 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const [selected, setSelected] = useState<PieceId>()
   const [lastRoll, setLastRoll] = useState<number>()
   const [message, setMessage] = useState<string>()
+  // The last roll that had no move: shown until someone moves or rolls again.
+  const [wasted, setWasted] = useState<Wasted>()
   const [callout, setCallout] = useState<Callout>()
   const [rollingTo, setRollingTo] = useState<number>()
   const rolling = rollingTo !== undefined
@@ -95,14 +97,16 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     setLastRoll(value)
     // Still rolling after a 6 is not a wasted roll: the hint offers rolling again or stopping.
     const wasted = next.pendingRoll === undefined && next.queuedRolls.length === 0
-    setMessage(wasted ? 'No moves' : undefined)
+    setMessage(undefined)
+    setWasted(wasted ? { color: game.turn, value } : undefined)
     setGame(next)
   }
 
   function stop() {
     const next = stopRolling(game)
     emit(describeRoll(game, next))
-    setMessage(next.pendingRoll === undefined ? 'No moves' : undefined)
+    setMessage(undefined)
+    setWasted(next.pendingRoll === undefined ? { color: game.turn, value: 6 } : undefined)
     setGame(next)
   }
 
@@ -121,6 +125,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   function play(move: Move) {
     const next = applyMove(game, move)
     setSelected(undefined)
+    setWasted(undefined)
     setMessage(kickMessage(move))
     const kick = kickCallout(move, game)
     setCallout((last) => (kick ? { id: (last?.id ?? 0) + 1, color: move.piece.color, ...kick } : undefined))
@@ -206,6 +211,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
 
   return {
     game,
+    wasted,
     moving,
     movable,
     selected,

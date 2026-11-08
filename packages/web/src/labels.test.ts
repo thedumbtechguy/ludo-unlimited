@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, firstHuman, kickCallout, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag } from './labels'
+import { combinedRolls, describePosition, firstHuman, kickCallout, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -89,5 +89,10 @@ describe('labels', () => {
     it('has nothing to say about a move without a kick', () => {
       expect(kickCallout({ kind: 'forward', piece, to: track(13) }, before())).toBeUndefined()
     })
+  })
+
+  it('says whose roll had no move', () => {
+    expect(wastedText({ color: 'red', value: 4 }, 'red')).toBe('No move with your 4')
+    expect(wastedText({ color: 'green', value: 4 }, 'red')).toBe('Green had no move with a 4')
   })
 })

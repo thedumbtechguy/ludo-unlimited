@@ -149,8 +149,8 @@ describe('GameScreen', () => {
     it('says when a roll has no moves', async () => {
       renderGame()
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
-      expect(screen.getByRole('status')).toHaveTextContent('No moves')
-      expect(screen.getByText('No moves. Tap the dice to roll')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('No move with your 3')
+      expect(screen.getByText('No move with your 3. Tap the dice to roll')).toBeInTheDocument()
     })
   })
 

@@ -101,8 +101,16 @@ describe('useGame', () => {
   it('a wasted roll says so and passes the turn', () => {
     const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING }))
     act(() => result.current.roll())
-    expect(result.current.message).toBe('No moves')
+    expect(result.current.wasted).toEqual({ color: 'red', value: 3 })
     expect(result.current.game.turn).toBe('yellow')
+  })
+
+  it('forgets a wasted roll once the next roll counts', () => {
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3, 6]), timing: FAST_TIMING }))
+    act(() => result.current.roll())
+    expect(result.current.wasted).toEqual({ color: 'red', value: 3 })
+    act(() => result.current.roll())
+    expect(result.current.wasted).toBeUndefined()
   })
 
   it('animates a move square by square before applying it', () => {
@@ -275,7 +283,7 @@ describe('useGame', () => {
     act(() => vi.advanceTimersByTime(1))
     expect(result.current.rolling).toBe(false)
     expect(result.current.lastRoll).toBe(3)
-    expect(result.current.message).toBe('No moves')
+    expect(result.current.wasted).toEqual({ color: 'red', value: 3 })
     expect(result.current.game.turn).toBe('yellow')
   })
 

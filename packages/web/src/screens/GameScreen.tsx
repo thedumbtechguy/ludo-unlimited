@@ -1,6 +1,7 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import { Board } from '../components/Board'
+import { BoardFx } from '../fx/BoardFx'
 import { FxLayer } from '../fx/FxLayer'
 import { DiceFire, OnFire, StreakLabel, useSixStreak } from '../fx/SixStreak'
 import { useGameAudio } from '../fx/useGameAudio'
@@ -8,7 +9,7 @@ import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
-import { firstHuman, rulesName, seatNames } from '../labels'
+import { firstHuman, rulesName, seatNames, wastedText } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
 import type { EffectsLevel, Hand } from '../types'
 import { useGame, type GameOptions } from '../useGame'
@@ -38,6 +39,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   const [preview, setPreview] = useState<Move>()
   const [menuOpen, setMenuOpen] = useState(false)
   const dice = useRef<HTMLDivElement>(null)
+  const play = useRef<HTMLDivElement>(null)
   const streak = useSixStreak(g.effects, game.turn)
   useGameAudio({ enabled: options.timing.step > 0, streak: streak.count })
   useEffect(() => setPreview(undefined), [game])
@@ -49,7 +51,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   const mover = currentMover(game) ?? game.turn
   const colors = game.players.map((p) => p.color)
   // Seats never change during a game, so neither does the turn of the board (only the hand preference can).
-  const turn = quarterTurns(viewerOf(options.seats, colors), hand)
+  const you = viewerOf(options.seats, colors)
+  const turn = quarterTurns(you, hand)
   const hint = g.humanToRoll
     ? 'Tap the dice to roll'
     : g.humanToMove
@@ -57,8 +60,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
         ? 'Tap a numbered square, or a piece'
         : 'Tap a marked square'
       : ''
-  const noMoves = g.message === 'No moves'
-  const shownHint = noMoves ? (hint ? `No moves. ${hint}` : 'No moves') : hint
+  const noMove = g.wasted && wastedText(g.wasted, you)
+  const shownHint = noMove ? (hint ? `${noMove}. ${hint}` : noMove) : hint
 
   return (
     // Effects are skipped when timing is instant (the browser tests' ?fast), so they never slow a game down.
@@ -75,7 +78,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
           </button>
         </header>
 
-        <div className="play">
+        <div className="play" ref={play}>
           {/* Phones: the empty table above the board, where "On fire" goes. */}
           <div className="fire-slot" data-hand={hand}>
             <OnFire count={streak.count} place="phone" />
@@ -96,6 +99,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
             active={game.status === 'playing' ? mover : undefined}
           >
             <KickCallout callout={g.callout} />
+            <BoardFx effects={g.effects} turn={turn} area={play} />
           </Board>
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
           {/* On phones the dice sits under the playing hand's thumb. */}
@@ -127,7 +131,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
         </div>
 
         <p className="sr-only" role="status">
-          {g.message ?? ''}
+          {g.message ?? noMove ?? ''}
         </p>
 
         {menuOpen && (

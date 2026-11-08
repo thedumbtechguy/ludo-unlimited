@@ -23,6 +23,12 @@ export function seatNames(seats: Seats, colors: Color[]): Partial<Record<Color, 
 /** The tag on the active yard. */
 export const turnTag = (color: Color, you?: Color): string => (color === you ? 'Your turn' : `${COLOR_NAME[color]}'s turn`)
 
+/** A roll that had no legal move, and who rolled it. */
+export type Wasted = { color: Color; value: number }
+
+export const wastedText = ({ color, value }: Wasted, you?: Color): string =>
+  color === you ? `No move with your ${value}` : `${COLOR_NAME[color]} had no move with a ${value}`
+
 /** A place on the board as a noun: "square 9", "Yellow's home lane, square 2". */
 export function placeName(pos: Position): string {
   switch (pos.kind) {
