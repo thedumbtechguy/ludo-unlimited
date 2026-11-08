@@ -282,7 +282,8 @@ export function Board({
                 </g>
               )}
               {rolls && (
-                <g transform={`translate(${point.x} ${point.y + 24})`}>
+                // Under the marker, or above it on the bottom row, where it would hang off the board.
+                <g transform={`translate(${point.x} ${point.y + 32 > BOARD_SIZE ? point.y - 24 : point.y + 24})`}>
                   <rect x={-4 - rolls.length * 3.5} y="-8" width={8 + rolls.length * 7} height="16" rx="8" fill={INK} />
                   <text data-testid="target-rolls" textAnchor="middle" dy="3.5" fontSize="11" fontWeight="700" fill="#ffffff">
                     {rolls}
@@ -413,9 +414,11 @@ export function Board({
             className="yard-labourer"
             style={{ left: pct(o.x + 4), top: pct(o.y + 200), color: ON_COLOR[victim] }}
           >
-            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <rect x="1" y="4" width="5" height="4" rx="2" />
-              <rect x="6" y="4" width="5" height="4" rx="2" />
+            {/* Three chain links: two lying flat, the middle one standing up through them. */}
+            <svg viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <rect x="0.8" y="3.5" width="6" height="5" rx="2.5" />
+              <rect x="6" y="2" width="4" height="8" rx="2" />
+              <rect x="9.2" y="3.5" width="6" height="5" rx="2.5" />
             </svg>
             Labourer to {COLOR_NAME[owner]}
           </div>

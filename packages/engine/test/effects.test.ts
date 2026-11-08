@@ -127,7 +127,8 @@ describe('describeMove', () => {
 
   it('a line kick lands on the opponent’s square', () => {
     const s = setup({ rules: { lineKick: true }, roll: 2, pieces: { red: [5], yellow: [15] } })
-    expect(play(s, only(legalMoves(s), 'line')).effects[0]).toMatchObject({ type: 'kick', kind: 'line', at: track(15) })
+    const move = only(legalMoves(s), 'line') as Extract<Move, { kind: 'line' }>
+    expect(play(s, move).effects[0]).toMatchObject({ type: 'kick', kind: 'line', at: track(15), via: move.via })
   })
 
   it('a home kick', () => {

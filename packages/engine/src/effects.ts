@@ -6,7 +6,8 @@ export type KickKind = 'front' | 'back' | 'line' | 'home' | 'wicked'
 
 /** The moments worth celebrating on screen, derived from a state change so every screen agrees. */
 export type GameEffect =
-  | { type: 'kick'; kind: KickKind; at: Position; kicker: PieceId; victim: PieceId }
+  /** `via`: for a line kick, the square the kicker reached before crossing the line to `at`. */
+  | { type: 'kick'; kind: KickKind; at: Position; kicker: PieceId; victim: PieceId; via?: Position }
   /** The turn player's run of 6s in this rolling phase; one per 6 rolled. */
   | { type: 'sixStreak'; color: Color; count: number }
   /** A run of 2 or more 6s came to an end. */
@@ -43,7 +44,8 @@ export function describeRoll(before: GameState, after: GameState): GameEffect[] 
 export function describeMove(before: GameState, move: Move, after: GameState): GameEffect[] {
   const effects: GameEffect[] = []
   if (move.kick) {
-    effects.push({ type: 'kick', kind: kickKind(before, move), at: move.to, kicker: move.piece, victim: move.kick })
+    const via = move.kind === 'line' ? { via: move.via } : {}
+    effects.push({ type: 'kick', kind: kickKind(before, move), at: move.to, kicker: move.piece, victim: move.kick, ...via })
     const owner = after.labourers[move.kick.color]
     if (owner && before.labourers[move.kick.color] !== owner) {
       effects.push({ type: 'labourerStart', victim: move.kick.color, owner })
