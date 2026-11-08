@@ -163,7 +163,35 @@ type GameEffect =
 - **Settings:**
   - Effects Full or Reduced, defaulting to Reduced when `prefers-reduced-motion` is set. Reduced means no shake, a tenth of the particles, and stamps that fade rather than slam.
   - The setting is saved in `localStorage`.
-- **Sound hook:** a `playSound(effect)` function that does nothing for now, called for each effect.
+- **Sound hook:** a `playSound(effect)` function, called for each effect (see "Sound and music" below).
+
+### Sound and music
+
+**Sound effects**
+- **Source:** recorded CC0 samples (e.g. Kenney packs), bundled with the app so they work offline. No synthesised beeps.
+- **What plays:**
+  - rolling: a dice rattle, then a landing clack timed to the 3D spin
+  - moving: a soft tick per square and a click on landing
+  - entering: a pop
+  - kicks: an impact, with a zap for line kicks, a thud for home kicks and a low hit for wicked; the kicked piece whooshes back to its yard
+  - 6-streak: a crackle that builds with the fire, and a whoosh on "On fire"
+  - Labourer: chains clank on, then shatter when freed
+  - a chime when a piece gets home, and a short fanfare on the win
+  - a light tap on buttons
+- **Volume:** balanced for long games. Dice and kicks are the loudest; steps are quiet.
+- **Setting:** "Sound: On/Off" in the in-game menu, stored per device (`ludo-unlimited:sound`), on by default.
+
+**Music**
+- **What:** a calm, chill game loop. A free CC0 or properly licensed loop for now; it can be replaced later by swapping the file.
+- **Default:** on, at low volume (about 25%).
+- **Ducking:** it dips under big moments (kicks, "On fire", the win) and comes back up after.
+- **When:** it pauses when the tab or app is hidden, and resumes after.
+- **Loading:** it loads only once a game starts, never on the first page load. Keep it to one compressed loop of about 1–2 MB, cached after the first load.
+- **Setting:** "Music: On/Off" in the in-game menu, separate from Sound, stored per device (`ludo-unlimited:music`).
+
+**Both**
+- **Starting audio:** phones only allow audio after a user gesture, so the audio context starts on the first tap. There's no "enable sound" screen.
+- **Effects setting:** Reduced effects doesn't mute anything; sound and music have their own switches.
 
 ## Testing
 
