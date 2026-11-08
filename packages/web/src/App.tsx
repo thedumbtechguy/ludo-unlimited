@@ -5,8 +5,8 @@ import { GameScreen } from './screens/GameScreen'
 import { Home } from './screens/Home'
 import { Results } from './screens/Results'
 import { Setup } from './screens/Setup'
-import { clearGame, loadGame, loadHand, saveGame, saveHand } from './storage'
-import type { Hand, Seats } from './types'
+import { clearGame, loadEffects, loadGame, loadHand, saveEffects, saveGame, saveHand } from './storage'
+import type { EffectsLevel, Hand, Seats } from './types'
 import type { Timing } from './useGame'
 
 type Screen =
@@ -22,6 +22,11 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
   const changeHand = (next: Hand) => {
     saveHand(next)
     setHand(next)
+  }
+  const [effectsLevel, setEffectsLevel] = useState(loadEffects)
+  const changeEffects = (next: EffectsLevel) => {
+    saveEffects(next)
+    setEffectsLevel(next)
   }
 
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) =>
@@ -57,6 +62,8 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
           }}
           hand={hand}
           onHand={changeHand}
+          effectsLevel={effectsLevel}
+          onEffectsLevel={changeEffects}
           onQuit={goHome}
           onRestart={() => startGame(screen.settings, screen.seats)}
           onFinish={(game) => {

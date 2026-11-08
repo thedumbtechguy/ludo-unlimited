@@ -78,6 +78,18 @@ describe('App', () => {
     expect(localStorage.getItem('ludo-unlimited:hand')).toBe('left')
   })
 
+  it('remembers the effects setting changed from the game menu', async () => {
+    const user = userEvent.setup()
+    render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+    await user.click(screen.getByRole('button', { name: 'New game' }))
+    await user.click(screen.getByRole('button', { name: 'Start game' }))
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    await user.click(screen.getByRole('button', { name: 'Effects: Full' }))
+    expect(localStorage.getItem('ludo-unlimited:effects')).toBe('reduced')
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    expect(screen.getByRole('button', { name: 'Effects: Reduced' })).toBeInTheDocument()
+  })
+
   it('offers Stop after a human rolls a 6, and stopping shows the numbered moves', async () => {
     const user = userEvent.setup()
     render(<App dice={fixedDice([6])} timing={FAST_TIMING} />)

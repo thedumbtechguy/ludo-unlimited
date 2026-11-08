@@ -7,21 +7,24 @@ import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
 import { firstHuman, rulesName, seatNames } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
-import type { Hand } from '../types'
+import type { EffectsLevel, Hand } from '../types'
 import { useGame, type GameOptions } from '../useGame'
 
 type Props = {
   options: GameOptions
   hand: Hand
   onHand: (hand: Hand) => void
+  effectsLevel: EffectsLevel
+  onEffectsLevel: (level: EffectsLevel) => void
   onFinish: (game: GameState) => void
   onQuit: () => void
   onRestart: () => void
 }
 
 const HAND_NAME: Record<Hand, string> = { right: 'Right', left: 'Left' }
+const EFFECTS_NAME: Record<EffectsLevel, string> = { full: 'Full', reduced: 'Reduced' }
 
-export function GameScreen({ options, hand, onHand, onFinish, onQuit, onRestart }: Props) {
+export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel, onFinish, onQuit, onRestart }: Props) {
   const g = useGame(options)
   const { game } = g
   // The destination being hovered or focused, so the tray can light up the rolls it would use.
@@ -130,6 +133,16 @@ export function GameScreen({ options, hand, onHand, onFinish, onQuit, onRestart 
               }}
             >
               Playing hand: {HAND_NAME[hand]}
+            </button>
+            <button
+              type="button"
+              className="sheet-row"
+              onClick={() => {
+                setMenuOpen(false)
+                onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')
+              }}
+            >
+              Effects: {EFFECTS_NAME[effectsLevel]}
             </button>
           </div>
         </Sheet>

@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadGame, loadHand, saveGame, saveHand } from './storage'
+import { clearGame, loadEffects, loadGame, loadHand, saveEffects, saveGame, saveHand } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -64,6 +64,40 @@ describe('storage', () => {
       })
       expect(() => saveHand('left')).not.toThrow()
       expect(loadHand()).toBe('right')
+    })
+  })
+
+  describe('effects', () => {
+    it('defaults to full, or reduced when the device asks for reduced motion', () => {
+      expect(loadEffects()).toBe('full')
+      const original = matchMedia
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }))
+      expect(loadEffects()).toBe('reduced')
+      vi.stubGlobal('matchMedia', original)
+    })
+
+    it('persists the choice on this device', () => {
+      saveEffects('reduced')
+      expect(localStorage.getItem('ludo-unlimited:effects')).toBe('reduced')
+      expect(loadEffects()).toBe('reduced')
+      saveEffects('full')
+      expect(loadEffects()).toBe('full')
+    })
+
+    it('ignores a stored value it does not know', () => {
+      localStorage.setItem('ludo-unlimited:effects', 'loud')
+      expect(loadEffects()).toBe('full')
+    })
+
+    it('survives storage that throws', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      expect(() => saveEffects('reduced')).not.toThrow()
+      expect(loadEffects()).toBe('full')
     })
   })
 })

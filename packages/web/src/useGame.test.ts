@@ -2,6 +2,8 @@ import { createGame, HOME, settingsFor, track } from '@ludo/engine'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixedDice, seededDice } from './dice'
+import * as sound from './fx/sound'
+import { useEffectStream } from './fx/stream'
 import { FAST_TIMING, useGame } from './useGame'
 
 const classic2 = settingsFor('classic', 2, 'firstWins')
@@ -288,5 +290,73 @@ describe('useGame', () => {
     act(() => vi.advanceTimersByTime(350))
     expect(result.current.rolling).toBe(false)
     expect(dice).toHaveBeenCalledTimes(1)
+  })
+
+  describe('effects', () => {
+    const strip = (effects: { id: number }[]) => effects.map(({ id: _id, ...effect }) => effect)
+
+    it('emits each roll’s effects once, with growing ids', () => {
+      const dice = fixedDice([6, 6, 3])
+      const { result, rerender } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING }))
+      act(() => result.current.roll())
+      act(() => result.current.roll())
+      rerender()
+      expect(strip(result.current.effects)).toEqual([
+        { type: 'sixStreak', color: 'red', count: 1 },
+        { type: 'sixStreak', color: 'red', count: 2 },
+      ])
+      act(() => result.current.roll())
+      rerender()
+      expect(strip(result.current.effects).at(-1)).toEqual({ type: 'streakEnded', color: 'red', count: 2 })
+      const ids = result.current.effects.map((e) => e.id)
+      expect(ids).toEqual([...ids].sort((a, b) => a - b))
+      expect(new Set(ids).size).toBe(ids.length)
+    })
+
+    it('emits a move’s effects once, when the piece lands', () => {
+      vi.useFakeTimers()
+      const initial = createGame(classic2)
+      initial.players[0].pieces = [track(5), HOME, HOME, HOME]
+      initial.players[1].pieces[0] = track(7)
+      const timing = { botRoll: 0, botMove: 0, step: 100, roll: 0 }
+      const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([2]), timing, initial }))
+      act(() => result.current.roll())
+      act(() => vi.advanceTimersByTime(0))
+      expect(result.current.moving).toBeDefined()
+      expect(result.current.effects).toEqual([])
+      for (let i = 0; i < 10; i++) act(() => vi.advanceTimersByTime(100))
+      expect(result.current.moving).toBeUndefined()
+      expect(strip(result.current.effects)).toEqual([
+        { type: 'kick', kind: 'front', at: track(7), kicker: red0, victim: { color: 'yellow', index: 0 } },
+      ])
+      for (let i = 0; i < 10; i++) act(() => vi.advanceTimersByTime(100))
+      expect(result.current.effects).toHaveLength(1)
+    })
+
+    it('a listener hears each effect once, however often it re-renders', () => {
+      const heard: string[] = []
+      const dice = fixedDice([6, 6, 3])
+      const { result, rerender } = renderHook(() => {
+        const game = useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING })
+        useEffectStream(game.effects, (e) => heard.push(e.type))
+        return game
+      })
+      act(() => result.current.roll())
+      rerender()
+      rerender()
+      act(() => result.current.roll())
+      act(() => result.current.roll())
+      rerender()
+      expect(heard).toEqual(['sixStreak', 'sixStreak', 'streakEnded'])
+    })
+
+    it('plays a sound hook for each effect', () => {
+      const played = vi.spyOn(sound, 'playSound')
+      const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING }))
+      act(() => result.current.roll())
+      expect(played).toHaveBeenCalledTimes(1)
+      expect(played.mock.calls[0][0]).toEqual({ type: 'sixStreak', color: 'red', count: 1 })
+      played.mockRestore()
+    })
   })
 })

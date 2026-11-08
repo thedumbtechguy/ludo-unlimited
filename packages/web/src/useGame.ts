@@ -3,12 +3,15 @@ import {
   chooseMove,
   createGame,
   currentMover,
+  describeMove,
+  describeRoll,
   legalMoves,
   movePath,
   replay,
   roll as rollDice,
   stopRolling,
   type Color,
+  type GameEffect,
   type GameEvent,
   type GameState,
   type Move,
@@ -18,6 +21,8 @@ import {
 } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
+import { playSound } from './fx/sound'
+import type { EffectEvent } from './fx/stream'
 import { kickCallout, kickMessage } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
@@ -37,7 +42,11 @@ export type GameOptions = {
   onChange?: (game: GameState) => void
 }
 
-type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState }
+/** `effects` play when the piece arrives. */
+type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState; effects: GameEffect[] }
+
+/** Enough recent effects for any listener a render or two behind. */
+const KEPT_EFFECTS = 32
 
 /** A kick to call out over the board; `id` tells one kick from the next. */
 export type Callout = { id: number; title: string; line: string; color: Color }
@@ -54,6 +63,8 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const [rollingTo, setRollingTo] = useState<number>()
   const rolling = rollingTo !== undefined
   const rollTimer = useRef<ReturnType<typeof setTimeout>>()
+  const [effects, setEffects] = useState<EffectEvent[]>([])
+  const effectId = useRef(0)
 
   useEffect(() => () => clearTimeout(rollTimer.current), [])
 
@@ -64,8 +75,16 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const humanToRoll = !busy && game.status === 'playing' && game.pendingRoll === undefined && seatOf(game.turn) === 'human'
   const humanToMove = !busy && mover !== undefined && seatOf(mover) === 'human'
 
+  function emit(list: GameEffect[]) {
+    if (list.length === 0) return
+    list.forEach(playSound)
+    const events = list.map((effect) => ({ ...effect, id: ++effectId.current }))
+    setEffects((prev) => [...prev, ...events].slice(-KEPT_EFFECTS))
+  }
+
   function applyRoll(value: number) {
     const next = rollDice(game, value)
+    emit(describeRoll(game, next))
     setLastRoll(value)
     // Still rolling after a 6 is not a wasted roll: the hint offers rolling again or stopping.
     const wasted = next.pendingRoll === undefined && next.queuedRolls.length === 0
@@ -75,6 +94,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
 
   function stop() {
     const next = stopRolling(game)
+    emit(describeRoll(game, next))
     setMessage(next.pendingRoll === undefined ? 'No moves' : undefined)
     setGame(next)
   }
@@ -95,10 +115,12 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     setMessage(kickMessage(move))
     const kick = kickCallout(move, game)
     setCallout((last) => (kick ? { id: (last?.id ?? 0) + 1, color: move.piece.color, ...kick } : undefined))
+    const landed = describeMove(game, move, next)
     if (timing.step === 0) {
+      emit(landed)
       setGame(next)
     } else {
-      setAnimation({ piece: move.piece, path: movePath(game, move), step: 0, next })
+      setAnimation({ piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed })
     }
   }
 
@@ -127,6 +149,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
         setAnimation({ ...animation, step: animation.step + 1 })
       } else {
         setAnimation(undefined)
+        emit(animation.effects)
         setGame(animation.next)
       }
     }, timing.step)
@@ -182,6 +205,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     rollingTo,
     message,
     callout,
+    effects,
     humanToRoll,
     humanToMove,
     roll,

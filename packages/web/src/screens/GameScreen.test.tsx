@@ -19,6 +19,8 @@ const renderGame = (options: Partial<Parameters<typeof GameScreen>[0]['options']
       options={{ settings, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING, ...options }}
       hand="right"
       onHand={noop}
+      effectsLevel="full"
+      onEffectsLevel={noop}
       onFinish={noop}
       onQuit={noop}
       onRestart={noop}
@@ -56,7 +58,7 @@ describe('GameScreen', () => {
       renderGame({}, { onQuit, onRestart })
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       const menu = screen.getByRole('dialog', { name: 'Menu' })
-      expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Quit to home', 'Restart game', 'Playing hand: Right'])
+      expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Quit to home', 'Restart game', 'Playing hand: Right', 'Effects: Full'])
       await userEvent.click(within(menu).getByRole('button', { name: 'Restart game' }))
       expect(onRestart).toHaveBeenCalledTimes(1)
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
@@ -78,6 +80,20 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Playing hand: Left' }))
       expect(onHand).toHaveBeenCalledWith('right')
       expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    it('switches the effects between full and reduced', async () => {
+      const onEffectsLevel = vi.fn()
+      const { unmount } = renderGame({}, { effectsLevel: 'full', onEffectsLevel })
+      await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Effects: Full' }))
+      expect(onEffectsLevel).toHaveBeenCalledWith('reduced')
+      expect(screen.queryByRole('dialog')).toBeNull()
+      unmount()
+      renderGame({}, { effectsLevel: 'reduced', onEffectsLevel })
+      await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Effects: Reduced' }))
+      expect(onEffectsLevel).toHaveBeenLastCalledWith('full')
     })
   })
 
