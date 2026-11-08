@@ -36,6 +36,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
       return (
         <Home
           canContinue={saved !== undefined}
+          hand={hand}
           onNew={() => setScreen({ name: 'setup' })}
           onContinue={() => startGame(saved!.settings, saved!.seats, saved!.log)}
         />

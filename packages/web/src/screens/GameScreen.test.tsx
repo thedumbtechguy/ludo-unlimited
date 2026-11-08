@@ -97,7 +97,7 @@ describe('GameScreen', () => {
     it('paints Roll again in the current player’s colour', async () => {
       renderGame({ dice: fixedDice([6]) })
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
-      expect(screen.getByRole('main').style.getPropertyValue('--main')).toBe('#e5484d')
+      expect(screen.getByRole('main').style.getPropertyValue('--player')).toBe('#e5484d')
       expect(screen.getByRole('button', { name: 'Roll again' })).toHaveClass('primary')
     })
 

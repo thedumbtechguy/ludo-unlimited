@@ -48,7 +48,7 @@ export function GameScreen({ options, hand, onHand, onFinish, onQuit, onRestart 
   const noMoves = g.message === 'No moves'
   const shownHint = noMoves ? (hint ? `No moves. ${hint}` : 'No moves') : hint
   // The main button takes the colour of whoever is playing.
-  const paint = { '--main': COLOR_HEX[mover], '--on-main': ON_COLOR[mover] } as CSSProperties
+  const paint = { '--player': COLOR_HEX[mover], '--on-player': ON_COLOR[mover] } as CSSProperties
 
   return (
     <main className="game" style={paint}>
