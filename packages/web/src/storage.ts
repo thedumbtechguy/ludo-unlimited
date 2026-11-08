@@ -72,3 +72,29 @@ export function saveEffects(level: EffectsLevel): void {
     // Storage blocked: the choice lasts until the page closes.
   }
 }
+
+const SOUND_KEY = 'ludo-unlimited:sound'
+const MUSIC_KEY = 'ludo-unlimited:music'
+
+/** Sound effects, on unless switched off on this device. */
+export const loadSound = (): boolean => loadSwitch(SOUND_KEY)
+export const saveSound = (on: boolean): void => saveSwitch(SOUND_KEY, on)
+/** Background music, on unless switched off on this device. */
+export const loadMusic = (): boolean => loadSwitch(MUSIC_KEY)
+export const saveMusic = (on: boolean): void => saveSwitch(MUSIC_KEY, on)
+
+function loadSwitch(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function saveSwitch(key: string, on: boolean): void {
+  try {
+    localStorage.setItem(key, on ? 'on' : 'off')
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}

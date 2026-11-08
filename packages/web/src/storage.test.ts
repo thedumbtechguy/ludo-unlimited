@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadEffects, loadGame, loadHand, saveEffects, saveGame, saveHand } from './storage'
+import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, saveEffects, saveGame, saveHand, saveMusic, saveSound } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -98,6 +98,40 @@ describe('storage', () => {
       })
       expect(() => saveEffects('reduced')).not.toThrow()
       expect(loadEffects()).toBe('full')
+    })
+  })
+
+  describe.each([
+    ['sound', 'ludo-unlimited:sound', loadSound, saveSound],
+    ['music', 'ludo-unlimited:music', loadMusic, saveMusic],
+  ] as const)('%s', (_name, key, load, save) => {
+    it('is on by default', () => {
+      expect(load()).toBe(true)
+    })
+
+    it('persists the choice on this device', () => {
+      save(false)
+      expect(localStorage.getItem(key)).toBe('off')
+      expect(load()).toBe(false)
+      save(true)
+      expect(localStorage.getItem(key)).toBe('on')
+      expect(load()).toBe(true)
+    })
+
+    it('is kept apart from the other switch', () => {
+      save(false)
+      expect([loadSound(), loadMusic()].filter((on) => !on)).toHaveLength(1)
+    })
+
+    it('survives storage that throws', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      expect(() => save(false)).not.toThrow()
+      expect(load()).toBe(true)
     })
   })
 })

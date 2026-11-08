@@ -18,6 +18,10 @@ type Props = {
   onHand: (hand: Hand) => void
   effectsLevel: EffectsLevel
   onEffectsLevel: (level: EffectsLevel) => void
+  sound: boolean
+  onSound: (on: boolean) => void
+  music: boolean
+  onMusic: (on: boolean) => void
   onFinish: (game: GameState) => void
   onQuit: () => void
   onRestart: () => void
@@ -26,7 +30,7 @@ type Props = {
 const HAND_NAME: Record<Hand, string> = { right: 'Right', left: 'Left' }
 const EFFECTS_NAME: Record<EffectsLevel, string> = { full: 'Full', reduced: 'Reduced' }
 
-export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel, onFinish, onQuit, onRestart }: Props) {
+export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel, sound, onSound, music, onMusic, onFinish, onQuit, onRestart }: Props) {
   const g = useGame(options)
   const { game } = g
   // The destination being hovered or focused, so the tray can light up the rolls it would use.
@@ -159,6 +163,26 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
                 }}
               >
                 Effects: {EFFECTS_NAME[effectsLevel]}
+              </button>
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onSound(!sound)
+                }}
+              >
+                Sound: {sound ? 'On' : 'Off'}
+              </button>
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onMusic(!music)
+                }}
+              >
+                Music: {music ? 'On' : 'Off'}
               </button>
             </div>
           </Sheet>

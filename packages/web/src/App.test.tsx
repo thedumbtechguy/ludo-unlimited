@@ -91,6 +91,24 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Effects: Reduced' })).toBeInTheDocument()
   })
 
+  it('remembers the sound and music settings changed from the game menu', async () => {
+    const user = userEvent.setup()
+    render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+    await user.click(screen.getByRole('button', { name: 'New game' }))
+    await user.click(screen.getByRole('button', { name: 'Start game' }))
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    await user.click(screen.getByRole('button', { name: 'Sound: On' }))
+    expect(localStorage.getItem('ludo-unlimited:sound')).toBe('off')
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    await user.click(screen.getByRole('button', { name: 'Music: On' }))
+    expect(localStorage.getItem('ludo-unlimited:music')).toBe('off')
+    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    expect(screen.getByRole('button', { name: 'Sound: Off' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Music: Off' })).toBeInTheDocument()
+    // Sound and music have their own switches: the effects level is untouched.
+    expect(screen.getByRole('button', { name: 'Effects: Full' })).toBeInTheDocument()
+  })
+
   it('offers Stop after a human rolls a 6, and stopping shows the numbered moves', async () => {
     const user = userEvent.setup()
     render(<App dice={fixedDice([6])} timing={FAST_TIMING} />)

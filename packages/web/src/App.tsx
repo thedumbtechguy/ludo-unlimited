@@ -1,11 +1,12 @@
 import type { GameEvent, GameState, Settings } from '@ludo/engine'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dice } from './dice'
+import { audio } from './fx/audio'
 import { GameScreen } from './screens/GameScreen'
 import { Home } from './screens/Home'
 import { Results } from './screens/Results'
 import { Setup } from './screens/Setup'
-import { clearGame, loadEffects, loadGame, loadHand, saveEffects, saveGame, saveHand } from './storage'
+import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, saveEffects, saveGame, saveHand, saveMusic, saveSound } from './storage'
 import type { EffectsLevel, Hand, Seats } from './types'
 import type { Timing } from './useGame'
 
@@ -28,6 +29,17 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
     saveEffects(next)
     setEffectsLevel(next)
   }
+  const [sound, setSound] = useState(loadSound)
+  const changeSound = (on: boolean) => {
+    saveSound(on)
+    setSound(on)
+  }
+  const [music, setMusic] = useState(loadMusic)
+  const changeMusic = (on: boolean) => {
+    saveMusic(on)
+    setMusic(on)
+  }
+  useEffect(() => audio.setPrefs({ sound, music }), [sound, music])
 
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) =>
     setScreen({ name: 'game', settings, seats, log, key: Date.now() })
@@ -64,6 +76,10 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
           onHand={changeHand}
           effectsLevel={effectsLevel}
           onEffectsLevel={changeEffects}
+          sound={sound}
+          onSound={changeSound}
+          music={music}
+          onMusic={changeMusic}
           onQuit={goHome}
           onRestart={() => startGame(screen.settings, screen.seats)}
           onFinish={(game) => {

@@ -21,6 +21,10 @@ const renderGame = (options: Partial<Parameters<typeof GameScreen>[0]['options']
       onHand={noop}
       effectsLevel="full"
       onEffectsLevel={noop}
+      sound
+      onSound={noop}
+      music
+      onMusic={noop}
       onFinish={noop}
       onQuit={noop}
       onRestart={noop}
@@ -58,7 +62,7 @@ describe('GameScreen', () => {
       renderGame({}, { onQuit, onRestart })
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       const menu = screen.getByRole('dialog', { name: 'Menu' })
-      expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Quit to home', 'Restart game', 'Playing hand: Right', 'Effects: Full'])
+      expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Quit to home', 'Restart game', 'Playing hand: Right', 'Effects: Full', 'Sound: On', 'Music: On'])
       await userEvent.click(within(menu).getByRole('button', { name: 'Restart game' }))
       expect(onRestart).toHaveBeenCalledTimes(1)
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
@@ -94,6 +98,23 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       await userEvent.click(screen.getByRole('button', { name: 'Effects: Reduced' }))
       expect(onEffectsLevel).toHaveBeenLastCalledWith('full')
+    })
+
+    it.each([
+      ['Sound', 'sound', 'onSound'],
+      ['Music', 'music', 'onMusic'],
+    ] as const)('switches %s on and off', async (label, prop, handler) => {
+      const onChange = vi.fn()
+      const { unmount } = renderGame({}, { [prop]: true, [handler]: onChange })
+      await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+      await userEvent.click(screen.getByRole('button', { name: `${label}: On` }))
+      expect(onChange).toHaveBeenCalledWith(false)
+      expect(screen.queryByRole('dialog')).toBeNull()
+      unmount()
+      renderGame({}, { [prop]: false, [handler]: onChange })
+      await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+      await userEvent.click(screen.getByRole('button', { name: `${label}: Off` }))
+      expect(onChange).toHaveBeenLastCalledWith(true)
     })
   })
 
