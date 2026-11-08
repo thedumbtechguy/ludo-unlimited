@@ -25,5 +25,9 @@ The rooms run locally in `wrangler dev`, with no Cloudflare login.
 ## Deploying
 
 Cloudflare Workers Builds deploys `main`:
+- Root directory: the repo root (`/`), so the workspaces install
 - Build command: `npm run build -w @ludo/web`
 - Deploy command: `npx wrangler deploy --config packages/server/wrangler.jsonc`
+- Non-production branch deploy command: `npx wrangler versions upload --config packages/server/wrangler.jsonc`, or turn non-production builds off
+
+Preview URLs are off: Workers with Durable Objects don't get them.

@@ -113,7 +113,7 @@ type Room = {
   - Limited to 10 per IP address per hour (a Workers rate-limit binding).
 - `GET /api/rooms/:code` gets a room's details.
   - **Reply:** `{ phase, players, seatsFree }`, or 404.
-  - Used by the join screen before connecting.
+  - Not used by the app yet (the join screen connects straight away); kept for tools and tests.
 - `GET /api/rooms/:code/socket?device=…&name=…&v=…` opens the WebSocket. `v` is the protocol version.
 
 **Device → room** (JSON; anything over 2 KB is dropped)
