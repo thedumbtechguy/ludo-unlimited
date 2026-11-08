@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveSound, saveTheme } from './storage'
+import { clearGame, loadDevice, loadEffects, loadGame, loadHand, loadMusic, loadName, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveName, saveSound, saveTheme } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -165,6 +165,34 @@ describe('storage', () => {
       })
       expect(() => save(false)).not.toThrow()
       expect(load()).toBe(true)
+    })
+  })
+
+  describe('device and nickname', () => {
+    it('keeps one device ID', () => {
+      const id = loadDevice()
+      expect(id).toMatch(/^[0-9a-f-]{36}$/)
+      expect(loadDevice()).toBe(id)
+    })
+
+    it('remembers the nickname', () => {
+      expect(loadName()).toBe('')
+      saveName('Kofi')
+      expect(loadName()).toBe('Kofi')
+    })
+
+    it('survives storage that throws, keeping the device ID for the page', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('blocked')
+      })
+      const id = loadDevice()
+      expect(id).toMatch(/^[0-9a-f-]{36}$/)
+      expect(loadDevice()).toBe(id)
+      expect(() => saveName('Kofi')).not.toThrow()
+      expect(loadName()).toBe('')
     })
   })
 })

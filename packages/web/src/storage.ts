@@ -119,3 +119,37 @@ function saveSwitch(key: string, on: boolean): void {
     // Storage blocked: the choice lasts until the page closes.
   }
 }
+
+const DEVICE_KEY = 'ludo-unlimited:device'
+const NAME_KEY = 'ludo-unlimited:name'
+let sessionDevice: string | undefined
+
+/** This device's random ID, which lets a room recognise it on return. Made once and kept. */
+export function loadDevice(): string {
+  try {
+    const stored = localStorage.getItem(DEVICE_KEY)
+    if (stored) return stored
+    const id = crypto.randomUUID()
+    localStorage.setItem(DEVICE_KEY, id)
+    return id
+  } catch {
+    // Storage blocked: an ID for as long as the page is open.
+    return (sessionDevice ??= crypto.randomUUID())
+  }
+}
+
+export function loadName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function saveName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name)
+  } catch {
+    // The name just won't be remembered.
+  }
+}
