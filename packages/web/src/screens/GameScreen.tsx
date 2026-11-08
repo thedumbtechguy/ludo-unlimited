@@ -149,40 +149,28 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
               <button
                 type="button"
                 className="sheet-row"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onHand(hand === 'right' ? 'left' : 'right')
-                }}
+                onClick={() => onHand(hand === 'right' ? 'left' : 'right')}
               >
                 Playing hand: {HAND_NAME[hand]}
               </button>
               <button
                 type="button"
                 className="sheet-row"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')
-                }}
+                onClick={() => onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')}
               >
                 Effects: {EFFECTS_NAME[effectsLevel]}
               </button>
               <button
                 type="button"
                 className="sheet-row"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onSound(!sound)
-                }}
+                onClick={() => onSound(!sound)}
               >
                 Sound: {sound ? 'On' : 'Off'}
               </button>
               <button
                 type="button"
                 className="sheet-row"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onMusic(!music)
-                }}
+                onClick={() => onMusic(!music)}
               >
                 Music: {music ? 'On' : 'Off'}
               </button>

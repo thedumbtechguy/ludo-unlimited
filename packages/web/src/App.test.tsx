@@ -73,6 +73,7 @@ describe('App', () => {
     expect(red()).toHaveAttribute('x', '364')
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     await user.click(screen.getByRole('button', { name: 'Playing hand: Right' }))
+    expect(screen.getByRole('button', { name: 'Playing hand: Left' })).toBeInTheDocument()
     expect(red()).toHaveAttribute('x', '4')
     expect(red()).toHaveAttribute('y', '364')
     expect(screen.getByRole('region', { name: 'Dice' })).toHaveAttribute('data-hand', 'left')
@@ -87,7 +88,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     await user.click(screen.getByRole('button', { name: 'Effects: Full' }))
     expect(localStorage.getItem('ludo-unlimited:effects')).toBe('reduced')
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
+    // Changing a setting leaves the menu open, showing the new value.
     expect(screen.getByRole('button', { name: 'Effects: Reduced' })).toBeInTheDocument()
   })
 
@@ -99,10 +100,8 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     await user.click(screen.getByRole('button', { name: 'Sound: On' }))
     expect(localStorage.getItem('ludo-unlimited:sound')).toBe('off')
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
     await user.click(screen.getByRole('button', { name: 'Music: On' }))
     expect(localStorage.getItem('ludo-unlimited:music')).toBe('off')
-    await user.click(screen.getByRole('button', { name: 'Menu' }))
     expect(screen.getByRole('button', { name: 'Sound: Off' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Music: Off' })).toBeInTheDocument()
     // Sound and music have their own switches: the effects level is untouched.

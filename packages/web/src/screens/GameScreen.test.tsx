@@ -83,7 +83,7 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       await userEvent.click(screen.getByRole('button', { name: 'Playing hand: Left' }))
       expect(onHand).toHaveBeenCalledWith('right')
-      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('switches the effects between full and reduced', async () => {
@@ -92,7 +92,7 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       await userEvent.click(screen.getByRole('button', { name: 'Effects: Full' }))
       expect(onEffectsLevel).toHaveBeenCalledWith('reduced')
-      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       unmount()
       renderGame({}, { effectsLevel: 'reduced', onEffectsLevel })
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
@@ -109,7 +109,7 @@ describe('GameScreen', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
       await userEvent.click(screen.getByRole('button', { name: `${label}: On` }))
       expect(onChange).toHaveBeenCalledWith(false)
-      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       unmount()
       renderGame({}, { [prop]: false, [handler]: onChange })
       await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
