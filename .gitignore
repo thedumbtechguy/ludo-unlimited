@@ -2,3 +2,4 @@ node_modules/
 packages/web/dist/
 packages/web/test-results/
 packages/web/playwright-report/
+.wrangler/

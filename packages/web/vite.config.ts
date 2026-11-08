@@ -39,6 +39,8 @@ export default defineConfig({
       },
     }),
   ],
+  // `npm run dev -w @ludo/server` runs the rooms on 8787; the app's /api calls (and sockets) go there.
+  server: { proxy: { '/api': { target: 'http://localhost:8787', ws: true } } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
