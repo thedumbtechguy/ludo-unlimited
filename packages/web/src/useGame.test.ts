@@ -346,6 +346,8 @@ describe('useGame', () => {
     const timing = { botRoll: 0, botMove: 0, step: 0, roll: 650 }
     const dice = vi.fn(() => 3)
     const { result } = renderHook(() => useGame({ settings: classic2, seats: { red: 'computer', yellow: 'human' }, dice, timing }))
+    // The bot's roll goes through the queue, which shows it on the next render.
+    act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(300))
     expect(result.current.rolling).toBe(true)
     expect(dice).toHaveBeenCalledTimes(1)

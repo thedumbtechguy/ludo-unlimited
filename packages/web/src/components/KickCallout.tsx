@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useFx } from '../fx/FxLayer'
 import { COLOR_HEX } from '../theme'
-import type { Callout } from '../useGame'
+import type { Callout } from '../useGameView'
 
 export const CALLOUT_MS = 1400
 /** The wicked move gets the darkest callout: near-black, whatever the kicker's colour. */
