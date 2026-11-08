@@ -15,15 +15,17 @@ Everything around the board should look like it belongs to this game, not to a t
 
   | Token | Value | Use |
   |---|---|---|
-  | `--table` | `#1F5B57` | the background of every screen |
-  | `--text` | `#F3E9D2` | main text on the table |
-  | `--muted` | `#A9CBC5` | section headings, secondary values |
-  | `--line` | `rgba(243,233,210,.16)` | row dividers |
-  | player colours | red `#e5484d`, green `#30a46c`, yellow `#f5b301`, blue `#3e63dd` | the board, and the main button |
+  | `--table` | `#FFFFFF` | the background of every screen ("Plain white") |
+  | `--text` | `#000000` | main text |
+  | `--muted` | `#6E6E73` | section headings, secondary values (5:1 on white) |
+  | `--line` | `rgba(0,0,0,.12)` | row dividers |
+  | `--button-bg` | `#007AFF` | main buttons, the current roll's outline |
+  | switch on | `#34C759` | switches |
+  | player colours | red `#e5484d`, green `#30a46c`, yellow `#f5b301`, blue `#3e63dd` | the board only |
 
-  The main button is painted in the **current player's colour**, with white text, or `#3d2a00` on yellow. There's no other accent colour.
+  Main buttons are a fixed blue with white text. Player colours appear only on the board and in kick callouts.
 - **Type:** Inter only. Use weight for hierarchy: 900 for titles, 800 for names and buttons, 600–700 for body. Sentence case everywhere, with no all-caps labels.
-- **Buttons:** flat, 12px corner radius, at least 52px tall for main actions and at least 44px for any tap target. Secondary buttons have a transparent fill and a 2px `--text` border at 55% opacity.
+- **Buttons:** flat, 12px corner radius, at least 52px tall for main actions and at least 44px for any tap target. Secondary buttons have a transparent fill, black text and a 2px `rgba(0,0,0,.25)` border.
 - **Motion:** only for the dice spin, piece movement and kick callouts. `prefers-reduced-motion` turns the decorative motion off.
 
 ## Board orientation
@@ -79,7 +81,7 @@ Each yard shows:
 
 ## Setup screen ("New game")
 
-Rows on the table, each at least 52px tall, separated by `--line`:
+Rows on the page, each at least 52px tall, separated by `--line`:
 - **Back button** and the "New game" title.
 - **Players section:**
   - A "Players" row: 2, 3 or 4, opening a picker.
@@ -90,7 +92,7 @@ Rows on the table, each at least 52px tall, separated by `--line`:
   - "Game ends": opens a picker (When one player wins / When places are set).
   - "Choose rules one by one": opens a sheet with a switch for each of Back Kick, Line Kick, Home Kick and Labourer.
 - **This device section:** a "Playing hand" row (Right/Left), opening a picker. See Board orientation.
-- **Start game:** a full-width main button at the bottom, in red (the first seat's colour).
+- **Start game:** a full-width main button at the bottom.
 
 **Pickers and sheets** slide up from the bottom over a dimmed table. Options are rows with a checkmark on the current one. Tapping an option closes the picker.
 
