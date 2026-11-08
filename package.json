@@ -1,6 +1,7 @@
 {
   "name": "ludo-unlimited",
   "private": true,
+  "license": "MIT",
   "workspaces": ["packages/*"],
   "scripts": {
     "test": "npm test --workspaces",
