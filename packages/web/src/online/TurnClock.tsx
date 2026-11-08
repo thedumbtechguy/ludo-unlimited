@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 
 const WARN_MS = 10_000
 
-/** A ring round the dice that drains until `deadline`, in the warning colour for the last 10 seconds. */
-export function TurnClock({ deadline, total }: { deadline: number; total: number }) {
+/**
+ * A ring round the dice in the colour of whoever has to act, draining until `deadline`. For the last
+ * 10 seconds it pulses (a warning colour would clash with one of the players).
+ */
+export function TurnClock({ deadline, total, color }: { deadline: number; total: number; color: string }) {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
     setNow(Date.now())
@@ -14,7 +17,7 @@ export function TurnClock({ deadline, total }: { deadline: number; total: number
   const share = Math.min(1, left / total)
   return (
     <svg className={`turn-clock${left < WARN_MS ? ' warn' : ''}`} viewBox="0 0 100 100" role="img" aria-label={`${Math.ceil(left / 1000)} seconds left`}>
-      <circle cx="50" cy="50" r="47" pathLength="1" strokeDasharray={`${share} 1`} />
+      <circle cx="50" cy="50" r="47" pathLength="1" strokeDasharray={`${share} 1`} style={{ stroke: color }} />
     </svg>
   )
 }

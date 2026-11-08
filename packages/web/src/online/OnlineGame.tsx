@@ -1,6 +1,7 @@
-import { SEATS, TIMER_SECONDS, type Color } from '@ludo/engine'
+import { currentMover, SEATS, TIMER_SECONDS, type Color } from '@ludo/engine'
 import { useState, type ReactNode } from 'react'
 import { COLOR_NAME } from '../labels'
+import { COLOR_HEX } from '../theme'
 import { quarterTurns } from '../layout'
 import { GameView, type GameViewProps } from '../screens/GameView'
 import { OnlineResults } from './OnlineResults'
@@ -86,7 +87,7 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
   }
 
   const total = room.timer === 'off' ? 0 : TIMER_SECONDS[room.timer] * 1000
-  const ring = clock.deadline !== undefined && total > 0 && !clock.paused && game.status === 'playing' ? <TurnClock deadline={clock.deadline} total={total} /> : undefined
+  const ring = clock.deadline !== undefined && total > 0 && !clock.paused && game.status === 'playing' ? <TurnClock deadline={clock.deadline} total={total} color={COLOR_HEX[currentMover(game) ?? game.turn]} /> : undefined
 
   return (
     <GameView

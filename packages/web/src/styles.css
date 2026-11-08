@@ -25,7 +25,6 @@
   /* The "×4" streak count next to the dice. */
   --streak: #C2410C;
   /* The turn clock's last 10 seconds. */
-  --warn: #FF3B30;
   color-scheme: light;
   font-family: Inter, system-ui, sans-serif;
   font-weight: 600;
@@ -55,7 +54,6 @@
   --board: #000000;
   --tile: #1C1C1E;
   --streak: #F76B15;
-  --warn: #FF453A;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -368,7 +366,9 @@ p.row { margin: 0; }
 .dice-wrap { position: relative; display: grid; place-items: center; margin-top: 8px; }
 .turn-clock { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); transform: rotate(-90deg); pointer-events: none; }
 .turn-clock circle { fill: none; stroke: var(--button-bg); stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.25s linear; }
-.turn-clock.warn circle { stroke: var(--warn); stroke-width: 4; }
+.turn-clock.warn circle { stroke-width: 4; animation: clock-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes clock-pulse { from { opacity: 1; } to { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .turn-clock.warn circle { animation: none; } }
 .react-button { margin-right: 0; }
 .react-button:disabled { opacity: 0.45; cursor: default; }
 /* Who's watching an online game: a quiet count in the top bar. */
