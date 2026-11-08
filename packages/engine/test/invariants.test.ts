@@ -19,6 +19,8 @@ function checkInvariants(state: GameState): void {
 
   for (const move of legalMoves(state)) {
     expect(isOpponentBlock(state, move.to, move.piece.color)).toBe(false)
+    // A piece that kicked this turn sits out the rest of it.
+    expect(state.kickers.some((k) => k.color === move.piece.color && k.index === move.piece.index)).toBe(false)
     if (move.kick) expect(piecesAt(state, positionOf(state, move.kick))).toHaveLength(1)
   }
 

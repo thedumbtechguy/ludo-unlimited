@@ -8,6 +8,7 @@ import { Results } from './screens/Results'
 import { Setup } from './screens/Setup'
 import { clearGame, loadEffects, loadGame, loadHand, loadMusic, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveSound, saveTheme } from './storage'
 import type { EffectsLevel, Hand, Seats, ThemePref } from './types'
+import { setPlaying } from './update'
 import { useTheme } from './useTheme'
 import type { Timing } from './useGame'
 
@@ -46,6 +47,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
     setTheme(next)
   }
   useTheme(theme)
+  useEffect(() => setPlaying(screen.name === 'game'), [screen.name])
   useEffect(() => audio.setPrefs({ sound, music }), [sound, music])
 
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) =>

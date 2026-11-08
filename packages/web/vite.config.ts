@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // The app decides when to switch to a new version (src/update.ts), so a game is never cut short.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
       workbox: {
         // The sound effects are small and precached so they work offline. The music is too big to
