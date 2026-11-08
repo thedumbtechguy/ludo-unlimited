@@ -11,6 +11,7 @@ test('two people play in a room, and one leaves and comes back', async ({ browse
   await a.goto('/')
   await a.getByRole('button', { name: 'Play online' }).click()
   await a.getByLabel('Your name').fill('Ama')
+  await a.getByRole('button', { name: 'Next' }).click()
   await a.getByRole('button', { name: 'Create a room' }).click()
   await a.getByRole('button', { name: /^Players/ }).click()
   await a.getByRole('radio', { name: '2 players' }).click()
@@ -23,7 +24,7 @@ test('two people play in a room, and one leaves and comes back', async ({ browse
   // Kofi opens the link, joins and takes the free seat.
   await b.goto(`/r/${code}`)
   await b.getByLabel('Your name').fill('Kofi')
-  await b.getByRole('button', { name: 'Join' }).click()
+  await b.getByRole('button', { name: 'Next' }).click()
   await b.getByRole('button', { name: /^Tap to sit as/ }).click()
   await expect(a.getByText(': Kofi')).toBeVisible()
   await a.getByRole('button', { name: 'Start' }).click()

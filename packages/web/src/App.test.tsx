@@ -220,6 +220,8 @@ describe('App online', () => {
     renderApp()
     await user.click(screen.getByRole('button', { name: 'Play online' }))
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await user.click(screen.getByRole('button', { name: 'Join a room' }))
     await user.type(screen.getByRole('textbox', { name: 'Room code' }), 'kqmz')
     await user.click(screen.getByRole('button', { name: 'Join' }))
     expect(screen.getByText('KQMZ')).toBeInTheDocument()
@@ -240,6 +242,7 @@ describe('App online', () => {
     renderApp()
     await user.click(screen.getByRole('button', { name: 'Play online' }))
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
     expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Create room' }))
@@ -266,13 +269,27 @@ describe('App online', () => {
     expect(location.pathname).toBe('/r/ABCD')
   })
 
-  it('asks for a name first on a room link, with the code filled in', () => {
+  it('asks for a name first on a room link, then opens that room', async () => {
+    const user = userEvent.setup()
     history.replaceState(null, '', '/r/ABCD')
     renderApp()
     expect(screen.getByRole('heading', { name: 'Play online' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Room code' })).toHaveValue('ABCD')
     // A refresh here keeps the code.
     expect(location.pathname).toBe('/r/ABCD')
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Kofi')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('ABCD')).toBeInTheDocument()
+    expect(useOnlineGame).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'ABCD', name: 'Kofi' }))
+  })
+
+  it('starts on the choice with a saved name, and Change goes back to the name', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    expect(screen.getByText(/Playing as Ama/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Ama')
   })
 
   it('holds Create room while the room is made', async () => {

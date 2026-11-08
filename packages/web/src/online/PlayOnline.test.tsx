@@ -10,48 +10,78 @@ const renderPlay = (props: { name?: string; code?: string } = {}) => {
 }
 const nameField = () => screen.getByRole('textbox', { name: 'Your name' })
 const codeField = () => screen.getByRole('textbox', { name: 'Room code' })
+const button = (name: string) => screen.getByRole('button', { name })
 
 describe('PlayOnline', () => {
-  it('needs a name before creating or joining', async () => {
-    renderPlay({ code: 'ABCD' })
-    expect(screen.getByRole('button', { name: 'Create a room' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled()
+  it('starts on the name step, and Next needs a name', async () => {
+    renderPlay()
+    expect(screen.getByRole('heading', { name: 'Play online' })).toBeInTheDocument()
+    expect(button('Next')).toBeDisabled()
     await userEvent.type(nameField(), '   ')
-    expect(screen.getByRole('button', { name: 'Create a room' })).toBeDisabled()
+    expect(button('Next')).toBeDisabled()
   })
 
-  it('creates a room and saves the name, trimmed', async () => {
-    const { onName, onCreate } = renderPlay()
+  it('saves the name, trimmed, and moves to the choice', async () => {
+    const { onName } = renderPlay()
     await userEvent.type(nameField(), ' Kofi ')
-    await userEvent.click(screen.getByRole('button', { name: 'Create a room' }))
+    await userEvent.click(button('Next'))
     expect(onName).toHaveBeenCalledWith('Kofi')
+    expect(screen.getByText(/Playing as Kofi/)).toBeInTheDocument()
+  })
+
+  it('starts on the choice with a saved name, and Create goes on', async () => {
+    const { onCreate } = renderPlay({ name: 'Ama' })
+    expect(screen.getByText(/Playing as Ama/)).toBeInTheDocument()
+    await userEvent.click(button('Create a room'))
     expect(onCreate).toHaveBeenCalled()
   })
 
-  it('takes four letters as the code, uppercased', async () => {
-    renderPlay({ name: 'Ama' })
-    await userEvent.type(codeField(), 'k7q-mz')
-    expect(codeField()).toHaveValue('KQMZ')
+  it('Change goes back to the name, filled in', async () => {
+    const { onName } = renderPlay({ name: 'Ama' })
+    await userEvent.click(button('Change'))
+    expect(nameField()).toHaveValue('Ama')
+    await userEvent.clear(nameField())
+    await userEvent.type(nameField(), 'Esi')
+    await userEvent.click(button('Next'))
+    expect(onName).toHaveBeenCalledWith('Esi')
+    expect(screen.getByText(/Playing as Esi/)).toBeInTheDocument()
   })
 
-  it('joins once the code has four letters, and saves the name', async () => {
-    const { onName, onJoin } = renderPlay({ name: 'Ama' })
-    await userEvent.type(codeField(), 'kqm')
-    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled()
+  it('joins by a code of four letters, uppercased', async () => {
+    const { onJoin } = renderPlay({ name: 'Ama' })
+    await userEvent.click(button('Join a room'))
+    expect(screen.getByRole('heading', { name: 'Join a room' })).toBeInTheDocument()
+    expect(codeField()).toHaveFocus()
+    await userEvent.type(codeField(), 'k7q-m')
+    expect(codeField()).toHaveValue('KQM')
+    expect(button('Join')).toBeDisabled()
     await userEvent.type(codeField(), 'z')
-    await userEvent.click(screen.getByRole('button', { name: 'Join' }))
-    expect(onName).toHaveBeenCalledWith('Ama')
+    expect(codeField()).toHaveValue('KQMZ')
+    await userEvent.click(button('Join'))
     expect(onJoin).toHaveBeenCalledWith('KQMZ')
   })
 
-  it('starts with a linked code filled in', () => {
-    renderPlay({ code: 'ABCD' })
-    expect(codeField()).toHaveValue('ABCD')
+  it('goes back a step at a time, then home', async () => {
+    const { onBack } = renderPlay({ name: 'Ama' })
+    await userEvent.click(button('Join a room'))
+    await userEvent.click(button('Back'))
+    expect(screen.getByText(/Playing as Ama/)).toBeInTheDocument()
+    expect(onBack).not.toHaveBeenCalled()
+    await userEvent.click(button('Back'))
+    expect(onBack).toHaveBeenCalledTimes(1)
   })
 
-  it('goes back', async () => {
+  it('goes home from the name step', async () => {
     const { onBack } = renderPlay()
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
+    await userEvent.click(button('Back'))
     expect(onBack).toHaveBeenCalled()
+  })
+
+  it('on a room link, Next joins that room', async () => {
+    const { onName, onJoin } = renderPlay({ code: 'ABCD' })
+    await userEvent.type(nameField(), 'Kofi')
+    await userEvent.click(button('Next'))
+    expect(onName).toHaveBeenCalledWith('Kofi')
+    expect(onJoin).toHaveBeenCalledWith('ABCD')
   })
 })
