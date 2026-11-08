@@ -52,4 +52,28 @@ describe('home kick', () => {
   it('is off by default', () => {
     expect(homeKicks(setup({ roll: 4, pieces: { red: [22], yellow: [lane('yellow', 2)] } }))).toEqual([])
   })
+  const both = { homeKick: true, backKick: true }
+
+  it('counting backwards through the entry, with Back Kick on', () => {
+    // 27 → 26 → 25 → 24 (yellow's entry), then into lane 1 → 2.
+    const s = setup({ rules: both, roll: 5, pieces: { red: [27], yellow: [lane('yellow', 2)] } })
+    expect(homeKicks(s)).toEqual([
+      { kind: 'homeKick', piece: piece('red'), to: lane('yellow', 2), kick: piece('yellow') },
+    ])
+  })
+
+  it('not counting backwards with Back Kick off', () => {
+    expect(homeKicks(setup({ rules, roll: 5, pieces: { red: [27], yellow: [lane('yellow', 2)] } }))).toEqual([])
+  })
+
+  it('a backward count is stopped by an opponent block on the way', () => {
+    const s = setup({ rules: both, roll: 5, pieces: { red: [27], yellow: [lane('yellow', 2)], green: [25, 25] } })
+    expect(homeKicks(s)).toEqual([])
+  })
+
+  it('a piece in an opponent’s lane cannot turn back into it', () => {
+    // Out of lane 1 to 24, then back in to lane 2: not allowed.
+    const s = setup({ rules: both, roll: 3, pieces: { red: [lane('yellow', 1)], yellow: [lane('yellow', 2)] } })
+    expect(homeKicks(s)).toEqual([])
+  })
 })

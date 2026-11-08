@@ -1,16 +1,22 @@
 import { LANE_LENGTH, entryIndex } from '../board'
 import { loneOpponent } from '../occupancy'
-import { forwardPath, isClear } from '../path'
+import { backwardPath, forwardPath, isClear } from '../path'
 import { lane } from '../position'
 import { positionOf } from '../state'
-import { COLORS, type GameState, type Move, type PieceId } from '../types'
+import { COLORS, type GameState, type Move, type PieceId, type Position } from '../types'
 
 export function homeKickMoves(state: GameState, piece: PieceId, roll: number): Move[] {
-  if (!state.settings.rules.homeKick) return []
+  const { homeKick, backKick } = state.settings.rules
+  if (!homeKick) return []
   const from = positionOf(state, piece)
-  if (from.kind !== 'track') return []
-  // route[k] is where the piece stands after k normal steps.
-  const route = [from, ...(forwardPath(piece.color, from, roll - 1) ?? [])]
+  // From an opponent's lane the only way is out; it can't turn back in.
+  if (from.kind !== 'track' && !(from.kind === 'lane' && from.owner === piece.color)) return []
+  const counts = [forwardPath(piece.color, from, roll - 1), backKick ? backwardPath(piece.color, from, roll - 1) : null]
+  return counts.flatMap((steps) => (steps ? turnsIn(state, piece, roll, [from, ...steps]) : []))
+}
+
+/** route[k] is where the piece stands after k steps; at another colour's entry it may turn into that lane. */
+function turnsIn(state: GameState, piece: PieceId, roll: number, route: Position[]): Move[] {
   return route.flatMap((pos, k): Move[] => {
     if (pos.kind !== 'track') return []
     const index = pos.index
