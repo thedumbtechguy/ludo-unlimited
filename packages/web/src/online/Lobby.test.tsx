@@ -1,8 +1,9 @@
 import { MODES, type MemberView, type RoomView, type YouView } from '@ludo/engine'
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Lobby } from './Lobby'
+import type { Status } from './socket'
 
 const room = (members: MemberView[], players: 2 | 3 | 4 = 4): RoomView => ({
   code: 'KQMZ',
@@ -21,16 +22,19 @@ const ama: MemberView = { id: 1, name: 'Ama', connected: true, seat: 'red' }
 const kofi: MemberView = { id: 2, name: 'Kofi', connected: true, seat: 'green' }
 const esi: MemberView = { id: 3, name: 'Esi', connected: true }
 
-function renderLobby(r: RoomView, you: YouView) {
+function renderLobby(r: RoomView, you: YouView, status: Status = 'open') {
   const send = vi.fn()
   const onSettings = vi.fn()
-  const { unmount } = render(<Lobby room={r} you={you} send={send} onSettings={onSettings} onLeave={vi.fn()} />)
+  const { unmount } = render(<Lobby room={r} you={you} status={status} send={send} onSettings={onSettings} onLeave={vi.fn()} />)
   return { send, onSettings, unmount }
 }
 const seatRows = () => screen.getAllByTestId('seat').map((row) => row.textContent)
 
 describe('Lobby', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
 
   it('shows the code and a row per seat, naming the host', () => {
     renderLobby(room([ama, kofi, esi]), { id: 3, host: false })
@@ -57,7 +61,12 @@ describe('Lobby', () => {
     expect(screen.getByText('Waiting for Ama to start')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Change settings' })).toBeNull()
-    expect(screen.getByText('Ghana rules')).toBeInTheDocument()
+    expect(screen.getAllByRole('paragraph').filter((p) => p.classList.contains('row')).map((p) => p.textContent)).toEqual([
+      'RulesGhana rules',
+      'After a kickCarry on',
+      'Game endsWhen one player wins',
+      'Turn timerNormal',
+    ])
   })
 
   it('gives the host Settings', async () => {
@@ -111,5 +120,50 @@ describe('Lobby', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Share link' }))
     expect(writeText).toHaveBeenCalledWith(`${location.origin}/r/KQMZ`)
     expect(screen.getByRole('button', { name: 'Link copied' })).toBeInTheDocument()
+  })
+
+  it('says when it is reconnecting, and holds taps until it is back', () => {
+    renderLobby(room([ama, { ...kofi, seat: 'yellow' }]), { id: 1, seat: 'red', host: true }, 'reconnecting')
+    expect(screen.getByRole('status')).toHaveTextContent('Reconnecting…')
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Stand up' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Change settings' })).toBeDisabled()
+  })
+
+  it('holds sitting down while reconnecting', () => {
+    renderLobby(room([ama, esi]), { id: 3, host: false }, 'reconnecting')
+    expect(screen.getByRole('button', { name: 'Tap to sit as Green' })).toBeDisabled()
+  })
+
+  it('goes back to Share link a moment after copying', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('navigator', { ...navigator, share: undefined, clipboard: { writeText: () => Promise.resolve() } })
+    renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Share link' })))
+    expect(screen.getByRole('button', { name: 'Link copied' })).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument()
+  })
+
+  it('shows the link to copy by hand when the clipboard says no', async () => {
+    vi.stubGlobal('navigator', { ...navigator, share: undefined, clipboard: { writeText: () => Promise.reject(new Error('denied')) } })
+    renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Share link' }))
+    expect(screen.getByRole('textbox', { name: /Couldn’t share/ })).toHaveValue(`${location.origin}/r/KQMZ`)
+  })
+
+  it('shows the link to copy by hand when there is neither sharing nor a clipboard (plain http)', async () => {
+    vi.stubGlobal('navigator', { ...navigator, share: undefined, clipboard: undefined })
+    renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Share link' }))
+    expect(screen.getByRole('textbox', { name: /Couldn’t share/ })).toHaveValue(`${location.origin}/r/KQMZ`)
+  })
+
+  it('does nothing when the share sheet is closed', async () => {
+    const share = vi.fn().mockRejectedValue(Object.assign(new Error('closed'), { name: 'AbortError' }))
+    vi.stubGlobal('navigator', { ...navigator, share })
+    renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Share link' }))
+    expect(screen.queryByRole('textbox')).toBeNull()
   })
 })

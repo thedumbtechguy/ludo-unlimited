@@ -13,14 +13,16 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
   const online = useOnlineGame({ code, device, name, timing })
   const [editing, setEditing] = useState(false)
   const { room, you, error } = online
+  // False once an update was tried for this room and the app is still too old.
+  const [updating, setUpdating] = useState(true)
   useEffect(() => {
-    if (error === 'old_version') updateNow()
-  }, [error])
+    if (error === 'old_version') setUpdating(updateNow(code))
+  }, [error, code])
 
-  if (error === 'old_version') return <Message text="Updating to keep playing…" />
+  if (error === 'old_version') return <Message text={updating ? 'Updating to keep playing…' : 'Update the app to keep playing. Close it and open it again.'} onHome={onLeave} />
   if (error === 'not_found') return <Message text={room ? 'This room has ended' : 'No room with that code'} onHome={onLeave} />
   if (error === 'replaced') return <Message text="This room is open in another tab" onHome={onLeave} />
-  if (!room || !you) return <Message text="Connecting…" />
+  if (!room || !you) return <Message text="Connecting…" onHome={onLeave} />
 
   if (room.phase === 'lobby') {
     if (editing && you.host) {
@@ -40,7 +42,7 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
         />
       )
     }
-    return <Lobby room={room} you={you} send={online.send} onSettings={() => setEditing(true)} onLeave={onLeave} />
+    return <Lobby room={room} you={you} status={online.status} send={online.send} onSettings={() => setEditing(true)} onLeave={onLeave} />
   }
   return <OnlineGame {...prefs} online={online} animated={timing.step > 0} onLeave={onLeave} />
 }
@@ -48,7 +50,7 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
 function Message({ text, onHome }: { text: string; onHome?: () => void }) {
   return (
     <main className="screen message">
-      <p>{text}</p>
+      <p role="status">{text}</p>
       {onHome && (
         <button type="button" className="primary" onClick={onHome}>
           Home

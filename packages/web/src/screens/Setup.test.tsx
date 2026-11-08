@@ -211,6 +211,7 @@ describe('Setup', () => {
       const onCreate = renderOnline()
       expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Red player/ })).toBeNull()
+      expect(screen.queryByText(/removed seats/)).toBeNull()
       expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('Normal')
       await userEvent.click(screen.getByRole('button', { name: /Turn timer/ }))
       const quick = screen.getByRole('radio', { name: 'Quick' })
@@ -226,8 +227,14 @@ describe('Setup', () => {
       expect(ghana()).toHaveAttribute('aria-checked', 'false')
       expect(screen.getByRole('button', { name: /^Players/ })).toHaveTextContent('2')
       expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('No timer')
+      expect(screen.getByText('People on removed seats go back to watching.')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
       expect(onCreate).toHaveBeenCalledWith(settings, 'off')
     })
+  })
+
+  it('online: holds the button while the room is being made', () => {
+    render(<Setup onStart={vi.fn()} onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate: vi.fn(), busy: true }} />)
+    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled()
   })
 })

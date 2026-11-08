@@ -27,8 +27,8 @@ const ROOM: RoomView = {
 const HOST: YouView = { id: 1, seat: 'red', host: true }
 const send = vi.fn()
 
-function given(state: { room?: RoomView; you?: YouView; error?: ErrorCode }) {
-  vi.mocked(useOnlineGame).mockReturnValue({ ...state, send } as unknown as ReturnType<typeof useOnlineGame>)
+function given(state: { room?: RoomView; you?: YouView; error?: ErrorCode; status?: string }) {
+  vi.mocked(useOnlineGame).mockReturnValue({ status: 'open', ...state, send } as unknown as ReturnType<typeof useOnlineGame>)
 }
 const prefs = {
   hand: 'right',
@@ -51,11 +51,13 @@ function renderRoom() {
 describe('RoomScreen', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('says it is connecting until the room arrives', () => {
-    given({})
-    renderRoom()
-    expect(screen.getByText('Connecting…')).toBeInTheDocument()
+  it('says it is connecting until the room arrives, with a way home', async () => {
+    given({ status: 'connecting' })
+    const onLeave = renderRoom()
+    expect(screen.getByRole('status')).toHaveTextContent('Connecting…')
     expect(useOnlineGame).toHaveBeenCalledWith({ code: 'KQMZ', device: 'd1', name: 'Ama', timing: FAST_TIMING })
+    await userEvent.click(screen.getByRole('button', { name: 'Home' }))
+    expect(onLeave).toHaveBeenCalled()
   })
 
   it('has no room with that code, and goes home', async () => {
@@ -80,9 +82,26 @@ describe('RoomScreen', () => {
   })
 
   it('updates the app when the room needs a newer one', () => {
+    vi.mocked(updateNow).mockReturnValue(true)
     given({ error: 'old_version' })
     renderRoom()
-    expect(updateNow).toHaveBeenCalled()
+    expect(updateNow).toHaveBeenCalledWith('KQMZ')
+    expect(screen.getByRole('status')).toHaveTextContent('Updating to keep playing…')
+  })
+
+  it('asks for an update when one was tried already for this room', async () => {
+    vi.mocked(updateNow).mockReturnValue(false)
+    given({ error: 'old_version' })
+    const onLeave = renderRoom()
+    expect(screen.getByRole('status')).toHaveTextContent('Update the app to keep playing. Close it and open it again.')
+    await userEvent.click(screen.getByRole('button', { name: 'Home' }))
+    expect(onLeave).toHaveBeenCalled()
+  })
+
+  it('tells the lobby when the connection drops', () => {
+    given({ room: ROOM, you: HOST, status: 'reconnecting' })
+    renderRoom()
+    expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
   })
 
   it('shows the lobby, and the host edits the settings there', async () => {

@@ -211,7 +211,7 @@ describe('App online', () => {
     localStorage.clear()
     history.replaceState(null, '', '/')
     vi.mocked(useOnlineGame).mockImplementation(
-      ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
+      ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, status: 'open', send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
     )
   })
 
@@ -271,5 +271,39 @@ describe('App online', () => {
     renderApp()
     expect(screen.getByRole('heading', { name: 'Play online' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Room code' })).toHaveValue('ABCD')
+    // A refresh here keeps the code.
+    expect(location.pathname).toBe('/r/ABCD')
+  })
+
+  it('holds Create room while the room is made', async () => {
+    let made!: (code: string) => void
+    vi.mocked(createRoom).mockReturnValue(new Promise((resolve) => (made = resolve)))
+    const user = userEvent.setup()
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Create a room' }))
+    await user.click(screen.getByRole('button', { name: 'Create room' }))
+    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled()
+    await act(async () => made('WXYZ'))
+    expect(screen.getByText('WXYZ')).toBeInTheDocument()
+  })
+
+  it('stays out of a room you backed out of making', async () => {
+    let made!: (code: string) => void
+    vi.mocked(createRoom).mockReturnValueOnce(new Promise((resolve) => (made = resolve)))
+    const user = userEvent.setup()
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Create a room' }))
+    await user.click(screen.getByRole('button', { name: 'Create room' }))
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    // Back on Create room before the first answer: that answer is still not yours to act on.
+    await user.click(screen.getByRole('button', { name: 'Create a room' }))
+    await act(async () => made('WXYZ'))
+    expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create room' })).toBeEnabled()
+    expect(location.pathname).toBe('/')
   })
 })

@@ -2,7 +2,7 @@ import { MODES, SEATS, type AfterKick, type EndCondition, type ModeName, type Ru
 import { useId, useState } from 'react'
 import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { COLOR_NAME, modeOf, seatNames, TIMERS } from '../labels'
+import { AFTER_KICK, COLOR_NAME, END, modeOf, seatNames, TIMERS } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Hand, Seats, ThemePref } from '../types'
 
@@ -16,15 +16,6 @@ const PLAYERS = [
   [2, '2 players'],
   [3, '3 players'],
   [4, '4 players'],
-] as const
-const AFTER_KICK = [
-  ['normal', 'Carry on', 'Your other pieces play the rolls you have left. The piece that kicked waits for your next turn.'],
-  ['endsTurn', 'Turn ends', 'A kick ends your turn, even on a 6. Every roll is played straight away, one at a time.'],
-  ['bonusRoll', 'Bonus roll', 'A kick earns you one more roll once your rolls are used.'],
-] as const
-const END = [
-  ['firstWins', 'When one player wins', 'The first to get all four pieces home wins, and the game ends.'],
-  ['playForPlaces', 'When places are set', 'Play goes on after the winner, for 2nd, 3rd and so on, until one player is left.'],
 ] as const
 const HANDS = [
   ['right', 'Right'],
@@ -47,8 +38,17 @@ type Props = {
   onHand: (hand: Hand) => void
   theme: ThemePref
   onTheme: (theme: ThemePref) => void
-  /** Online: no seats (they fill as people join), a turn timer, and `onCreate` instead of `onStart`. `error` shows above the button. */
-  online?: { initial?: { settings: Settings; timer: TurnTimer }; submitLabel: string; onCreate: (settings: Settings, timer: TurnTimer) => void; error?: string }
+  /**
+   * Online: no seats (they fill as people join), a turn timer, and `onCreate` instead of `onStart`.
+   * `error` shows above the button; `busy` holds the button while the room is being made.
+   */
+  online?: {
+    initial?: { settings: Settings; timer: TurnTimer }
+    submitLabel: string
+    onCreate: (settings: Settings, timer: TurnTimer) => void
+    error?: string
+    busy?: boolean
+  }
 }
 
 export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }: Props) {
@@ -105,6 +105,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
           Players
         </h2>
         {pickerRow('players', 'Players', `${players}`)}
+        {initial && <p className="row-note setup-note">People on removed seats go back to watching.</p>}
         {!online &&
           seated.map((color) => {
             const human = seats[color] === 'human'
@@ -155,8 +156,13 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
           {online.error}
         </p>
       )}
-      <button type="button" className="primary start" onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer) : start())}>
-        {online?.submitLabel ?? 'Start game'}
+      <button
+        type="button"
+        className="primary start"
+        disabled={online?.busy}
+        onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer) : start())}
+      >
+        {online?.busy ? 'Creating…' : (online?.submitLabel ?? 'Start game')}
       </button>
 
       {open === 'players' && <Picker title="Players" options={PLAYERS} value={players} onPick={setPlayers} onClose={close} />}

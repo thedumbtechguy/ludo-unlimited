@@ -1,18 +1,23 @@
 import { SEATS, type ClientMessage, type RoomView, type YouView } from '@ludo/engine'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Chevron } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { COLOR_NAME, rulesName, timerName } from '../labels'
+import { afterKickName, COLOR_NAME, endName, rulesName, timerName } from '../labels'
 import { COLOR_HEX } from '../theme'
+import type { Status } from './socket'
 
-type Props = { room: RoomView; you: YouView; send: (msg: ClientMessage) => void; onSettings: () => void; onLeave: () => void }
+type Props = { room: RoomView; you: YouView; status: Status; send: (msg: ClientMessage) => void; onSettings: () => void; onLeave: () => void }
+
+const COPIED_MS = 2000
 
 const roomLink = (code: string) => `${location.origin}/r/${code}`
 
 /** The room before the game: share the code, take a seat, and the host starts. */
-export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
+export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
   const [asking, setAsking] = useState(false)
-  const [copied, setCopied] = useState(false)
+  // 'failed': no share sheet and no clipboard (plain http on a LAN, or permission denied), so show the link to copy by hand.
+  const [shared, setShared] = useState<'copied' | 'failed'>()
+  const offline = status !== 'open'
   const seats = SEATS[room.settings.players]
   const sitter = (color: string) => room.members.find((m) => m.seat === color)
   const people = seats.filter(sitter).length
@@ -20,14 +25,24 @@ export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
   const watching = room.members.filter((m) => !m.seat && m.connected).length
   const host = room.members.find((m) => m.id === room.host)
 
+  useEffect(() => {
+    if (shared !== 'copied') return
+    const timer = setTimeout(() => setShared(undefined), COPIED_MS)
+    return () => clearTimeout(timer)
+  }, [shared])
+
   async function share() {
     const url = roomLink(room.code)
-    if (navigator.share) {
-      // Closing the share sheet rejects; nothing to do.
-      await navigator.share({ title: 'Ludo Unlimited', text: `Join my Ludo game with code ${room.code}`, url }).catch(() => {})
-    } else {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Ludo Unlimited', text: `Join my Ludo game with code ${room.code}`, url })
+        return
+      }
       await navigator.clipboard.writeText(url)
-      setCopied(true)
+      setShared('copied')
+    } catch (e) {
+      // Closing the share sheet is not a failure.
+      if ((e as Error).name !== 'AbortError') setShared('failed')
     }
   }
 
@@ -46,12 +61,23 @@ export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
         </button>
         <h1>Room</h1>
       </header>
+      {offline && (
+        <p className="lobby-offline" role="status">
+          Reconnecting…
+        </p>
+      )}
 
       <p className="room-code-label">Room code</p>
       <p className="room-code">{room.code}</p>
       <button type="button" className="secondary" onClick={share}>
-        {copied ? 'Link copied' : 'Share link'}
+        {shared === 'copied' ? 'Link copied' : 'Share link'}
       </button>
+      {shared === 'failed' && (
+        <label className="field share-fallback">
+          <span className="field-label">Couldn’t share. Copy this link, or tell friends the code.</span>
+          <input readOnly value={roomLink(room.code)} onFocus={(e) => e.target.select()} />
+        </label>
+      )}
 
       <section aria-labelledby="seats-heading">
         <h2 id="seats-heading" className="section-heading">
@@ -67,13 +93,13 @@ export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
                 {m && `: ${m.name}${m.id === room.host ? ' (host)' : ''}`}
               </span>
               {m?.id === you.id ? (
-                <button type="button" className="seat-button" onClick={() => send({ t: 'stand' })}>
+                <button type="button" className="seat-button" disabled={offline} onClick={() => send({ t: 'stand' })}>
                   Stand up
                 </button>
               ) : (
                 !m &&
                 !you.seat && (
-                  <button type="button" className="seat-button human" aria-label={`Tap to sit as ${COLOR_NAME[color]}`} onClick={() => send({ t: 'sit', color })}>
+                  <button type="button" className="seat-button human" disabled={offline} aria-label={`Tap to sit as ${COLOR_NAME[color]}`} onClick={() => send({ t: 'sit', color })}>
                     Tap to sit
                   </button>
                 )
@@ -93,11 +119,19 @@ export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
           <span className="row-value">{rulesName(room.settings.rules)}</span>
         </p>
         <p className="row">
+          <span className="row-label">After a kick</span>
+          <span className="row-value">{afterKickName(room.settings.afterKick)}</span>
+        </p>
+        <p className="row">
+          <span className="row-label">Game ends</span>
+          <span className="row-value">{endName(room.settings.endCondition)}</span>
+        </p>
+        <p className="row">
           <span className="row-label">Turn timer</span>
           <span className="row-value">{timerName(room.timer)}</span>
         </p>
         {you.host && (
-          <button type="button" className="row" onClick={onSettings}>
+          <button type="button" className="row" disabled={offline} onClick={onSettings}>
             <span className="row-label">Change settings</span>
             <Chevron />
           </button>
@@ -105,7 +139,7 @@ export function Lobby({ room, you, send, onSettings, onLeave }: Props) {
       </section>
 
       {you.host ? (
-        <button type="button" className="primary start" disabled={people < 1} onClick={() => (empty === 0 ? start('computers') : setAsking(true))}>
+        <button type="button" className="primary start" disabled={people < 1 || offline} onClick={() => (empty === 0 ? start('computers') : setAsking(true))}>
           Start
         </button>
       ) : (

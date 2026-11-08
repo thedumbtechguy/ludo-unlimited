@@ -21,7 +21,8 @@ type Screen =
   | { name: 'game'; settings: Settings; seats: Seats; log?: GameEvent[]; key: number }
   | { name: 'results'; game: GameState; settings: Settings; seats: Seats }
   | { name: 'online'; code?: string }
-  | { name: 'create'; error?: string }
+  /** `request`: the room being made, while it is. */
+  | { name: 'create'; error?: string; request?: number }
   | { name: 'room'; code: string }
 
 /** The screen to open on: a room link (`/r/KQMZ`) opens that room, once there's a name to join with. */
@@ -68,7 +69,8 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
   useTheme(theme)
   // An online room counts as a game, so an app update waits for it.
   useEffect(() => setPlaying(screen.name === 'game' || screen.name === 'room'), [screen.name])
-  const roomCode = screen.name === 'room' ? screen.code : undefined
+  // A room's link stays in the address bar, also on the name screen it opened, so a refresh keeps it.
+  const roomCode = screen.name === 'room' || screen.name === 'online' ? screen.code : undefined
   useEffect(() => history.replaceState(null, '', roomCode ? `/r/${roomCode}` : '/'), [roomCode])
   useEffect(() => audio.setPrefs({ sound, music }), [sound, music])
 
@@ -80,19 +82,18 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
   }
   const prefs = { hand, onHand: changeHand, theme, onTheme: changeTheme }
 
-  // One room per tap on Create room, however fast the taps.
-  const creating = useRef(false)
+  // Create room is held while the room is made. Its answer only counts if you're still waiting for that one.
+  const requests = useRef(0)
   async function create(settings: Settings, timer: TurnTimer) {
-    if (creating.current) return
-    creating.current = true
+    const request = ++requests.current
+    setScreen({ name: 'create', request })
+    const stillHere = (next: Screen) => setScreen((now) => (now.name === 'create' && now.request === request ? next : now))
     try {
       const code = await createRoom({ device, name, settings, timer })
-      setScreen({ name: 'room', code })
+      stillHere({ name: 'room', code })
     } catch (e) {
       const error = (e as Error).message === 'too_fast' ? 'Too many new rooms. Try again in a minute.' : 'Couldn’t make the room. Check your connection and try again.'
-      setScreen({ name: 'create', error })
-    } finally {
-      creating.current = false
+      stillHere({ name: 'create', error })
     }
   }
 
@@ -154,7 +155,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
         />
       )
     case 'create':
-      return <Setup onBack={() => setScreen({ name: 'online' })} onStart={() => {}} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error }} />
+      return <Setup onBack={() => setScreen({ name: 'online' })} onStart={() => {}} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error, busy: screen.request !== undefined }} />
     case 'room':
       return (
         <RoomScreen

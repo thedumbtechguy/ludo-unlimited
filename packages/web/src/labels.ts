@@ -1,4 +1,4 @@
-import { isWicked, MODES, type Color, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
+import { isWicked, MODES, type AfterKick, type Color, type EndCondition, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
 import { FINISH_CALLOUT_MS, WIN_CALLOUT_MS } from './fx/actions'
 import type { Seats } from './types'
 
@@ -103,6 +103,19 @@ const sameRules = (a: Rules, b: Rules) => (Object.keys(a) as (keyof Rules)[]).ev
 export const modeOf = (rules: Rules): ModeName | undefined =>
   (Object.keys(MODES) as ModeName[]).find((mode) => sameRules(rules, MODES[mode].rules))
 
+/** What happens after a kick, each with what it means. */
+export const AFTER_KICK = [
+  ['normal', 'Carry on', 'Your other pieces play the rolls you have left. The piece that kicked waits for your next turn.'],
+  ['endsTurn', 'Turn ends', 'A kick ends your turn, even on a 6. Every roll is played straight away, one at a time.'],
+  ['bonusRoll', 'Bonus roll', 'A kick earns you one more roll once your rolls are used.'],
+] as const satisfies readonly (readonly [AfterKick, string, string])[]
+
+/** When the game ends, each with what it means. */
+export const END = [
+  ['firstWins', 'When one player wins', 'The first to get all four pieces home wins, and the game ends.'],
+  ['playForPlaces', 'When places are set', 'Play goes on after the winner, for 2nd, 3rd and so on, until one player is left.'],
+] as const satisfies readonly (readonly [EndCondition, string, string])[]
+
 /** The turn timer choices, each with what it means. */
 export const TIMERS = [
   ['relaxed', 'Relaxed', '60 seconds for each roll or move.'],
@@ -111,7 +124,10 @@ export const TIMERS = [
   ['off', 'No timer', 'Take as long as you like. The computer only steps in if someone leaves.'],
 ] as const satisfies readonly (readonly [TurnTimer, string, string])[]
 
-export const timerName = (timer: TurnTimer): string => TIMERS.find(([t]) => t === timer)![1]
+const nameIn = <T,>(options: readonly (readonly [T, string, string])[], value: T): string => options.find(([v]) => v === value)![1]
+export const timerName = (timer: TurnTimer): string => nameIn(TIMERS, timer)
+export const afterKickName = (afterKick: AfterKick): string => nameIn(AFTER_KICK, afterKick)
+export const endName = (end: EndCondition): string => nameIn(END, end)
 
 const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
 

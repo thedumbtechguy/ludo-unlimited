@@ -371,3 +371,7 @@ p.row { margin: 0; }
 @keyframes bubble { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .reaction-bubble { animation: none; } }
 .results-waiting { margin: 0; min-height: 52px; display: grid; place-items: center; color: var(--muted); font-size: 17px; }
+.lobby-offline { margin: 8px 0 0; color: var(--muted); font-size: 16px; }
+.share-fallback input { font-size: 16px; }
+.seat-button:disabled, button.row:disabled { opacity: 0.4; cursor: default; }
+.setup-note { margin: 8px 0 0; }
