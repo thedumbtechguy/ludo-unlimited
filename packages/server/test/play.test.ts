@@ -148,11 +148,12 @@ describe('playing', () => {
     expect([step.room.paused, sentTo(step, 'kofi')[0]]).toEqual([true, { t: 'error', code: 'illegal' }])
   })
 
-  it('the host role passes on during a game, to the seated player', () => {
+  it('the host role passes on during a game, to the seated player, and back to the creator', () => {
     let room = run(started(), [join('esi', 'Esi'), { type: 'disconnect', device: 'host' }]).room
     expect(room.host).toBe('kofi')
-    room = run(room, [join('host', 'Ama'), say('kofi', { t: 'pause' })]).room
+    room = run(room, [say('kofi', { t: 'pause' })]).room
     expect([room.host, room.paused]).toEqual(['kofi', true])
+    expect(run(room, [join('host', 'Ama')]).room.host).toBe('host') // the creator takes it back
   })
 
   it('watchers who leave are forgotten; seated players are kept for coming back', () => {

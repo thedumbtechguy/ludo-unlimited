@@ -33,6 +33,8 @@ export type Member = { id: number; device: string; name: string; connected: bool
 export type Room = {
   code: string
   phase: 'lobby' | 'playing' | 'finished'
+  /** The device that created the room; it takes the host role back whenever it connects. */
+  owner?: string
   host: string
   settings: Settings
   timer: TurnTimer
@@ -72,6 +74,7 @@ export function createRoom(o: { code: string; device: string; name: string; sett
   return {
     code: o.code,
     phase: 'lobby',
+    owner: o.device,
     host: o.device,
     settings,
     timer: o.timer,
@@ -172,7 +175,7 @@ function connect(ctx: Ctx, device: string, name: string): void {
     m = { id: room.nextId++, device, name: cleanName(name) ?? 'Player', connected: true }
     room.members.push(m)
   }
-  if (!memberOf(room, room.host)?.connected) room.host = device
+  if (device === room.owner || !memberOf(room, room.host)?.connected) room.host = device
   back(ctx, m.seat, wasIdle)
   broadcastRoom(ctx)
 }
@@ -199,7 +202,7 @@ const readyAt = (ctx: Ctx) => Math.max(ctx.room.readyAt ?? ctx.now, ctx.now)
 
 /** Forget watchers who have left. Seated members stay, so their seat is still theirs when they come back. */
 function prune(room: Room): void {
-  room.members = room.members.filter((m) => m.connected || m.seat || m.device === room.host)
+  room.members = room.members.filter((m) => m.connected || m.seat || m.device === room.host || m.device === room.owner)
 }
 
 function disconnect(ctx: Ctx, device: string): void {
@@ -207,7 +210,7 @@ function disconnect(ctx: Ctx, device: string): void {
   const m = memberOf(room, device)
   if (!m) return
   m.connected = false
-  // In the lobby the seat stays theirs (phones drop sockets all the time); others can still take it.
+  // In the lobby the seat stays theirs (phones drop sockets all the time); nobody else can take it. Start leaves them out.
   if (room.phase === 'playing') leaveGame(ctx, m)
   if (room.host === device) handOver(room)
   prune(room)
@@ -221,11 +224,9 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
   const host = room.host === device
   switch (msg.t) {
     case 'sit': {
-      // A seat held by someone not connected (a creator who never came) is free too.
-      const holder = room.members.find((o) => o.seat === msg.color)
-      const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !holder?.connected
+      // A seat stays its holder's while they're away; only an empty seat can be taken.
+      const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !room.members.some((o) => o.seat === msg.color)
       if (!free) return refuse(ctx, device, 'illegal')
-      if (holder) holder.seat = undefined
       m.seat = msg.color
       prune(room)
       return broadcastRoom(ctx)

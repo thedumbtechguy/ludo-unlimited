@@ -87,6 +87,7 @@ type TurnTimer = 'relaxed' | 'normal' | 'quick' | 'off' // 60s, 30s, 15s, none
 type Room = {
   code: RoomCode
   phase: 'lobby' | 'playing' | 'finished'
+  owner: string                        // device ID of the creator; takes the host role back on connecting
   host: string                         // device ID
   settings: Settings                   // engine settings; `players` is the host's pick, and `drop` lowers it at Start
   timer: TurnTimer
@@ -148,14 +149,14 @@ type Room = {
 ## Room rules
 
 **Lobby**
-- **Joining:** the room's creator starts in the first seat (red); everyone else joins as a watcher. Tapping a free colour sits them, and `stand` frees the seat. A seat whose holder isn't connected counts as free, and Start leaves out anyone not connected.
+- **Joining:** the room's creator starts in the first seat (red); everyone else joins as a watcher. Tapping a free colour sits them, and `stand` frees the seat. A seat stays reserved for its holder while they are away; only an empty seat can be taken. Start leaves out anyone not connected.
 - **Seat colours:** the lobby offers the seats for the host's player count, in the engine's seat order (`SEATS`). 2 players use red and yellow; 3 use red, green and yellow.
   - If the host lowers the count, anyone on a seat that no longer exists goes back to watching.
   - With `drop`, players are moved onto the seats of the smaller count (`SEATS[n]`), keeping each one's colour where possible, so the board matches the local game.
 - **Start:** host only, needing at least 2 seated humans, or 1 human with `empty: 'computers'`.
   - `computers` fills the other seats up to the room's chosen player count.
   - `drop` sets the player count to the number of seated humans, which must be at least 2.
-- **Host leaving:** the host role passes to the next connected seated player in seat order, or else to the next connected watcher.
+- **Host leaving:** the creator is host again whenever they connect. Otherwise the host role passes to the next connected seated player in seat order, or else to the next connected watcher.
 
 **Playing**
 - **Who acts:** the seat that has to act is `currentMover(game)` while a roll is pending, otherwise `game.turn`.

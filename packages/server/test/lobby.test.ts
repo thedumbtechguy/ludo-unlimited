@@ -16,10 +16,35 @@ describe('lobby', () => {
     expect(sentTo(step, 'kofi').find((m) => m.t === 'room')).toMatchObject({ you: { host: false } })
   })
 
-  it('a creator who never connects does not hold the first seat', () => {
+  it('a creator who never connects keeps the first seat, and start leaves them out', () => {
     let step = run(lobby(4), [join('kofi', 'Kofi'), say('kofi', { t: 'sit', color: 'red' })])
-    expect([seatOf(step.room, 'host'), seatOf(step.room, 'kofi')]).toEqual([undefined, 'red'])
+    expect(sentTo(step, 'kofi')[0]).toEqual({ t: 'error', code: 'illegal' })
+    expect([seatOf(step.room, 'host'), seatOf(step.room, 'kofi')]).toEqual(['red', undefined])
     step = run(lobby(4), [join('kofi', 'Kofi'), say('kofi', { t: 'sit', color: 'green' }), say('kofi', { t: 'start', empty: 'computers' })])
+    expect(step.room.computers).toEqual(['red', 'yellow', 'blue'])
+    expect(seatOf(step.room, 'host')).toBeUndefined()
+  })
+
+  it('the creator who steps away keeps host and seat: a guest cannot take the seat, and the creator gets host back', () => {
+    let step = run(lobby(4), [join('host', 'Ama'), { type: 'disconnect', device: 'host' }, join('gurru', 'Gurru')])
+    expect(step.room.host).toBe('gurru')
+    step = run(step.room, [say('gurru', { t: 'sit', color: 'red' })])
+    expect(sentTo(step, 'gurru')[0]).toEqual({ t: 'error', code: 'illegal' })
+    expect([seatOf(step.room, 'host'), seatOf(step.room, 'gurru')]).toEqual(['red', undefined])
+    step = run(step.room, [say('gurru', { t: 'sit', color: 'green' }), join('host', 'Ama')])
+    expect(step.room.host).toBe('host')
+    expect([seatOf(step.room, 'host'), seatOf(step.room, 'gurru')]).toEqual(['red', 'green'])
+    expect(sentTo(step, 'host').find((m) => m.t === 'room')).toMatchObject({ you: { host: true, seat: 'red' } })
+  })
+
+  it('the creator who stood up is not forgotten while away', () => {
+    const step = run(lobby(4), [join('host'), say('host', { t: 'stand' }), { type: 'disconnect', device: 'host' }])
+    expect(step.room.members.map((m) => m.device)).toEqual(['host'])
+  })
+
+  it('start with the creator away leaves them out', () => {
+    const step = run(lobby(4), [join('host'), { type: 'disconnect', device: 'host' }, join('gurru'), say('gurru', { t: 'sit', color: 'green' }), say('gurru', { t: 'start', empty: 'computers' })])
+    expect(step.room.phase).toBe('playing')
     expect(step.room.computers).toEqual(['red', 'yellow', 'blue'])
     expect(seatOf(step.room, 'host')).toBeUndefined()
   })
@@ -83,11 +108,11 @@ describe('lobby', () => {
     expect(seatOf(run(step.room, [join('host')]).room, 'host')).toBe('red') // back on it
   })
 
-  it('a seat whose player has dropped out of the lobby can be taken, and start leaves them out', () => {
+  it('a seat whose player has dropped out of the lobby cannot be taken, and start leaves them out', () => {
     let step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'green' }), { type: 'disconnect', device: 'kofi' }])
     expect(seatOf(step.room, 'kofi')).toBe('green')
     step = run(step.room, [join('esi'), say('esi', { t: 'sit', color: 'green' })])
-    expect([seatOf(step.room, 'kofi'), seatOf(step.room, 'esi')]).toEqual([undefined, 'green'])
+    expect([seatOf(step.room, 'kofi'), seatOf(step.room, 'esi')]).toEqual(['green', undefined])
     step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'green' }), { type: 'disconnect', device: 'kofi' }, say('host', { t: 'start', empty: 'computers' })])
     expect(step.room.computers).toEqual(['green', 'yellow', 'blue'])
     expect(seatOf(step.room, 'kofi')).toBeUndefined()

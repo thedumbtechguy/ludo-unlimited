@@ -49,11 +49,10 @@ describe('Lobby', () => {
     expect(send).toHaveBeenCalledWith({ t: 'sit', color: 'yellow' })
   })
 
-  it('a seat whose player is away can be taken, and they are not counted to play', async () => {
-    const { send } = renderLobby(room([ama, { ...kofi, connected: false }, esi]), { id: 3, host: false })
-    expect(seatRows()).toEqual(['Red: Ama (host)', 'Green: Kofi (away)Tap to sit', 'YellowTap to sit', 'BlueTap to sit'])
-    await userEvent.click(screen.getByRole('button', { name: 'Tap to sit as Green' }))
-    expect(send).toHaveBeenCalledWith({ t: 'sit', color: 'green' })
+  it('a seat whose player is away stays theirs: no Tap to sit, and they are not counted to play', () => {
+    renderLobby(room([ama, { ...kofi, connected: false }, esi]), { id: 3, host: false })
+    expect(seatRows()).toEqual(['Red: Ama (host)', 'Green: Kofi (away)', 'YellowTap to sit', 'BlueTap to sit'])
+    expect(screen.queryByRole('button', { name: 'Tap to sit as Green' })).toBeNull()
   })
 
   it('leaves players who are away out of the count to start with', async () => {

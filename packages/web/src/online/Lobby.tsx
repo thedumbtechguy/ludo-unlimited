@@ -20,7 +20,7 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
   const offline = status !== 'open'
   const seats = SEATS[room.settings.players]
   const sitter = (color: string) => room.members.find((m) => m.seat === color)
-  // As the room counts at the start: a seat whose player isn't connected is free.
+  // As the room counts at the start: a seat whose player isn't connected is left out.
   const people = seats.filter((c) => sitter(c)?.connected).length
   const empty = seats.length - people
   const watching = room.members.filter((m) => !m.seat && m.connected).length
@@ -98,7 +98,7 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
                   Stand up
                 </button>
               ) : (
-                !m?.connected &&
+                !m &&
                 !you.seat && (
                   <button type="button" className="seat-button human" disabled={offline} aria-label={`Tap to sit as ${COLOR_NAME[color]}`} onClick={() => send({ t: 'sit', color })}>
                     Tap to sit
