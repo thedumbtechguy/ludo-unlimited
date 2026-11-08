@@ -98,7 +98,8 @@ button.row { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .switch::after { transition: none; }
 }
-.setup .start { width: 100%; min-height: 56px; margin-top: auto; font-size: 18px; }
+/* Start stays pinned to the bottom while the settings scroll under it; the table-coloured ring hides them behind it. */
+.setup .start { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); width: 100%; min-height: 56px; margin-top: auto; font-size: 18px; box-shadow: 0 0 0 12px var(--table); }
 .setup section:last-of-type { margin-bottom: 28px; }
 
 
