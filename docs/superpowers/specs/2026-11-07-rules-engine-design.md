@@ -24,7 +24,7 @@ Guiding principles:
 - Getting a piece home gives no bonus roll.
 - **After a kick** is a game setting, `afterKick`:
   - `endsTurn`: any kick ends the turn, even on a 6. Kicks other than a Front Kick are optional, so a player can skip one to keep their extra roll.
-  - `normal`: a kick changes nothing, so a 6 still rolls again.
+  - `normal` (**the default**): a kick changes nothing, so a 6 still rolls again. For example, you roll a 6 to bring a piece out, kick someone sitting on your start square, and roll again.
   - `bonusRoll`: a kick always earns another roll. This only applies when the kicker is the player whose turn it is, not a Labourer owner playing someone else's roll.
 - Reaching home needs an exact roll.
 - There are no safe squares. That includes start squares and, when Home Kick is on, home lanes.
