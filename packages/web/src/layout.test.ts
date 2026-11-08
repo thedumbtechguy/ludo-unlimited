@@ -1,6 +1,6 @@
 import { createGame, lane, settingsFor, startIndex, track, TRACK } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { TILES, placements, positionPoint, quarterTurns, turnPoint, viewerOf } from './layout'
+import { TILES, boardToScreen, placements, positionPoint, quarterTurns, turnPoint, viewerOf } from './layout'
 
 const red0 = { color: 'red', index: 0 } as const
 
@@ -79,6 +79,22 @@ describe('layout', () => {
       expect(viewerOf({ red: 'computer', green: 'human', yellow: 'human' }, ['red', 'green', 'yellow'])).toBe('green')
       expect(viewerOf({ red: 'computer', yellow: 'computer' }, ['red', 'yellow'])).toBe('red')
       expect(viewerOf({}, ['red', 'yellow'])).toBe('red')
+    })
+  })
+
+  describe('boardToScreen', () => {
+    const rect = { left: 16, top: 100, width: 300, height: 300 }
+
+    it('scales a board point into the board’s rect', () => {
+      expect(boardToScreen({ x: 300, y: 300 }, rect, 0)).toEqual({ x: 166, y: 250 })
+      expect(boardToScreen({ x: 0, y: 0 }, rect, 0)).toEqual({ x: 16, y: 100 })
+    })
+
+    it('turns with the board, so red’s yard follows it to the bottom-right', () => {
+      const yard = { x: 120, y: 120 }
+      const turns = quarterTurns('red', 'right')
+      expect(boardToScreen(yard, rect, turns)).toEqual({ x: 16 + 240, y: 100 + 240 })
+      expect(boardToScreen(yard, rect, quarterTurns('red', 'left'))).toEqual({ x: 16 + 60, y: 100 + 240 })
     })
   })
 })

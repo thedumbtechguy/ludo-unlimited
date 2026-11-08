@@ -1,6 +1,7 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
 import { useEffect, useState } from 'react'
 import { Board } from '../components/Board'
+import { FxLayer } from '../fx/FxLayer'
 import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
@@ -51,102 +52,105 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   const shownHint = noMoves ? (hint ? `No moves. ${hint}` : 'No moves') : hint
 
   return (
-    <main className="game">
-      <header className="topbar">
-        <span className="title">Ludo Unlimited</span>
-        <span className="rules-name">{rulesName(options.settings.rules)}</span>
-        <button type="button" className="menu-button" aria-label="Menu" aria-haspopup="dialog" onClick={() => setMenuOpen(true)}>
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-            <path d="M3 5h14M3 10h14M3 15h14" />
-          </svg>
-          <span aria-hidden="true">Menu</span>
-        </button>
-      </header>
+    // Effects are skipped when timing is instant (the browser tests' ?fast), so they never slow a game down.
+    <FxLayer level={effectsLevel} enabled={options.timing.step > 0}>
+      <main className="game">
+        <header className="topbar">
+          <span className="title">Ludo Unlimited</span>
+          <span className="rules-name">{rulesName(options.settings.rules)}</span>
+          <button type="button" className="menu-button" aria-label="Menu" aria-haspopup="dialog" onClick={() => setMenuOpen(true)}>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M3 5h14M3 10h14M3 15h14" />
+            </svg>
+            <span aria-hidden="true">Menu</span>
+          </button>
+        </header>
 
-      <div className="play">
-        <Board
-          state={game}
-          moving={g.moving}
-          movable={g.movable}
-          selected={g.selected}
-          targets={g.targets}
-          onSelectPiece={g.select}
-          onPickTarget={g.play}
-          onDeselect={g.deselect}
-          onPreview={setPreview}
-          turn={turn}
-          names={seatNames(options.seats, colors)}
-          you={firstHuman(options.seats, colors)}
-          active={game.status === 'playing' ? mover : undefined}
-        >
-          <KickCallout callout={g.callout} />
-        </Board>
-        {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
-        <section className="controls" aria-label="Dice">
-          <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
-          <div className="controls-side">
-            <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />
-            <div className="action-slot">
-              {g.canStop ? (
-                <div className="roll-again">
-                  <button type="button" className="primary" onClick={g.roll}>
-                    Roll again
-                  </button>
-                  <button type="button" className="secondary" onClick={g.stop}>
-                    Stop
-                  </button>
-                </div>
-              ) : (
-                <p className="hint">{shownHint}</p>
-              )}
+        <div className="play">
+          <Board
+            state={game}
+            moving={g.moving}
+            movable={g.movable}
+            selected={g.selected}
+            targets={g.targets}
+            onSelectPiece={g.select}
+            onPickTarget={g.play}
+            onDeselect={g.deselect}
+            onPreview={setPreview}
+            turn={turn}
+            names={seatNames(options.seats, colors)}
+            you={firstHuman(options.seats, colors)}
+            active={game.status === 'playing' ? mover : undefined}
+          >
+            <KickCallout callout={g.callout} />
+          </Board>
+          {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
+          <section className="controls" aria-label="Dice">
+            <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
+            <div className="controls-side">
+              <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />
+              <div className="action-slot">
+                {g.canStop ? (
+                  <div className="roll-again">
+                    <button type="button" className="primary" onClick={g.roll}>
+                      Roll again
+                    </button>
+                    <button type="button" className="secondary" onClick={g.stop}>
+                      Stop
+                    </button>
+                  </div>
+                ) : (
+                  <p className="hint">{shownHint}</p>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
 
-      <p className="sr-only" role="status">
-        {g.message ?? ''}
-      </p>
+        <p className="sr-only" role="status">
+          {g.message ?? ''}
+        </p>
 
-      {menuOpen && (
-        <Sheet title="Menu" hideTitle onClose={() => setMenuOpen(false)}>
-          <div className="sheet-rows">
-            <button type="button" className="sheet-row" onClick={onQuit}>
-              Quit to home
-            </button>
-            <button
-              type="button"
-              className="sheet-row"
-              onClick={() => {
-                setMenuOpen(false)
-                onRestart()
-              }}
-            >
-              Restart game
-            </button>
-            <button
-              type="button"
-              className="sheet-row"
-              onClick={() => {
-                setMenuOpen(false)
-                onHand(hand === 'right' ? 'left' : 'right')
-              }}
-            >
-              Playing hand: {HAND_NAME[hand]}
-            </button>
-            <button
-              type="button"
-              className="sheet-row"
-              onClick={() => {
-                setMenuOpen(false)
-                onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')
-              }}
-            >
-              Effects: {EFFECTS_NAME[effectsLevel]}
-            </button>
-          </div>
-        </Sheet>
-      )}
-    </main>
+        {menuOpen && (
+          <Sheet title="Menu" hideTitle onClose={() => setMenuOpen(false)}>
+            <div className="sheet-rows">
+              <button type="button" className="sheet-row" onClick={onQuit}>
+                Quit to home
+              </button>
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onRestart()
+                }}
+              >
+                Restart game
+              </button>
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onHand(hand === 'right' ? 'left' : 'right')
+                }}
+              >
+                Playing hand: {HAND_NAME[hand]}
+              </button>
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')
+                }}
+              >
+                Effects: {EFFECTS_NAME[effectsLevel]}
+              </button>
+            </div>
+          </Sheet>
+        )}
+      </main>
+    </FxLayer>
   )
 }

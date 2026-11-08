@@ -101,3 +101,12 @@ export function placements(state: GameState, moving?: Moving): Placement[] {
     }),
   )
 }
+
+/**
+ * A board point (unturned board units) on screen, given the board's bounding rect: turned the way
+ * the board is drawn, then scaled into the rect. For effects drawn over the board.
+ */
+export function boardToScreen(point: Point, rect: { left: number; top: number; width: number; height: number }, turns: number): Point {
+  const p = turnPoint(point, turns)
+  return { x: rect.left + (p.x / BOARD_SIZE) * rect.width, y: rect.top + (p.y / BOARD_SIZE) * rect.height }
+}

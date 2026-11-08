@@ -221,3 +221,6 @@ button.row { cursor: pointer; }
 .results h1 { font-size: 34px; letter-spacing: -0.8px; margin-bottom: 18px; }
 .results ol { list-style: none; margin: 0; padding: 0; }
 .results-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 36px; }
+
+/* Effects: one canvas over the whole screen that never takes a tap. Under the sheets. */
+.fx-layer { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; pointer-events: none; }
