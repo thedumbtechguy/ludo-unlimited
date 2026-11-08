@@ -1,6 +1,6 @@
 import { entryIndex, startIndex } from './board'
 import { entersFirst, moveSteps } from './legalMoves'
-import { backwardPath, forwardPath } from './path'
+import { backwardPaths, forwardPath } from './path'
 import { lane, samePos, track } from './position'
 import { positionOf } from './state'
 import type { GameState, Move, Position } from './types'
@@ -15,7 +15,8 @@ export function movePath(state: GameState, move: Move): Position[] {
 function walkFrom(state: GameState, move: Move, from: Position): Position[] {
   const color = move.piece.color
   const roll = moveSteps(state, move)
-  const routes = (steps: number) => [forwardPath(color, from, steps), backwardPath(color, from, steps)]
+  const routes = (steps: number) => [forwardPath(color, from, steps), ...backwardPaths(color, from, steps)]
+  const ending = (steps: number, at: Position) => routes(steps).find((path) => path && samePos(path[path.length - 1], at))!
 
   switch (move.kind) {
     case 'enter':
@@ -23,11 +24,10 @@ function walkFrom(state: GameState, move: Move, from: Position): Position[] {
     case 'forward':
       return forwardPath(color, from, roll)!
     case 'back':
-      return backwardPath(color, from, roll)!
+      return ending(roll, move.to)
     case 'line': {
       if (from.kind === 'base') return [move.via, move.to]
-      const toVia = routes(roll).find((path) => path && samePos(path[path.length - 1], move.via))!
-      return [...toVia, move.to]
+      return [...ending(roll, move.via), move.to]
     }
     case 'homeKick': {
       const to = move.to as Extract<Position, { kind: 'lane' }>

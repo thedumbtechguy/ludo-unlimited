@@ -37,7 +37,7 @@ describe('backwardPath', () => {
     expect(backwardPath('red', track(1), 3)).toEqual([track(0), track(51), track(50)])
   })
 
-  it('runs out of your own lane onto the track (wicked move)', () => {
+  it('runs out of your own lane back along the arm', () => {
     expect(backwardPath('red', lane('red', 2), 3)).toEqual([lane('red', 1), track(50), track(49)])
   })
 

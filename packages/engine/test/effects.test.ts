@@ -116,13 +116,33 @@ describe('describeMove', () => {
   it('a back kick', () => {
     const s = setup({ rules: { backKick: true }, roll: 3, pieces: { red: lone(5), yellow: [2] } })
     expect(play(s, only(legalMoves(s), 'back')).effects).toEqual([
-      { type: 'kick', kind: 'back', at: track(2), kicker: piece('red'), victim: piece('yellow') },
+      { type: 'kick', kind: 'back', at: track(2), from: track(3), kicker: piece('red'), victim: piece('yellow') },
     ])
   })
 
-  it('a back kick out of your own home lane is wicked', () => {
+  it('a back kick out of your own home lane round past the entrance is a back kick, then wicked on top', () => {
+    const s = setup({ rules: { backKick: true }, roll: 5, pieces: { red: [lane('red', 4)], yellow: [51] } })
+    expect(play(s, only(legalMoves(s), 'back')).effects).toEqual([
+      { type: 'kick', kind: 'back', at: track(51), from: track(50), kicker: piece('red'), victim: piece('yellow') },
+      { type: 'wicked', piece: piece('red'), at: track(51) },
+    ])
+  })
+
+  it('a back kick out of your own home lane back along the arm is a plain back kick', () => {
     const s = setup({ rules: { backKick: true }, roll: 5, pieces: { red: [lane('red', 4)], yellow: [49] } })
-    expect(play(s, only(legalMoves(s), 'back')).effects[0]).toMatchObject({ type: 'kick', kind: 'wicked', at: track(49) })
+    expect(play(s, only(legalMoves(s), 'back')).effects).toEqual([
+      { type: 'kick', kind: 'back', at: track(49), from: track(50), kicker: piece('red'), victim: piece('yellow') },
+    ])
+  })
+
+  it('a back kick on your own lane entry, straight out of the lane, stepped off lane 1', () => {
+    const s = setup({ rules: { backKick: true }, roll: 2, pieces: { red: [lane('red', 2)], yellow: [50] } })
+    expect(play(s, only(legalMoves(s), 'back')).effects[0]).toMatchObject({ kind: 'back', at: track(50), from: lane('red', 1) })
+  })
+
+  it('a back kick inside your own lane is not wicked', () => {
+    const s = setup({ rules: { backKick: true }, roll: 2, pieces: { red: [lane('red', 4)], yellow: [lane('red', 2)] } })
+    expect(play(s, only(legalMoves(s), 'back')).effects.map((e) => e.type)).toEqual(['kick'])
   })
 
   it('a line kick lands on the opponent’s square', () => {

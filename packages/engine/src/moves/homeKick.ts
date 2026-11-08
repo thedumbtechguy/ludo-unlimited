@@ -1,6 +1,6 @@
 import { LANE_LENGTH, entryIndex } from '../board'
 import { loneOpponent } from '../occupancy'
-import { backwardPath, forwardPath, isClear } from '../path'
+import { backwardPaths, forwardPath, isClear } from '../path'
 import { lane } from '../position'
 import { positionOf } from '../state'
 import { COLORS, type GameState, type Move, type PieceId, type Position } from '../types'
@@ -11,7 +11,7 @@ export function homeKickMoves(state: GameState, piece: PieceId, roll: number): M
   const from = positionOf(state, piece)
   // From an opponent's lane the only way is out; it can't turn back in.
   if (from.kind !== 'track' && !(from.kind === 'lane' && from.owner === piece.color)) return []
-  const counts = [forwardPath(piece.color, from, roll - 1), backKick ? backwardPath(piece.color, from, roll - 1) : null]
+  const counts = [forwardPath(piece.color, from, roll - 1), ...(backKick ? backwardPaths(piece.color, from, roll - 1) : [])]
   return counts.flatMap((steps) => (steps ? turnsIn(state, piece, roll, [from, ...steps]) : []))
 }
 

@@ -51,5 +51,18 @@ export const forwardPath = (color: Color, from: Position, steps: number): Positi
 export const backwardPath = (color: Color, from: Position, steps: number): Position[] | null =>
   walk(stepBackward, color, from, steps)
 
+/**
+ * Every way to count `steps` back. Counting back out of its own lane, a piece may turn either way at
+ * the tip: back along the arm it came in on (entry − 1 …), or on round the far side past its entrance
+ * (entry + 1, its start square …). Anywhere else there is just the one way back.
+ */
+export function backwardPaths(color: Color, from: Position, steps: number): Position[][] {
+  const paths = [backwardPath(color, from, steps)].filter((path) => path !== null)
+  if (from.kind !== 'lane' || from.owner !== color || steps <= from.index) return paths
+  const out = backwardPath(color, from, from.index)!
+  const round = Array.from({ length: steps - from.index }, (_, i) => track((entryIndex(color) + 1 + i) % TRACK_LENGTH))
+  return [...paths, [...out, ...round]]
+}
+
 export const isClear = (state: GameState, path: Position[], mover: Color): boolean =>
   path.every((pos) => !isOpponentBlock(state, pos, mover))

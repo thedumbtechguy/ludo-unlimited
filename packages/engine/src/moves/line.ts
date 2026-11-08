@@ -1,6 +1,6 @@
 import { LINE_ACROSS, startIndex } from '../board'
 import { hasOpponent, loneOpponent, piecesAt } from '../occupancy'
-import { backwardPath, forwardPath, isClear } from '../path'
+import { backwardPaths, forwardPath, isClear } from '../path'
 import { track } from '../position'
 import { positionOf } from '../state'
 import type { GameState, Move, PieceId, Position } from '../types'
@@ -10,8 +10,8 @@ export function lineMoves(state: GameState, piece: PieceId, roll: number): Move[
   if (!lineKick) return []
   const from = positionOf(state, piece)
   const entering = from.kind === 'base' && roll === 6 ? [track(startIndex(piece.color))] : null
-  const backward = backKick ? backwardPath(piece.color, from, roll) : null
-  const paths = [entering, forwardPath(piece.color, from, roll), backward]
+  const backward = backKick ? backwardPaths(piece.color, from, roll) : []
+  const paths = [entering, forwardPath(piece.color, from, roll), ...backward]
   return paths.flatMap((path): Move[] => {
     if (!path || !isClear(state, path, piece.color)) return []
     const via = path[path.length - 1]

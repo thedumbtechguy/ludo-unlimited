@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove, roll } from '../src/game'
 import { legalMoves } from '../src/legalMoves'
+import { lineMoves } from '../src/moves/line'
 import { lane, track } from '../src/position'
 import { getPlayer } from '../src/state'
 import { piece, setup } from './helpers'
@@ -37,24 +38,25 @@ describe('back kick', () => {
     expect(backs(s)).toHaveLength(1)
   })
 
-  it('wicked move: counts backwards out of your own lane to kick', () => {
+  it('counts backwards out of your own lane to kick', () => {
     // lane 4 → 3 → 2 → 1 → 50 → 49
     const s = setup({ rules, roll: 5, pieces: { red: [lane('red', 4)], yellow: [49] } })
     expect(backs(s)).toEqual([{ kind: 'back', piece: piece('red'), to: track(49), kick: piece('yellow') }])
   })
 
-  it('a wicked count can line kick from an empty landing square', () => {
+  // (The player is offered the back kick round the far side instead: it has the same outcome.)
+  it('counting back out of your own lane can line kick from an empty landing square', () => {
     // lane 1 → 50 → 49 → 48 → 47, then across red lane 2 onto 1.
     const s = setup({ rules: both, roll: 4, pieces: { red: [lane('red', 1)], yellow: [1] } })
-    expect(legalMoves(s).filter((m) => m.kind === 'line')).toEqual([
+    expect(lineMoves(s, piece('red'), 4)).toEqual([
       { kind: 'line', piece: piece('red'), via: track(47), to: track(1), kick: piece('yellow') },
     ])
   })
 
-  it('the lane square a wicked count just left does not block its line kick', () => {
+  it('the lane square a count out of the lane just left does not block its line kick', () => {
     // lane 2 → 1 → 50 → 49 → 48 → 47, then across red lane 2 (now empty) onto 1.
     const s = setup({ rules: both, roll: 5, pieces: { red: [lane('red', 2)], yellow: [1] } })
-    expect(legalMoves(s).filter((m) => m.kind === 'line')).toEqual([
+    expect(lineMoves(s, piece('red'), 5)).toEqual([
       { kind: 'line', piece: piece('red'), via: track(47), to: track(1), kick: piece('yellow') },
     ])
   })

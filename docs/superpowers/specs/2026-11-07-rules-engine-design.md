@@ -56,10 +56,11 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 - Moving backwards just to reposition isn't allowed.
 - A backwards move can go past the player's own start square.
 - A piece that has just entered the board can Back Kick straight away.
-- **Wicked move:** a piece in its own home lane can count backwards out of it (R4 → R3 → R2 → R1 → lane entry → back along the track), to land on and kick a piece by Back Kick, or to set up a Line Kick.
+- **Counting back out of the home lane:** a piece in its own home lane can count backwards out of it (R4 → R3 → R2 → R1 → lane entry), and at the tip it can turn either way: back along the arm it came in on (tip → 49 → 48 …), or on round the far side past its entrance (tip → 51 → 0 → 1 …). Like every backward move, it's only allowed to kick: a Back Kick where it lands, or a Line Kick from there.
+- **Wicked move:** a wicked move is any kick that takes your piece from its home stretch to the far side of its entrance, so it now needs a full lap: e.g. a back kick out of the home lane that turns past the entrance, or a side kick from the home approach across the own lane.
+  - The home stretch is the piece's own home lane, its lane entry, and the arm squares leading to the entry (for red, track 44–49).
+  - Backing out of the lane along the arm (tip → 49 → 48) is a plain Back Kick: the piece is still on its way home.
   - **Wicked isn't its own kick kind**: it's on top of the kick that happened (a Back Kick plus Wicked, or a Line Kick plus Wicked).
-  - **The price is a full lap.** The piece was nearly home and chose to go around again. After a wicked kick it must go all the way around the board before it may enter its home lane: at its lane entry it carries straight on along the track instead of turning in. The lap is done once it passes (or lands on) its own start square, and from then on it turns into its lane as normal.
-  - A piece doing its lap that gets kicked back to base loses the lap requirement: it starts fresh.
   - Effects: the kick's own effect and callout play first, then "Wicked!" on top.
 - A piece in an *opponent's* lane can't move backwards (deeper into that lane).
 - Optional.

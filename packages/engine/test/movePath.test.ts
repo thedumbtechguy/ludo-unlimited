@@ -39,7 +39,7 @@ describe('movePath', () => {
     expect(movePath(s, find(s, 'homeKick'))).toEqual([track(23), track(24), lane('yellow', 1), lane('yellow', 2)])
   })
 
-  it('walks back out of your own lane onto the track for a wicked back kick', () => {
+  it('walks back out of your own lane onto the arm for a back kick', () => {
     const s = setup({ rules: { backKick: true }, roll: 5, pieces: { red: [lane('red', 4)], yellow: [49] } })
     expect(movePath(s, find(s, 'back'))).toEqual([lane('red', 3), lane('red', 2), lane('red', 1), track(50), track(49)])
   })

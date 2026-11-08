@@ -1,13 +1,20 @@
+import { movePath } from './movePath'
 import { piecesAt } from './occupancy'
+import { progress } from './progress'
 import { positionOf } from './state'
 import type { Color, GameEvent, GameState, Move, PieceId, Position } from './types'
 
-export type KickKind = 'front' | 'back' | 'line' | 'home' | 'wicked'
+export type KickKind = 'front' | 'back' | 'line' | 'home'
 
 /** The moments worth celebrating on screen, derived from a state change so every screen agrees. */
 export type GameEffect =
-  /** `via`: for a line kick, the square the kicker reached before crossing the line to `at`. */
-  | { type: 'kick'; kind: KickKind; at: Position; kicker: PieceId; victim: PieceId; via?: Position }
+  /**
+   * `via`: for a line kick, the square the kicker reached before crossing the line to `at`.
+   * `from`: for a back kick, the square the kicker stepped off onto `at`.
+   */
+  | { type: 'kick'; kind: KickKind; at: Position; kicker: PieceId; victim: PieceId; via?: Position; from?: Position }
+  /** Straight after a kick that was the wicked move (see `isWicked`). */
+  | { type: 'wicked'; piece: PieceId; at: Position }
   /** The turn player's run of 6s in this rolling phase; one per 6 rolled. */
   | { type: 'sixStreak'; color: Color; count: number }
   /** A run of 2 or more 6s came to an end. */
@@ -45,7 +52,9 @@ export function describeMove(before: GameState, move: Move, after: GameState): G
   const effects: GameEffect[] = []
   if (move.kick) {
     const via = move.kind === 'line' ? { via: move.via } : {}
-    effects.push({ type: 'kick', kind: kickKind(before, move), at: move.to, kicker: move.piece, victim: move.kick, ...via })
+    const from = move.kind === 'back' ? { from: steppedOff(before, move) } : {}
+    effects.push({ type: 'kick', kind: kickKind(move), at: move.to, kicker: move.piece, victim: move.kick, ...via, ...from })
+    if (isWicked(before, move)) effects.push({ type: 'wicked', piece: move.piece, at: move.to })
     const owner = after.labourers[move.kick.color]
     if (owner && before.labourers[move.kick.color] !== owner) {
       effects.push({ type: 'labourerStart', victim: move.kick.color, owner })
@@ -75,15 +84,38 @@ function pushEnded(effects: GameEffect[], color: Color, count: number): void {
   if (count >= 2) effects.push({ type: 'streakEnded', color, count })
 }
 
-function kickKind(before: GameState, move: Move): KickKind {
+/** Progress of the first square of the arm leading to a colour's lane entry: its home approach. */
+const HOME_STRETCH = 44
+/** Half a lap. */
+const HALF_LAP = 26
+
+/**
+ * The wicked move: a kick that takes the piece from its home stretch (its own lane, its lane entry, or
+ * the arm leading to it) to the far side of its own entrance, so that by position it now needs a full
+ * lap. For a line kick, the square it crossed from counts as where it was too. Backing up along the
+ * route home only loses a few squares; going past the entrance loses more than half a lap.
+ */
+export function isWicked(before: GameState, move: Move): boolean {
+  if (!move.kick) return false
+  const color = move.piece.color
+  const start = progress(color, positionOf(before, move.piece))
+  const from = move.kind === 'line' ? Math.max(start, progress(color, move.via)) : start
+  return from >= HOME_STRETCH && progress(color, move.to) < from - HALF_LAP
+}
+
+/** The square a move's last step left from. */
+function steppedOff(before: GameState, move: Move): Position {
+  const path = movePath(before, move)
+  return path.at(-2) ?? positionOf(before, move.piece)
+}
+
+function kickKind(move: Move): KickKind {
   switch (move.kind) {
     case 'enter':
     case 'forward':
       return 'front'
-    case 'back': {
-      const from = positionOf(before, move.piece)
-      return from.kind === 'lane' && from.owner === move.piece.color ? 'wicked' : 'back'
-    }
+    case 'back':
+      return 'back'
     case 'line':
       return 'line'
     case 'homeKick':
