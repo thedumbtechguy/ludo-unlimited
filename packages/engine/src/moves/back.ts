@@ -5,7 +5,7 @@ import type { GameState, Move, PieceId } from '../types'
 
 export function backMoves(state: GameState, piece: PieceId, roll: number): Move[] {
   if (!state.settings.rules.backKick) return []
-  const path = backwardPath(positionOf(state, piece), roll)
+  const path = backwardPath(piece.color, positionOf(state, piece), roll)
   if (!path || !isClear(state, path, piece.color)) return []
   const to = path[path.length - 1]
   const kick = loneOpponent(state, to, piece.color)

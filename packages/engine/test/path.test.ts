@@ -34,12 +34,17 @@ describe('forwardPath', () => {
 
 describe('backwardPath', () => {
   it('wraps backwards past index 0', () => {
-    expect(backwardPath(track(1), 3)).toEqual([track(0), track(51), track(50)])
+    expect(backwardPath('red', track(1), 3)).toEqual([track(0), track(51), track(50)])
   })
 
-  it('only starts from the track', () => {
-    expect(backwardPath(lane('red', 2), 1)).toBeNull()
-    expect(backwardPath(BASE, 1)).toBeNull()
+  it('runs out of your own lane onto the track (wicked move)', () => {
+    expect(backwardPath('red', lane('red', 2), 3)).toEqual([lane('red', 1), track(50), track(49)])
+  })
+
+  it('cannot run backwards in an opponent’s lane, or from base or home', () => {
+    expect(backwardPath('red', lane('yellow', 2), 1)).toBeNull()
+    expect(backwardPath('red', BASE, 1)).toBeNull()
+    expect(backwardPath('red', HOME, 1)).toBeNull()
   })
 })
 

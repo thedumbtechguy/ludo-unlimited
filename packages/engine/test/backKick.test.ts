@@ -6,6 +6,7 @@ import { getPlayer } from '../src/state'
 import { piece, setup } from './helpers'
 
 const rules = { backKick: true }
+const both = { backKick: true, lineKick: true }
 const backs = (s: Parameters<typeof legalMoves>[0]) => legalMoves(s).filter((m) => m.kind === 'back')
 
 describe('back kick', () => {
@@ -36,8 +37,31 @@ describe('back kick', () => {
     expect(backs(s)).toHaveLength(1)
   })
 
-  it('pieces in their own home lane cannot move backwards', () => {
-    expect(backs(setup({ rules, roll: 3, pieces: { red: [lane('red', 2)], yellow: [50] } }))).toEqual([])
+  it('wicked move: counts backwards out of your own lane to kick', () => {
+    // lane 4 → 3 → 2 → 1 → 50 → 49
+    const s = setup({ rules, roll: 5, pieces: { red: [lane('red', 4)], yellow: [49] } })
+    expect(backs(s)).toEqual([{ kind: 'back', piece: piece('red'), to: track(49), kick: piece('yellow') }])
+  })
+
+  it('a wicked count can line kick from an empty landing square', () => {
+    // lane 1 → 50 → 49 → 48 → 47, then across red lane 2 onto 1.
+    const s = setup({ rules: both, roll: 4, pieces: { red: [lane('red', 1)], yellow: [1] } })
+    expect(legalMoves(s).filter((m) => m.kind === 'line')).toEqual([
+      { kind: 'line', piece: piece('red'), via: track(47), to: track(1), kick: piece('yellow') },
+    ])
+  })
+
+  it('the lane square a wicked count just left does not block its line kick', () => {
+    // lane 2 → 1 → 50 → 49 → 48 → 47, then across red lane 2 (now empty) onto 1.
+    const s = setup({ rules: both, roll: 5, pieces: { red: [lane('red', 2)], yellow: [1] } })
+    expect(legalMoves(s).filter((m) => m.kind === 'line')).toEqual([
+      { kind: 'line', piece: piece('red'), via: track(47), to: track(1), kick: piece('yellow') },
+    ])
+  })
+
+  it('a piece in an opponent’s lane cannot move backwards', () => {
+    const s = setup({ rules, roll: 1, pieces: { red: [lane('yellow', 2)], yellow: [lane('yellow', 3)] } })
+    expect(backs(s)).toEqual([])
   })
 
   it('cannot pass an opponent block backwards', () => {
