@@ -100,7 +100,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
             active={game.status === 'playing' ? mover : undefined}
           >
             <KickCallout callout={g.callout} />
-            <BoardFx effects={g.effects} turn={turn} area={play} />
+            <BoardFx effects={g.effects} labourers={game.labourers} turn={turn} area={play} />
           </Board>
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
           {/* On phones the dice sits under the playing hand's thumb. */}

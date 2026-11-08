@@ -1,10 +1,12 @@
-import { useRef, type RefObject } from 'react'
+import type { Color, GameState } from '@ludo/engine'
+import { useRef, useState, type RefObject } from 'react'
 import { BOARD_SIZE, boardToScreen, turnPoint, type Point } from '../layout'
 import { COLOR_HEX } from '../theme'
-import { effectActions, type FxAction } from './actions'
+import { effectActions, yardCentre, type FxAction } from './actions'
+import { CHAIN_REACH, chainLinks } from './chains'
 import { useFx, type Fx } from './FxLayer'
 import { lightning, shakeFrames } from './geometry'
-import { smoke, spark, speedLine } from './makers'
+import { shard, smoke, spark, speedLine } from './makers'
 import { hex } from './particles'
 import { useEffectStream, type EffectEvent } from './stream'
 
@@ -22,7 +24,10 @@ function stageOf(area: HTMLElement | null, board: Element | null | undefined, tu
   return { area, board, turn, toScreen: (p) => boardToScreen(p, rect, turn), u: rect.width / BOARD_SIZE }
 }
 
-function run(action: FxAction, fx: Fx, stage: Stage): void {
+/** What the overlay shows besides particles: which yards' chains have just slammed on. */
+type Overlay = { chains: (victim: Color, id: number) => void }
+
+function run(action: Exclude<FxAction, { type: 'chains' }>, fx: Fx, stage: Stage): void {
   const { toScreen, u } = stage
   switch (action.type) {
     case 'flash': {
@@ -75,6 +80,11 @@ function run(action: FxAction, fx: Fx, stage: Stage): void {
       })
       return
     }
+    case 'shatter': {
+      const { x, y } = toScreen(yardCentre(action.victim))
+      fx.burst(x, y, action.count, shard(CHAIN_REACH * u, u))
+      return
+    }
     case 'smoke': {
       const { x, y } = toScreen(action.at)
       fx.burst(x, y, action.count, smoke(u))
@@ -88,15 +98,53 @@ function run(action: FxAction, fx: Fx, stage: Stage): void {
  * play area (`area`, which holds the board). Goes inside the Board, as its overlay. Nothing at all
  * while effects are off.
  */
-export function BoardFx({ effects, turn, area }: { effects: EffectEvent[]; turn: number; area: RefObject<HTMLElement> }) {
+export function BoardFx({
+  effects,
+  labourers,
+  turn,
+  area,
+}: {
+  effects: EffectEvent[]
+  labourers: GameState['labourers']
+  turn: number
+  area: RefObject<HTMLElement>
+}) {
   const fx = useFx()
-  const overlay = useRef<SVGSVGElement>(null)
+  const svg = useRef<SVGSVGElement>(null)
+  // Labourers that started while we watched slam on; ones already running (a resumed game) are just there.
+  const [slammed, setSlammed] = useState<Partial<Record<Color, number>>>({})
+  const overlay: Overlay = { chains: (victim, id) => setSlammed((s) => ({ ...s, [victim]: id })) }
   useEffectStream(effects, (effect) => {
     if (!fx.enabled) return
-    const stage = stageOf(area.current, overlay.current?.parentElement, turn)
-    if (!stage) return
-    for (const action of effectActions(effect, fx.level)) run(action, fx, stage)
+    const stage = stageOf(area.current, svg.current?.parentElement, turn)
+    for (const action of effectActions(effect, fx.level)) {
+      if (action.type === 'chains') overlay.chains(action.victim, action.id)
+      else if (stage) run(action, fx, stage)
+    }
   })
   if (!fx.enabled) return null
-  return <svg ref={overlay} className="board-fx" viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true" />
+  const entrance = fx.level === 'full' ? 'slam' : 'fade'
+  return (
+    <svg ref={svg} className="board-fx" viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true">
+      {(Object.keys(labourers) as Color[]).map((victim) => (
+        <Chains key={`${victim}-${slammed[victim] ?? 0}`} victim={victim} turn={turn} entrance={slammed[victim] ? entrance : undefined} />
+      ))}
+    </svg>
+  )
+}
+
+/** Two dark chains crossed over a Labourer's yard, held faint while it lasts. */
+function Chains({ victim, turn, entrance }: { victim: Color; turn: number; entrance?: 'slam' | 'fade' }) {
+  const centre = turnPoint(yardCentre(victim), turn)
+  return (
+    <g data-testid={`chains-${victim}`} className={entrance ? `chains ${entrance}` : 'chains'} style={{ transformOrigin: `${centre.x}px ${centre.y}px` }}>
+      {chainLinks(centre).map(({ x, y, angle, flat }, i) =>
+        flat ? (
+          <rect key={i} x={x - 10} y={y - 6} width="20" height="12" rx="6" fill="none" stroke="currentColor" strokeWidth="3.6" transform={`rotate(${angle} ${x} ${y})`} />
+        ) : (
+          <rect key={i} x={x - 9} y={y - 2.2} width="18" height="4.4" rx="2.2" fill="currentColor" transform={`rotate(${angle} ${x} ${y})`} />
+        ),
+      )}
+    </g>
+  )
 }

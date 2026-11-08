@@ -1,7 +1,7 @@
 import { lane, track, type GameEffect } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { positionPoint } from '../layout'
-import { cameFrom, effectActions, SMOKE, SPARKS, SPEED_LINES } from './actions'
+import { cameFrom, effectActions, SHARDS, SMOKE, SPARKS, SPEED_LINES } from './actions'
 
 const red0 = { color: 'red', index: 0 } as const
 const yellow0 = { color: 'yellow', index: 0 } as const
@@ -59,6 +59,15 @@ describe('effect actions', () => {
     const actions = effectActions(kick('home', lane('yellow', 2)), 'full')
     const ripple = actions.find((a) => a.type === 'ripple')
     expect(ripple).toEqual({ type: 'ripple', color: 'red', squares: [1, 2, 3, 4, 5].map((index) => positionPoint(lane('yellow', index), red0)) })
+  })
+
+  it('a Labourer slams chains on the victim’s yard with a thud, and they shatter when it’s freed', () => {
+    expect(effectActions(event({ type: 'labourerStart', victim: 'green', owner: 'red' }, 7), 'full')).toEqual([
+      { type: 'chains', victim: 'green', id: 7 },
+      { type: 'shake', px: 3, ms: 140 },
+    ])
+    expect(types(effectActions(event({ type: 'labourerStart', victim: 'green', owner: 'red' }), 'reduced'))).toEqual(['chains'])
+    expect(effectActions(event({ type: 'labourerFreed', victim: 'green' }), 'full')).toEqual([{ type: 'shatter', victim: 'green', count: SHARDS }])
   })
 
   it('the six streak is shown elsewhere', () => {

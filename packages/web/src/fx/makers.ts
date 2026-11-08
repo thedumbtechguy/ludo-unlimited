@@ -97,3 +97,36 @@ export const smoke =
       shape: 'soft',
     }
   }
+
+const STEEL = ['#2a2c31', '#4b4f57', '#2a2c31'].map(hex)
+
+/**
+ * Broken chain: dark steel shards from anywhere along the two chains crossing a yard (`reach` px
+ * from its centre along each axis), thrown outwards, tumbling and falling.
+ */
+export const shard =
+  (reach: number, u: number): Make =>
+  (rand) => {
+    const d = (rand() * 2 - 1) * reach
+    const sign = rand() < 0.5 ? 1 : -1
+    const x = d
+    const y = sign * d
+    const out = Math.atan2(y, x) + (rand() - 0.5) * 1.6
+    const speed = (50 + rand() * 130) * u
+    return {
+      x,
+      y,
+      vx: Math.cos(out) * speed,
+      vy: Math.sin(out) * speed - 140 * u,
+      life: 0.5 + rand() * 0.3,
+      size: (3.5 + rand() * 3) * u,
+      colors: STEEL,
+      hold: 3,
+      gravity: 900 * u,
+      drag: 1.2,
+      shape: 'rect',
+      aspect: 0.55,
+      angle: rand() * Math.PI,
+      spin: (rand() - 0.5) * 24,
+    }
+  }

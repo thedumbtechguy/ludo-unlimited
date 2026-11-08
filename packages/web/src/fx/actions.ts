@@ -1,5 +1,5 @@
 import { forwardPath, track, TRACK, type Color, type PieceId, type Position } from '@ludo/engine'
-import { positionPoint, type Point } from '../layout'
+import { positionPoint, yardOrigin, type Point } from '../layout'
 import type { EffectsLevel } from '../types'
 import type { EffectEvent } from './stream'
 
@@ -16,11 +16,21 @@ export type FxAction =
   | { type: 'bolt'; from: Point; to: Point; color: Color }
   | { type: 'ripple'; squares: Point[]; color: Color }
   | { type: 'smoke'; at: Point; count: number }
+  /** Chains slam over the victim's yard (`id` tells one Labourer from the next). */
+  | { type: 'chains'; victim: Color; id: number }
+  | { type: 'shatter'; victim: Color; count: number }
 
 export const SPARKS = 44
 export const SPEED_LINES = 10
 export const SMOKE = 28
+export const SHARDS = 48
 const LANE = [1, 2, 3, 4, 5]
+
+/** The middle of a colour's yard. */
+export const yardCentre = (color: Color): Point => {
+  const o = yardOrigin(color)
+  return { x: o.x + 120, y: o.y + 120 }
+}
 
 /** The square a piece stands on (any piece will do off the base and home). */
 const square = (at: Position, piece: PieceId): Point => positionPoint(at, piece)
@@ -65,6 +75,10 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel): FxActio
         }
       }
     }
+    case 'labourerStart':
+      return [{ type: 'chains', victim: effect.victim, id: effect.id }, ...shake(3, 140)]
+    case 'labourerFreed':
+      return [{ type: 'shatter', victim: effect.victim, count: SHARDS }]
     default:
       return []
   }
