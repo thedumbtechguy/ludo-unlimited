@@ -4,13 +4,13 @@
     {
       "id": 0,
       "subject": "Task 1: Engine: pacing and protocol types",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** One shared place for how long devices take to show each event, and the message types both sides compile against.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/engine/src/pace.ts\", \"packages/engine/src/protocol.ts\", \"packages/engine/src/index.ts\", \"packages/engine/test/pace.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/engine\", \"acceptanceCriteria\": [\"eventMs matches roll/move/wicked/stop rules\", \"protocol types exported from @ludo/engine\", \"engine tests pass\"], \"requiresUserVerification\": false}\n```"
     },
     {
       "id": 1,
       "subject": "Task 2: Web: pacing comes from the engine",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The app animates with the engine's timing numbers, so the room and devices agree.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/useGame.ts\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"NORMAL_TIMING is ANIMATION_TIMING\", \"web tests pass\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         0
@@ -19,7 +19,7 @@
     {
       "id": 2,
       "subject": "Task 3: Server package: scaffold and validation",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** A `packages/server` workspace that tests run in, with input validation and room codes.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/package.json\", \"packages/server/tsconfig.json\", \"packages/server/vitest.config.ts\", \"packages/server/src/validate.ts\", \"packages/server/test/validate.test.ts\", \"package.json\", \"packages/web/package.json\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"vitest runs in the Workers runtime\", \"cleanName/validSettings/validTimer/makeCode behave as tested\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         1
@@ -28,7 +28,7 @@
     {
       "id": 3,
       "subject": "Task 4: Room reducer: lobby",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The pure room logic for everything before the game: joining, watching, seats, host, settings, start, rejoin, rename, sync. A `schedule` hook is ready for Task 5.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/room.ts\", \"packages/server/test/helpers.ts\", \"packages/server/test/lobby.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"createRoom/connect/sit/stand/settings/start/handover/rename/sync behave as tested\", \"refusals send error + room to the sender only\", \"room view has no device IDs\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         2
@@ -37,7 +37,7 @@
     {
       "id": 4,
       "subject": "Task 5: Room reducer: the game",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The room plays the game:\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/room.ts\", \"packages/server/test/play.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"only the acting seat can act; illegal refused\", \"events numbered and broadcast, then clock\", \"timeouts/computer seats/covered seats act on the alarm, paced by eventMs\", \"covering ends at the seat's next turn when back\", \"pause/resume/pausedFor/self-pause\", \"reactions limited\", \"finish, rematch, expiry\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         3
@@ -107,5 +107,5 @@
       ]
     }
   ],
-  "lastUpdated": "2026-11-08T13:33:25.178955+00:00"
+  "lastUpdated": "2026-11-08T13:50:54.425313+00:00"
 }
