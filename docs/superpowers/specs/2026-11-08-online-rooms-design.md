@@ -220,3 +220,11 @@ Device-only settings stay per device, as now: playing hand, theme, sound, music 
 - **App:** `useOnlineGame` against a fake socket: events apply and animate, a gap triggers sync, the deadline shows, errors resync.
 - **Browser** (Playwright, run in CI): two browser contexts. One creates a room and the other joins by code; both sit and the host starts with computers. They play turns, one disconnects and rejoins, and both see the same board.
 - **Existing tests:** the local game, engine and web tests are untouched and still pass.
+
+## Refinements made while planning
+
+1. **Turn clock:** messages carry `deadlineIn` (milliseconds left), not a server timestamp, so device clocks that disagree don't matter.
+2. **Fewer message types:** lobby changes and member changes are sent as a full personalised `room` message, instead of separate `members` and `lobby` messages. `clock` carries the deadline, pause and covering after each game event.
+3. **New messages:** `{ t: 'rejoin', color }` is added for "Rejoin as …", and `pause` takes an optional `for` colour, the player being waited for.
+4. **Rate limit:** Cloudflare's rate-limit binding only supports 10- or 60-second windows, so room creation is limited to 3 per minute per IP instead of 10 per hour.
+5. **Away players:** a disconnected player's yard name reads "Kofi (away)", instead of using a greyed dot.

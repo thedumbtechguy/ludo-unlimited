@@ -8,12 +8,22 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: 'http://localhost:5199' },
   projects: [
-    { name: 'phone', use: { ...devices['Pixel 7'] } },
+    // The room test runs once, on desktop: it plays at real speed and makes a room.
+    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: 'online.spec.ts' },
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
-    command: 'npm run dev -- --port 5199 --strictPort',
-    url: 'http://localhost:5199',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      // The rooms server. Its routes answer 404 until a room exists, so wait for the port instead of a URL.
+      command: 'npm run dev -w @ludo/server -- --port 8787',
+      port: 8787,
+      cwd: '../..',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'npm run dev -- --port 5199 --strictPort',
+      url: 'http://localhost:5199',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 })
