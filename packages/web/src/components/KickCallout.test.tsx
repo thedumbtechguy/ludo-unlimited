@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { KickCallout } from './KickCallout'
+import { KickCallout, WICKED_INK } from './KickCallout'
 
 const callout = { id: 1, title: 'Line kick!', line: 'Red sent Yellow back to base', color: 'red', kind: 'line' } as const
 
@@ -29,6 +29,12 @@ describe('KickCallout', () => {
     expect(screen.queryByText('Line kick!')).toBeNull()
     rerender(<KickCallout callout={{ ...callout, id: 2, title: 'Wicked!', kind: 'wicked' }} />)
     expect(screen.getByText('Wicked!')).toBeInTheDocument()
+  })
+
+  it('calls out the wicked move in near-black, whoever made it', () => {
+    render(<KickCallout callout={{ ...callout, title: 'Wicked!', kind: 'wicked' }} />)
+    expect(screen.getByText('Wicked!')).toHaveStyle({ color: WICKED_INK })
+    expect(screen.getByText('Wicked!').parentElement).toHaveClass('wicked')
   })
 
   it('renders nothing without a kick', () => {

@@ -4,6 +4,8 @@ import { COLOR_HEX } from '../theme'
 import type { Callout } from '../useGame'
 
 export const CALLOUT_MS = 1400
+/** The wicked move gets the darkest callout: near-black, whatever the kicker's colour. */
+export const WICKED_INK = '#111113'
 
 /**
  * Big outlined text over the board for a kick, then gone. With full effects it slams in; reduced, it
@@ -22,9 +24,10 @@ export function KickCallout({ callout }: { callout?: Callout }) {
   }, [callout?.id])
 
   if (!shown) return null
+  const wicked = shown.kind === 'wicked'
   return (
-    <div key={shown.id} className={slam ? 'kick-callout slam' : 'kick-callout'} aria-hidden="true">
-      <p className="kick-title" style={{ color: COLOR_HEX[shown.color] }}>
+    <div key={shown.id} className={`kick-callout${slam ? ' slam' : ''}${wicked ? ' wicked' : ''}`} aria-hidden="true">
+      <p className="kick-title" style={{ color: wicked ? WICKED_INK : COLOR_HEX[shown.color] }}>
         {shown.title}
       </p>
       <p className="kick-line">{shown.line}</p>

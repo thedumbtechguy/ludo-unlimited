@@ -127,6 +127,7 @@ button.row { cursor: pointer; }
 .kick-callout p { position: absolute; left: 0; right: 0; margin: 0; text-align: center; paint-order: stroke fill; white-space: nowrap; }
 .kick-title { top: 40%; font-weight: 900; font-size: calc(55 * var(--u)); letter-spacing: calc(-1.7 * var(--u)); -webkit-text-stroke: calc(8.5 * var(--u)) #ffffff; text-shadow: 0 calc(5 * var(--u)) calc(15 * var(--u)) rgba(0, 0, 0, 0.35); }
 .kick-line { top: 54%; font-weight: 800; font-size: calc(17 * var(--u)); color: var(--ink); -webkit-text-stroke: calc(4.3 * var(--u)) #ffffff; }
+.kick-callout.wicked .kick-title { font-size: calc(64 * var(--u)); letter-spacing: calc(-2 * var(--u)); -webkit-text-stroke-width: calc(10 * var(--u)); }
 @keyframes callout { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 /* Full effects: the title slams down onto the board, overshooting a little, and the line follows. */
 .kick-callout.slam { animation-name: callout-slam; }

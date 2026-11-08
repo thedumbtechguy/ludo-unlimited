@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arcAt, arcControl, arcEase, arcFrames, arcScale, shakeFrames } from './geometry'
+import { arcAt, arcControl, arcEase, arcFrames, arcScale, lightning, shakeFrames } from './geometry'
 
 const seq = (...values: number[]) => {
   let i = 0
@@ -52,5 +52,31 @@ describe('screen shake', () => {
     expect(Math.hypot(frames[0].x, frames[0].y)).toBeCloseTo(6)
     expect(Math.hypot(frames[6].x, frames[6].y)).toBeLessThan(Math.hypot(frames[1].x, frames[1].y))
     expect(frames[8]).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('lightning', () => {
+  const from = { x: 0, y: 0 }
+  const to = { x: 200, y: 0 }
+
+  it('runs from square to square in the given number of segments', () => {
+    const points = lightning(from, to, 9, 0.12, seq(0.9, 0.1, 0.5))
+    expect(points).toHaveLength(10)
+    expect(points[0]).toEqual(from)
+    expect(points[9]).toEqual(to)
+    // Steady progress along the line.
+    points.forEach((p, i) => expect(p.x).toBeCloseTo(i * (200 / 9)))
+  })
+
+  it('zigzags sideways, never further than the jag allows, and less near the ends', () => {
+    const points = lightning(from, to, 8, 0.12, seq(1, 0, 1, 0))
+    const offsets = points.map((p) => p.y)
+    for (const y of offsets) expect(Math.abs(y)).toBeLessThanOrEqual(24 + 1e-9)
+    expect(Math.sign(offsets[1])).not.toBe(Math.sign(offsets[2]))
+    expect(Math.abs(offsets[1])).toBeLessThan(Math.abs(offsets[4]))
+  })
+
+  it('a fresh crack each time', () => {
+    expect(lightning(from, to, 9, 0.12, seq(0.2, 0.8))).not.toEqual(lightning(from, to, 9, 0.12, seq(0.7, 0.3)))
   })
 })

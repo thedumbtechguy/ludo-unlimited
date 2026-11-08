@@ -61,8 +61,10 @@ function run(action: FxAction, fx: Fx, stage: Stage): void {
     case 'bolt': {
       const a = toScreen(action.from)
       const b = toScreen(action.to)
-      const paths = [0, 1, 2].map(() => lightning(a, b, 9, 0.12, Math.random))
-      fx.mark({ kind: 'bolt', paths, width: 3 * u, rgb: WHITE, edge: hex(COLOR_HEX[action.color]), delay: 0, duration: 0.25 })
+      // Short hops across a lane: few, sharp kinks, drawn heavy so the zap reads at phone size.
+      const paths = [0, 1, 2].map(() => lightning(a, b, 7, 0.26, Math.random))
+      fx.mark({ kind: 'bolt', paths, width: 5.5 * u, rgb: WHITE, edge: hex(COLOR_HEX[action.color]), delay: 0, duration: 0.25 })
+      fx.burst(a.x, a.y, 10, spark(COLOR_HEX[action.color], u * 0.7))
       return
     }
     case 'ripple': {

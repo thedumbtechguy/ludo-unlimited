@@ -55,21 +55,21 @@ export const trail =
 export const speedLine =
   (dx: number, dy: number, u: number): Make =>
   (rand) => {
-    const across = (rand() - 0.5) * 30 * u
-    const speed = (420 + rand() * 260) * u
+    const across = (rand() - 0.5) * 34 * u
+    const speed = (520 + rand() * 300) * u
     return {
       x: -dy * across - dx * 10 * u,
       y: dx * across - dy * 10 * u,
       vx: -dx * speed,
       vy: -dy * speed,
       life: 0.16 + rand() * 0.1,
-      size: (2 + rand() * 1.2) * u,
+      size: (1.4 + rand() * 0.8) * u,
       colors: [hex('#1d1d1f')],
-      alpha: 0.75,
+      alpha: 0.6,
       hold: 1.2,
-      drag: 5,
+      drag: 4,
       shape: 'streak',
-      stretch: 0.07,
+      stretch: 0.09,
     }
   }
 
@@ -80,17 +80,17 @@ export const smoke =
   (u: number): Make =>
   (rand) => {
     const angle = rand() * Math.PI * 2
-    const r = rand() * 22 * u
+    const r = (8 + rand() * 26) * u
     return {
       x: Math.cos(angle) * r,
       y: Math.sin(angle) * r * 0.7,
-      vx: (rand() - 0.5) * 40 * u,
-      vy: -(30 + rand() * 50) * u,
-      life: 0.9 + rand() * 0.7,
-      size: (9 + rand() * 7) * u,
-      endSize: (22 + rand() * 12) * u,
+      vx: Math.cos(angle) * (20 + rand() * 30) * u,
+      vy: -(45 + rand() * 60) * u,
+      life: 1 + rand() * 0.7,
+      size: (6 + rand() * 6) * u,
+      endSize: (18 + rand() * 10) * u,
       colors: SMOKE,
-      alpha: 0.6,
+      alpha: 0.38,
       hold: 1.3,
       gravity: -20 * u,
       drag: 0.8,
