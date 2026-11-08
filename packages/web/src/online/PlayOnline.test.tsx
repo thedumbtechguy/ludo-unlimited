@@ -1,11 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { PlayOnline } from './PlayOnline'
+import { PlayOnline, type Step } from './PlayOnline'
+
+type Calls = { onName: () => void; onCreate: () => void; onJoin: () => void; onBack: () => void }
+
+// The app holds the step; here it just follows `onStep`.
+function Steps({ name, code, calls }: { name: string; code?: string; calls: Calls }) {
+  const [step, setStep] = useState<Step>(name && !code ? 'choice' : 'name')
+  return <PlayOnline name={name} step={step} code={code} onStep={setStep} {...calls} />
+}
 
 const renderPlay = (props: { name?: string; code?: string } = {}) => {
   const calls = { onName: vi.fn(), onCreate: vi.fn(), onJoin: vi.fn(), onBack: vi.fn() }
-  render(<PlayOnline name={props.name ?? ''} code={props.code} {...calls} />)
+  render(<Steps name={props.name ?? ''} code={props.code} calls={calls} />)
   return calls
 }
 const nameField = () => screen.getByRole('textbox', { name: 'Your name' })
@@ -61,20 +70,12 @@ describe('PlayOnline', () => {
     expect(onJoin).toHaveBeenCalledWith('KQMZ')
   })
 
-  it('goes back a step at a time, then home', async () => {
+  it('leaves going back to the app, on every step', async () => {
     const { onBack } = renderPlay({ name: 'Ama' })
+    await userEvent.click(button('Back'))
     await userEvent.click(button('Join a room'))
     await userEvent.click(button('Back'))
-    expect(screen.getByText(/Playing as Ama/)).toBeInTheDocument()
-    expect(onBack).not.toHaveBeenCalled()
-    await userEvent.click(button('Back'))
-    expect(onBack).toHaveBeenCalledTimes(1)
-  })
-
-  it('goes home from the name step', async () => {
-    const { onBack } = renderPlay()
-    await userEvent.click(button('Back'))
-    expect(onBack).toHaveBeenCalled()
+    expect(onBack).toHaveBeenCalledTimes(2)
   })
 
   it('on a room link, Next joins that room', async () => {

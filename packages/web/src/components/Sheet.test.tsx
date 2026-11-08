@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -53,5 +53,26 @@ describe('Sheet', () => {
     expect(onClose).not.toHaveBeenCalled()
     await userEvent.click(screen.getByTestId('sheet-backdrop'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes on back, staying on the page', async () => {
+    const onClose = vi.fn()
+    history.replaceState({ depth: 0 }, '', '/')
+    render(<Opener onClose={onClose} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(history.state).toMatchObject({ sheet: true })
+    await act(async () => history.back())
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(history.state).toEqual({ depth: 0 })
+  })
+
+  it('takes its history entry away when closed otherwise', async () => {
+    history.replaceState({ depth: 0 }, '', '/')
+    render(<Opener />)
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(history.state).toMatchObject({ sheet: true })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(history.state).toEqual({ depth: 0 }))
   })
 })

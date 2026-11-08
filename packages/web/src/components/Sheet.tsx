@@ -1,13 +1,19 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { openSheet } from '../navigation'
 
 type Props = { title: string; onClose: () => void; children: ReactNode; /** Name the dialog for screen readers only. */ hideTitle?: boolean }
 
 const FOCUSABLE = 'button:not([disabled]), [href], input, select, [tabindex]:not([tabindex="-1"])'
 
-/** A sheet that slides up from the bottom over the dimmed table. Escape or a tap on the table closes it. */
+/** A sheet that slides up from the bottom over the dimmed table. Escape, back, or a tap on the table closes it. */
 export function Sheet({ title, onClose, children, hideTitle = false }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  const close = useRef(onClose)
+  close.current = onClose
+
+  // Back closes the sheet rather than leaving the screen.
+  useEffect(() => openSheet(() => close.current()), [])
 
   // Focus the checked option (or the first one) on open; hand focus back to the opener on close.
   useEffect(() => {

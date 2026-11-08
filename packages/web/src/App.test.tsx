@@ -1,5 +1,5 @@
 import { MODES, type RoomView } from '@ludo/engine'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
@@ -13,8 +13,15 @@ vi.mock('./online/useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
 vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn() }))
 vi.mock('./update', async (original) => ({ ...(await original<typeof import('./update')>()), setPlaying: vi.fn() }))
 
+// The back gesture: the browser steps back an entry and says so a moment later.
+const pressBack = () => act(async () => history.back())
+const heading = (name: string) => screen.findByRole('heading', { level: 1, name })
+
 describe('App', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    history.replaceState(null, '', '/')
+  })
   afterEach(() => vi.useRealTimers())
 
   it('goes from home through setup into a game', async () => {
@@ -175,6 +182,67 @@ describe('App', () => {
     expect(screen.getByText('Tap a numbered square, or a piece')).toBeInTheDocument()
   })
 
+  describe('back', () => {
+    it('goes from a new game back home', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+    })
+
+    it('goes from a game home, where it can be continued', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: 'Start game' }))
+      await user.click(screen.getByRole('button', { name: /Roll dice/ }))
+      await pressBack()
+      expect(await screen.findByRole('button', { name: 'Continue' })).toBeInTheDocument()
+      // Home is the first entry again: the setup screen isn't left behind it.
+      await waitFor(() => expect(history.state).toMatchObject({ depth: 0 }))
+    })
+
+    it('closes an open sheet and stays on the screen, then goes back', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: 'Start game' }))
+      await user.click(screen.getByRole('button', { name: 'Menu' }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      await pressBack()
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(screen.getByRole('button', { name: /Roll dice/ })).toBeInTheDocument()
+      await pressBack()
+      expect(await screen.findByRole('button', { name: 'Continue' })).toBeInTheDocument()
+    })
+
+    it('after a sheet closes on its own, goes back to the screen before', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: /Theme/ }))
+      await user.click(screen.getByRole('radio', { name: 'Dark' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+    })
+
+    it('a picker opened straight after another still closes on back', async () => {
+      const user = userEvent.setup()
+      render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+      await user.click(screen.getByRole('button', { name: 'New game' }))
+      await user.click(screen.getByRole('button', { name: /Theme/ }))
+      await user.click(screen.getByRole('radio', { name: 'Dark' }))
+      await user.click(screen.getByRole('button', { name: /Playing hand/ }))
+      await pressBack()
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(screen.getByRole('heading', { level: 1, name: 'New game' })).toBeInTheDocument()
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+    })
+  })
+
   it('an all-computer game ends on the results screen', async () => {
     vi.useFakeTimers()
     render(<App dice={seededDice(5)} timing={FAST_TIMING} />)
@@ -232,7 +300,7 @@ describe('App online', () => {
     expect(setPlaying).toHaveBeenLastCalledWith(true)
     await user.click(screen.getByRole('button', { name: 'Leave room' }))
     expect(screen.getByRole('heading', { name: 'Ludo Unlimited' })).toBeInTheDocument()
-    expect(location.pathname).toBe('/')
+    await waitFor(() => expect(location.pathname).toBe('/'))
     expect(setPlaying).toHaveBeenLastCalledWith(false)
   })
 
@@ -322,5 +390,77 @@ describe('App online', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create room' })).toBeEnabled()
     expect(location.pathname).toBe('/')
+  })
+
+  describe('back', () => {
+    const toChoice = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Play online' }))
+      await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+    }
+
+    it('steps back from making a room to the choice, the name, then home', async () => {
+      const user = userEvent.setup()
+      renderApp()
+      await toChoice(user)
+      await user.click(screen.getByRole('button', { name: 'Create a room' }))
+      expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
+      await pressBack()
+      expect(await screen.findByText(/Playing as Ama/)).toBeInTheDocument()
+      await pressBack()
+      expect(await screen.findByRole('textbox', { name: 'Your name' })).toHaveValue('Ama')
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+    })
+
+    it('the on-screen Back does the same', async () => {
+      const user = userEvent.setup()
+      renderApp()
+      await toChoice(user)
+      await user.click(screen.getByRole('button', { name: 'Join a room' }))
+      await user.click(screen.getByRole('button', { name: 'Back' }))
+      expect(await screen.findByText(/Playing as Ama/)).toBeInTheDocument()
+      await pressBack()
+      expect(await screen.findByRole('textbox', { name: 'Your name' })).toBeInTheDocument()
+    })
+
+    it('goes from the room code back to the choice', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('ludo-unlimited:name', 'Ama')
+      renderApp()
+      await user.click(screen.getByRole('button', { name: 'Play online' }))
+      await user.click(screen.getByRole('button', { name: 'Join a room' }))
+      await pressBack()
+      expect(await screen.findByText(/Playing as Ama/)).toBeInTheDocument()
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+    })
+
+    it('leaves a room for home', async () => {
+      const user = userEvent.setup()
+      renderApp()
+      await toChoice(user)
+      await user.click(screen.getByRole('button', { name: 'Join a room' }))
+      await user.type(screen.getByRole('textbox', { name: 'Room code' }), 'kqmz')
+      await user.click(screen.getByRole('button', { name: 'Join' }))
+      await waitFor(() => expect(location.pathname).toBe('/r/KQMZ'))
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+      await waitFor(() => expect(location.pathname).toBe('/'))
+      await waitFor(() => expect(history.state).toMatchObject({ depth: 0 }))
+      expect(setPlaying).toHaveBeenLastCalledWith(false)
+    })
+
+    it('leaves a room opened by a link, after the name, for home', async () => {
+      const user = userEvent.setup()
+      history.replaceState(null, '', '/r/ABCD')
+      renderApp()
+      await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Kofi')
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      expect(screen.getByText('ABCD')).toBeInTheDocument()
+      await pressBack()
+      expect(await heading('Ludo Unlimited')).toBeInTheDocument()
+      await waitFor(() => expect(location.pathname).toBe('/'))
+    })
   })
 })
