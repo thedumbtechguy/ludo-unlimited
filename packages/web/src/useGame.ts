@@ -1,4 +1,6 @@
 import {
+  ANIMATION_TIMING,
+  WICKED_DELAY,
   applyMove,
   chooseMove,
   createGame,
@@ -19,6 +21,7 @@ import {
   type PieceId,
   type Position,
   type Settings,
+  type Timing,
 } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import { realChoices } from './choices'
@@ -29,8 +32,8 @@ import { finishCallout, firstHuman, kickCallouts, kickMessage, type KickCalloutT
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
-export type Timing = { botRoll: number; botMove: number; step: number; roll: number }
-export const NORMAL_TIMING: Timing = { botRoll: 600, botMove: 400, step: 120, roll: 650 }
+export type { Timing }
+export const NORMAL_TIMING: Timing = ANIMATION_TIMING
 export const FAST_TIMING: Timing = { botRoll: 0, botMove: 0, step: 0, roll: 0 }
 
 export type GameOptions = {
@@ -71,8 +74,7 @@ const KEPT_EFFECTS = 32
 export type Callout = KickCalloutText & { id: number; color: Color }
 type CalloutText = Omit<Callout, 'id'>
 
-/** How long after a wicked kick lands "Wicked!" comes in on top of it, with its smoke and sound. */
-export const WICKED_DELAY = 350
+export { WICKED_DELAY }
 
 const samePiece = (a: PieceId, b: PieceId) => a.color === b.color && a.index === b.index
 
