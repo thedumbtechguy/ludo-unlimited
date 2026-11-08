@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { setPlaying, updateReady } from './update'
+import { setPlaying, updateNow, updateReady } from './update'
 
 describe('app updates', () => {
   it('applies a new version straight away when no game is on', () => {
@@ -15,6 +15,14 @@ describe('app updates', () => {
     updateReady(reload)
     expect(reload).not.toHaveBeenCalled()
     setPlaying(false)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates now when a room needs a newer app, even during a game', () => {
+    setPlaying(true)
+    const reload = vi.fn()
+    updateReady(reload)
+    updateNow()
     expect(reload).toHaveBeenCalledTimes(1)
   })
 })

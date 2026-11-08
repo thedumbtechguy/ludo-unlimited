@@ -1,9 +1,17 @@
+import { MODES, type RoomView } from '@ludo/engine'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { fixedDice, seededDice } from './dice'
+import { createRoom } from './online/api'
+import { useOnlineGame } from './online/useOnlineGame'
+import { setPlaying } from './update'
 import { FAST_TIMING } from './useGame'
+
+vi.mock('./online/useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
+vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn() }))
+vi.mock('./update', async (original) => ({ ...(await original<typeof import('./update')>()), setPlaying: vi.fn() }))
 
 describe('App', () => {
   beforeEach(() => localStorage.clear())
@@ -181,4 +189,87 @@ describe('App', () => {
     }
     expect(screen.getByRole('heading', { name: 'Game over' })).toBeInTheDocument()
   }, 60_000)
+})
+
+describe('App online', () => {
+  const lobby = (code: string): RoomView => ({
+    code,
+    phase: 'lobby',
+    host: 1,
+    settings: { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' },
+    timer: 'normal',
+    members: [{ id: 1, name: 'Ama', connected: true }],
+    computers: [],
+    covering: [],
+    paused: false,
+    log: [],
+    seq: 0,
+  })
+  const renderApp = () => render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+
+  beforeEach(() => {
+    localStorage.clear()
+    history.replaceState(null, '', '/')
+    vi.mocked(useOnlineGame).mockImplementation(
+      ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
+    )
+  })
+
+  it('joins a room by its code, and leaving goes home', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.type(screen.getByRole('textbox', { name: 'Room code' }), 'kqmz')
+    await user.click(screen.getByRole('button', { name: 'Join' }))
+    expect(screen.getByText('KQMZ')).toBeInTheDocument()
+    expect(useOnlineGame).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'KQMZ', name: 'Ama' }))
+    expect(localStorage.getItem('ludo-unlimited:name')).toBe('Ama')
+    expect(location.pathname).toBe('/r/KQMZ')
+    // A room counts as a game: app updates wait for it.
+    expect(setPlaying).toHaveBeenLastCalledWith(true)
+    await user.click(screen.getByRole('button', { name: 'Leave room' }))
+    expect(screen.getByRole('heading', { name: 'Ludo Unlimited' })).toBeInTheDocument()
+    expect(location.pathname).toBe('/')
+    expect(setPlaying).toHaveBeenLastCalledWith(false)
+  })
+
+  it('creates a room and opens it', async () => {
+    vi.mocked(createRoom).mockResolvedValue('WXYZ')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.click(screen.getByRole('button', { name: 'Create a room' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Create room' }))
+    expect(createRoom).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ama', timer: 'normal', settings: expect.objectContaining({ players: 4 }) }))
+    expect(await screen.findByText('WXYZ')).toBeInTheDocument()
+  })
+
+  it('says so when too many rooms were made', async () => {
+    vi.mocked(createRoom).mockRejectedValue(new Error('too_fast'))
+    const user = userEvent.setup()
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Create a room' }))
+    await user.click(screen.getByRole('button', { name: 'Create room' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many new rooms. Try again in a minute.')
+  })
+
+  it('opens a room link straight away when there is a name', () => {
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    history.replaceState(null, '', '/r/abcd')
+    renderApp()
+    expect(screen.getByText('ABCD')).toBeInTheDocument()
+    expect(location.pathname).toBe('/r/ABCD')
+  })
+
+  it('asks for a name first on a room link, with the code filled in', () => {
+    history.replaceState(null, '', '/r/ABCD')
+    renderApp()
+    expect(screen.getByRole('heading', { name: 'Play online' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Room code' })).toHaveValue('ABCD')
+  })
 })

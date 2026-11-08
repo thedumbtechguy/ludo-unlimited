@@ -1,6 +1,7 @@
 import { MODES } from '@ludo/engine'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Hand, ThemePref } from '../types'
 import { Setup } from './Setup'
@@ -195,5 +196,38 @@ describe('Setup', () => {
     renderSetup()
     expect(screen.getByRole('heading', { level: 1, name: 'New game' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start game' })).toHaveClass('primary')
+  })
+
+  describe('online', () => {
+    const renderOnline = (online: Partial<ComponentProps<typeof Setup>['online']> = {}) => {
+      const onCreate = vi.fn()
+      render(
+        <Setup onStart={vi.fn()} onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate, ...online }} />,
+      )
+      return onCreate
+    }
+
+    it('has no seat rows, a turn timer, and Create room hands back the settings and timer', async () => {
+      const onCreate = renderOnline()
+      expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Red player/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('Normal')
+      await userEvent.click(screen.getByRole('button', { name: /Turn timer/ }))
+      const quick = screen.getByRole('radio', { name: 'Quick' })
+      expect(quick).toHaveAccessibleDescription('15 seconds for each roll or move.')
+      await userEvent.click(quick)
+      await userEvent.click(screen.getByRole('button', { name: 'Create room' }))
+      expect(onCreate).toHaveBeenCalledWith({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }, 'quick')
+    })
+
+    it('starts from a room\'s settings and saves them', async () => {
+      const settings = { players: 2, endCondition: 'playForPlaces', rules: MODES.classic.rules, afterKick: 'bonusRoll' } as const
+      const onCreate = renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'off' } })
+      expect(ghana()).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('button', { name: /^Players/ })).toHaveTextContent('2')
+      expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('No timer')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(onCreate).toHaveBeenCalledWith(settings, 'off')
+    })
   })
 })

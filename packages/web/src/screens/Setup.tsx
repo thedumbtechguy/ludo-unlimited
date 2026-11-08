@@ -1,8 +1,8 @@
-import { MODES, SEATS, type AfterKick, type EndCondition, type ModeName, type Rules, type Settings } from '@ludo/engine'
+import { MODES, SEATS, type AfterKick, type EndCondition, type ModeName, type Rules, type Settings, type TurnTimer } from '@ludo/engine'
 import { useId, useState } from 'react'
 import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { COLOR_NAME, seatNames } from '../labels'
+import { COLOR_NAME, modeOf, seatNames, TIMERS } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Hand, Seats, ThemePref } from '../types'
 
@@ -39,7 +39,7 @@ const THEMES = [
 
 const labelOf = <T,>(options: readonly (readonly [T, string, ...string[]])[], value: T) => options.find(([v]) => v === value)![1]
 
-type Open = 'players' | 'afterKick' | 'end' | 'rules' | 'hand' | 'theme'
+type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'rules' | 'hand' | 'theme'
 type Props = {
   onStart: (settings: Settings, seats: Seats) => void
   onBack: () => void
@@ -47,15 +47,19 @@ type Props = {
   onHand: (hand: Hand) => void
   theme: ThemePref
   onTheme: (theme: ThemePref) => void
+  /** Online: no seats (they fill as people join), a turn timer, and `onCreate` instead of `onStart`. `error` shows above the button. */
+  online?: { initial?: { settings: Settings; timer: TurnTimer }; submitLabel: string; onCreate: (settings: Settings, timer: TurnTimer) => void; error?: string }
 }
 
-export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) {
-  const [mode, setMode] = useState<ModeName>('ghana')
-  const [rules, setRules] = useState<Rules>({ ...MODES.ghana.rules })
-  const [afterKick, setAfterKick] = useState<AfterKick>(MODES.ghana.afterKick)
-  const [players, setPlayers] = useState<Settings['players']>(4)
+export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }: Props) {
+  const initial = online?.initial
+  const [mode, setMode] = useState<ModeName>(initial ? (modeOf(initial.settings.rules) ?? 'ghana') : 'ghana')
+  const [rules, setRules] = useState<Rules>(initial?.settings.rules ?? { ...MODES.ghana.rules })
+  const [afterKick, setAfterKick] = useState<AfterKick>(initial?.settings.afterKick ?? MODES.ghana.afterKick)
+  const [players, setPlayers] = useState<Settings['players']>(initial?.settings.players ?? 4)
   const [seats, setSeats] = useState<Seats>({ red: 'human' })
-  const [endCondition, setEndCondition] = useState<EndCondition>('firstWins')
+  const [endCondition, setEndCondition] = useState<EndCondition>(initial?.settings.endCondition ?? 'firstWins')
+  const [timer, setTimer] = useState<TurnTimer>(initial?.timer ?? 'normal')
   const [open, setOpen] = useState<Open>()
   const summaryId = useId()
 
@@ -93,7 +97,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) 
             <path d="M12 4l-6 6 6 6" />
           </svg>
         </button>
-        <h1>New game</h1>
+        <h1>{online ? (online.initial ? 'Room settings' : 'New room') : 'New game'}</h1>
       </header>
 
       <section aria-labelledby="players-heading">
@@ -101,23 +105,24 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) 
           Players
         </h2>
         {pickerRow('players', 'Players', `${players}`)}
-        {seated.map((color) => {
-          const human = seats[color] === 'human'
-          return (
-            <div key={color} className="row">
-              <span className="dot" style={{ background: COLOR_HEX[color] }} />
-              <span className="row-label">{COLOR_NAME[color]}</span>
-              <button
-                type="button"
-                className={human ? 'seat-button human' : 'seat-button'}
-                aria-label={`${COLOR_NAME[color]} player: ${names[color]}`}
-                onClick={() => setSeats({ ...seats, [color]: human ? 'computer' : 'human' })}
-              >
-                {names[color]}
-              </button>
-            </div>
-          )
-        })}
+        {!online &&
+          seated.map((color) => {
+            const human = seats[color] === 'human'
+            return (
+              <div key={color} className="row">
+                <span className="dot" style={{ background: COLOR_HEX[color] }} />
+                <span className="row-label">{COLOR_NAME[color]}</span>
+                <button
+                  type="button"
+                  className={human ? 'seat-button human' : 'seat-button'}
+                  aria-label={`${COLOR_NAME[color]} player: ${names[color]}`}
+                  onClick={() => setSeats({ ...seats, [color]: human ? 'computer' : 'human' })}
+                >
+                  {names[color]}
+                </button>
+              </div>
+            )
+          })}
       </section>
 
       <section aria-labelledby="rules-heading">
@@ -133,6 +138,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) 
         </button>
         {pickerRow('afterKick', 'After a kick', labelOf(AFTER_KICK, afterKick))}
         {pickerRow('end', 'Game ends', labelOf(END, endCondition))}
+        {online && pickerRow('timer', 'Turn timer', labelOf(TIMERS, timer))}
         {pickerRow('rules', 'Choose rules one by one')}
       </section>
 
@@ -144,13 +150,19 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme }: Props) 
         {pickerRow('theme', 'Theme', labelOf(THEMES, theme))}
       </section>
 
-      <button type="button" className="primary start" onClick={start}>
-        Start game
+      {online?.error && (
+        <p role="alert" className="setup-error">
+          {online.error}
+        </p>
+      )}
+      <button type="button" className="primary start" onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer) : start())}>
+        {online?.submitLabel ?? 'Start game'}
       </button>
 
       {open === 'players' && <Picker title="Players" options={PLAYERS} value={players} onPick={setPlayers} onClose={close} />}
       {open === 'afterKick' && <Picker title="After a kick" options={AFTER_KICK} value={afterKick} onPick={setAfterKick} onClose={close} />}
       {open === 'end' && <Picker title="Game ends" options={END} value={endCondition} onPick={setEndCondition} onClose={close} />}
+      {open === 'timer' && <Picker title="Turn timer" options={TIMERS} value={timer} onPick={setTimer} onClose={close} />}
       {open === 'hand' && <Picker title="Playing hand" options={HANDS} value={hand} onPick={onHand} onClose={close} />}
       {open === 'theme' && <Picker title="Theme" options={THEMES} value={theme} onPick={onTheme} onClose={close} />}
       {open === 'rules' && (

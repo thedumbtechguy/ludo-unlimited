@@ -323,3 +323,26 @@ button.row { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .chains.slam, .chains.fade, .shimmer-band { animation: none; }
 }
+
+/* Play online and the room lobby. */
+.field { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+.field-label { font-weight: 800; font-size: 15px; color: var(--muted); }
+.field input { min-height: 52px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-size: 18px; }
+.field input:focus-visible { outline: 2px solid var(--text); outline-offset: 0; border-color: transparent; }
+.join { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; }
+.join .field { flex: 1; margin-bottom: 0; }
+.join input { text-transform: uppercase; letter-spacing: 3px; }
+.join button { width: 112px; }
+/* Disabled main buttons stay solid: the sticky Start covers rows scrolling under it. */
+.primary:disabled { background: color-mix(in srgb, var(--button-bg) 40%, var(--table)); cursor: default; }
+.secondary:disabled { opacity: 0.4; cursor: default; }
+.room-code-label { margin: 16px 0 0; font-weight: 800; font-size: 15px; color: var(--muted); }
+.room-code { margin: 0 0 12px; font-weight: 900; font-size: 56px; letter-spacing: 6px; }
+p.row { margin: 0; }
+.dot.away { opacity: 0.35; }
+.lobby-watching { margin: 10px 0 0; }
+.lobby-waiting { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); margin: auto 0 0; padding: 16px 0; color: var(--muted); font-size: 17px; text-align: center; background: var(--table); }
+.setup-error { margin: auto 0 12px; font-size: 16px; }
+.setup-error + .start { margin-top: 0; }
+.message { align-items: center; justify-content: center; min-height: 60vh; gap: 16px; text-align: center; font-size: 17px; }
+.message .primary, .message .secondary { min-width: 160px; }

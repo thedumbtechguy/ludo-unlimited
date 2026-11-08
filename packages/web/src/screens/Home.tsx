@@ -5,9 +5,9 @@ import type { Hand } from '../types'
 
 const START = createGame(settingsFor('ghana', 4, 'firstWins'))
 
-type Props = { canContinue: boolean; hand: Hand; onNew: () => void; onContinue: () => void }
+type Props = { canContinue: boolean; hand: Hand; onNew: () => void; onContinue: () => void; onOnline: () => void }
 
-export function Home({ canContinue, hand, onNew, onContinue }: Props) {
+export function Home({ canContinue, hand, onNew, onContinue, onOnline }: Props) {
   return (
     <main className="screen home">
       <h1>Ludo Unlimited</h1>
@@ -21,6 +21,9 @@ export function Home({ canContinue, hand, onNew, onContinue }: Props) {
             Continue
           </button>
         )}
+        <button type="button" className="secondary" onClick={onOnline}>
+          Play online
+        </button>
       </div>
       <div className="home-board" aria-hidden="true">
         <Board state={START} turn={quarterTurns('red', hand)} />

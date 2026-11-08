@@ -16,3 +16,9 @@ export function setPlaying(next: boolean): void {
   playing = next
   if (!playing && apply) apply()
 }
+
+/** The room needs a newer app: switch now, game or not. */
+export function updateNow(): void {
+  if (apply) apply()
+  else location.reload()
+}

@@ -1,4 +1,4 @@
-import { isWicked, MODES, type Color, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
+import { isWicked, MODES, type Color, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
 import { FINISH_CALLOUT_MS, WIN_CALLOUT_MS } from './fx/actions'
 import type { Seats } from './types'
 
@@ -101,6 +101,16 @@ const sameRules = (a: Rules, b: Rules) => (Object.keys(a) as (keyof Rules)[]).ev
 /** The preset these rules match, if any. */
 export const modeOf = (rules: Rules): ModeName | undefined =>
   (Object.keys(MODES) as ModeName[]).find((mode) => sameRules(rules, MODES[mode].rules))
+
+/** The turn timer choices, each with what it means. */
+export const TIMERS = [
+  ['relaxed', 'Relaxed', '60 seconds for each roll or move.'],
+  ['normal', 'Normal', '30 seconds for each roll or move.'],
+  ['quick', 'Quick', '15 seconds for each roll or move.'],
+  ['off', 'No timer', 'Take as long as you like. The computer only steps in if someone leaves.'],
+] as const satisfies readonly (readonly [TurnTimer, string, string])[]
+
+export const timerName = (timer: TurnTimer): string => TIMERS.find(([t]) => t === timer)![1]
 
 const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
 
