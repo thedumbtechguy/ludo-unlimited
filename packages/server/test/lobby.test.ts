@@ -42,6 +42,18 @@ describe('lobby', () => {
     expect(seatOf(step.room, 'kofi')).toBeUndefined()
   })
 
+  it('settings are stored without extra keys', () => {
+    const step = run(lobby(4), [join('host')])
+    const settings = { ...step.room.settings, junk: 1, rules: { ...step.room.settings.rules, extra: true } }
+    const { room } = run(step.room, [say('host', { t: 'settings', settings, timer: 'quick' })])
+    expect(room.settings).toEqual(lobby(4).settings)
+  })
+
+  it('a watcher who leaves the lobby is forgotten', () => {
+    const { room } = run(lobby(), [join('host'), join('kofi'), { type: 'disconnect', device: 'kofi' }])
+    expect(room.members.map((m) => m.device)).toEqual(['host'])
+  })
+
   it('a disconnect in the lobby frees the seat; the host role passes on', () => {
     const step = run(lobby(), [
       join('host'),

@@ -5,6 +5,7 @@ import {
   COLORS,
   createGame,
   currentMover,
+  getPlayer,
   eventMs,
   REACTIONS,
   replay,
@@ -42,7 +43,10 @@ export type Room = {
   paused: boolean
   pausedFor?: Color
   log: GameEvent[]
+  /** Keeps counting across rematches; devices take it from the room message, never from log.length. */
   seq: number
+  /** When devices have finished showing the last event. */
+  readyAt?: number
   /** When the human who has to act runs out of time. */
   deadline?: number
   /** When the computer next acts, for a computer seat or one it's covering. */
@@ -153,13 +157,33 @@ function connect(ctx: Ctx, device: string, name: string): void {
     room.members.push(m)
   }
   if (!memberOf(room, room.host)?.connected) room.host = device
-  const unpaused = room.pausedFor !== undefined && m.seat === room.pausedFor
+  back(ctx, m.seat, wasIdle)
+  broadcastRoom(ctx)
+}
+
+/**
+ * A seat's player is back. Restart the clock if the room was idle or paused for them, and hand
+ * back their turn if it's just starting. A turn the computer has begun, it finishes.
+ */
+function back(ctx: Ctx, seat: Color | undefined, wasIdle: boolean): void {
+  const { room } = ctx
+  const unpaused = room.pausedFor !== undefined && room.pausedFor === seat
   if (unpaused) {
     room.paused = false
     room.pausedFor = undefined
   }
-  if (room.phase === 'playing' && (wasIdle || unpaused)) schedule(ctx, gameOf(room), ctx.now)
-  broadcastRoom(ctx)
+  if (room.phase !== 'playing') return
+  const game = gameOf(room)
+  const turnStarts = seat === game.turn && room.covering.includes(seat) && game.pendingRoll === undefined && game.queuedRolls.length === 0
+  if (wasIdle || unpaused || turnStarts) schedule(ctx, game, readyAt(ctx))
+}
+
+/** Now, or later while devices are still showing the last event. */
+const readyAt = (ctx: Ctx) => Math.max(ctx.room.readyAt ?? ctx.now, ctx.now)
+
+/** Forget watchers who have left. Seated members stay, so their seat can be rejoined. */
+function prune(room: Room): void {
+  room.members = room.members.filter((m) => m.connected || m.seat || m.device === room.host)
 }
 
 function disconnect(ctx: Ctx, device: string): void {
@@ -170,6 +194,7 @@ function disconnect(ctx: Ctx, device: string): void {
   if (room.phase === 'lobby') m.seat = undefined
   if (room.phase === 'playing') leaveGame(ctx, m) // Task 5
   if (room.host === device) handOver(room)
+  prune(room)
   broadcastRoom(ctx)
 }
 
@@ -193,7 +218,9 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       return rejoin(ctx, m, msg.color)
     case 'settings': {
       if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer)) return refuse(ctx, device, 'illegal')
-      room.settings = msg.settings
+      const { players, endCondition, afterKick, rules } = msg.settings
+      const { backKick, lineKick, homeKick, labourer } = rules
+      room.settings = { players, endCondition, afterKick, rules: { backKick, lineKick, homeKick, labourer } }
       room.timer = msg.timer
       for (const o of room.members) if (o.seat && !SEATS[msg.settings.players].includes(o.seat)) o.seat = undefined
       return broadcastRoom(ctx)
@@ -218,17 +245,14 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
 function rejoin(ctx: Ctx, m: Member, color: Color): void {
   const { room } = ctx
   const old = room.members.find((o) => o.seat === color)
-  if (room.phase === 'lobby' || !old || old.connected || old === m || m.seat) return refuse(ctx, m.device, 'illegal')
+  const inGame = SEATS[room.settings.players].includes(color)
+  if (room.phase === 'lobby' || !inGame || !old || old.connected || old === m || m.seat) return refuse(ctx, m.device, 'illegal')
   const wasIdle = !anyoneSeatedConnected(room)
   old.seat = undefined
   m.seat = color
   if (room.host === old.device) room.host = m.device
-  const unpaused = room.pausedFor === color
-  if (unpaused) {
-    room.paused = false
-    room.pausedFor = undefined
-  }
-  if (room.phase === 'playing' && (wasIdle || unpaused)) schedule(ctx, gameOf(room), ctx.now)
+  prune(room)
+  back(ctx, color, wasIdle)
   broadcastRoom(ctx)
 }
 
@@ -253,6 +277,7 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   room.covering = []
   room.paused = false
   room.pausedFor = undefined
+  room.readyAt = undefined
   schedule(ctx, createGame(room.settings), ctx.now)
   return true
 }
@@ -262,7 +287,7 @@ const dieRoll = (random: () => number) => 1 + Math.floor(random() * 6)
 
 function clock(ctx: Ctx): void {
   const { room, now } = ctx
-  const deadlineIn = room.deadline === undefined ? undefined : room.deadline - now
+  const deadlineIn = room.deadline === undefined ? undefined : Math.max(0, room.deadline - now)
   ctx.sends.push({ to: 'all', msg: { t: 'clock', deadlineIn, paused: room.paused, pausedFor: room.pausedFor, covering: room.covering } })
 }
 
@@ -276,6 +301,7 @@ function schedule(ctx: Ctx, game: GameState, readyAt: number): void {
   if (room.phase !== 'playing' || room.paused || !anyoneSeatedConnected(room)) return
   const startOfTurn = game.pendingRoll === undefined && game.queuedRolls.length === 0
   if (startOfTurn) room.covering = room.covering.filter((c) => !(c === game.turn && seatConnected(room, c)))
+  room.covering = room.covering.filter((c) => getPlayer(game, c).finishedPlace === undefined)
   const actor = actorOf(game)
   const rolling = game.pendingRoll === undefined
   if (room.computers.includes(actor) || room.covering.includes(actor)) {
@@ -316,7 +342,8 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
     room.phase = 'finished'
     room.deadline = room.botAt = undefined
   } else {
-    schedule(ctx, next, ctx.now + eventMs(game, recorded))
+    room.readyAt = ctx.now + eventMs(game, recorded)
+    schedule(ctx, next, room.readyAt)
   }
   clock(ctx)
   return true
@@ -343,7 +370,7 @@ function leaveGame(ctx: Ctx, m: Member): void {
   if (!room.covering.includes(m.seat)) room.covering.push(m.seat)
   // Only their own decision, or a room left with nobody, changes the clock.
   const game = gameOf(room)
-  if (actorOf(game) === m.seat || !anyoneSeatedConnected(room)) schedule(ctx, game, ctx.now)
+  if (actorOf(game) === m.seat || !anyoneSeatedConnected(room)) schedule(ctx, game, readyAt(ctx))
   clock(ctx)
 }
 
@@ -366,14 +393,14 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
     case 'pause':
       if (!host || room.phase !== 'playing' || room.paused) return refuse(ctx, m.device, 'illegal')
       room.paused = true
-      room.pausedFor = msg.for
+      room.pausedFor = msg.for && SEATS[room.settings.players].includes(msg.for) ? msg.for : undefined
       room.deadline = room.botAt = undefined
       return clock(ctx)
     case 'resume':
       if (!host || !room.paused) return refuse(ctx, m.device, 'illegal')
       room.paused = false
       room.pausedFor = undefined
-      schedule(ctx, gameOf(room), now)
+      schedule(ctx, gameOf(room), readyAt(ctx))
       return clock(ctx)
     case 'react':
       if (!m.seat || !REACTIONS.includes(msg.id)) return refuse(ctx, m.device, 'illegal')
@@ -389,8 +416,9 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
       room.covering = []
       room.paused = false
       room.pausedFor = undefined
-      room.deadline = room.botAt = undefined
+      room.deadline = room.botAt = room.readyAt = undefined
       for (const o of room.members) if (!o.connected) o.seat = undefined
+      prune(room)
       return broadcastRoom(ctx)
     default:
       return refuse(ctx, m.device, 'illegal')
