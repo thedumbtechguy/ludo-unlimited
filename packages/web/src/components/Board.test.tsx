@@ -85,12 +85,12 @@ describe('Board', () => {
     const twoPieces = () => {
       const state = game()
       state.players[0].pieces[0] = track(5)
-      state.players[0].pieces[1] = track(2)
+      state.players[0].pieces[1] = track(1)
       state.pendingRoll = 3
       return state
     }
     const a: Move = { kind: 'forward', piece: red0, to: track(8) }
-    const b: Move = { kind: 'forward', piece: red1, to: track(5) }
+    const b: Move = { kind: 'forward', piece: red1, to: track(4) }
 
     it('numbers each movable piece when 2+ can move', () => {
       render(<Board state={twoPieces()} movable={[red0, red1]} targets={[a, b]} />)
@@ -108,19 +108,19 @@ describe('Board', () => {
       expect(screen.getAllByTestId('target-marker')).toHaveLength(2)
       expect(screen.getAllByTestId('target-number').map((el) => el.textContent)).toEqual(['1', '2'])
       expect(screen.getByRole('button', { name: 'Piece 1: Move on square 9' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Piece 2: Move on square 6' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Piece 2: Move on square 5' })).toBeInTheDocument()
     })
 
     it('draws the targets after the pieces, so they win on shared squares', () => {
       render(<Board state={twoPieces()} movable={[red0, red1]} targets={[a, b]} />)
       const buttons = screen.getAllByRole('button').map((el) => el.getAttribute('aria-label'))
-      expect(buttons).toEqual(['Piece 1: Red, on square 6', 'Piece 2: Red, on square 3', 'Piece 1: Move on square 9', 'Piece 2: Move on square 6'])
+      expect(buttons).toEqual(['Piece 1: Red, on square 6', 'Piece 2: Red, on square 2', 'Piece 1: Move on square 9', 'Piece 2: Move on square 5'])
     })
 
     it('clicking a target plays it', async () => {
       const onPickTarget = vi.fn()
       render(<Board state={twoPieces()} movable={[red0, red1]} targets={[a, b]} onPickTarget={onPickTarget} />)
-      await userEvent.click(screen.getByRole('button', { name: 'Piece 2: Move on square 6' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Piece 2: Move on square 5' }))
       expect(onPickTarget).toHaveBeenCalledWith(b)
     })
 
@@ -169,5 +169,26 @@ describe('Board', () => {
       expect(screen.queryAllByTestId('piece-number')).toHaveLength(0)
       expect(screen.getAllByRole('button').map((el) => el.getAttribute('aria-label'))).toEqual(['Red piece 1, on square 6', 'Move on square 9'])
     })
+  })
+
+  it('a destination on another movable piece leaves that square to the piece', async () => {
+    const state = game()
+    state.players[0].pieces[2] = track(6)
+    state.players[0].pieces[3] = track(0)
+    const red2 = { color: 'red', index: 2 } as const
+    const red3 = { color: 'red', index: 3 } as const
+    const onSelectPiece = vi.fn()
+    const onPickTarget = vi.fn()
+    const targets: Move[] = [
+      { kind: 'forward', piece: red2, to: track(12) },
+      { kind: 'forward', piece: red3, to: track(6) },
+    ]
+    render(<Board state={state} movable={[red2, red3]} targets={targets} onSelectPiece={onSelectPiece} onPickTarget={onPickTarget} />)
+    // The marker still shows, but only the piece's own button sits on that square, so a tap selects it.
+    expect(screen.getAllByTestId('target-marker')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Piece 2: Move on square 7' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Piece 1: Red, on square 7' }))
+    expect(onSelectPiece).toHaveBeenCalledWith(red2)
+    expect(onPickTarget).not.toHaveBeenCalled()
   })
 })

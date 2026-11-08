@@ -72,6 +72,7 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
   const numbered = !selected && movable.length > 1
   const numberOf = (piece: PieceId) => movable.findIndex((m) => samePiece(m, piece)) + 1
   const spots = destinations(targets)
+  const movableSquares = new Set(movable.map((piece) => posKey(positionOf(state, piece))))
 
   // The open chooser for a square several moves share; closed whenever the game moves on.
   const [choosing, setChoosing] = useState<string>()
@@ -228,8 +229,12 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
           />
         )
       })}
-      {/* After the pieces, so a destination wins where it overlaps a piece. */}
-      {spots.map(({ key, point, moves }) => {
+      {/*
+        After the pieces, so a destination wins where it overlaps a nearby piece. A destination on a
+        square holding another movable piece gets no button: a tap there means that piece. Selecting
+        the moving piece first shows its destinations alone, and they are tappable.
+      */}
+      {spots.filter(({ key }) => selected || !movableSquares.has(key)).map(({ key, point, moves }) => {
         const shared = moves.length > 1
         return (
           <button
