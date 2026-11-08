@@ -157,7 +157,10 @@ describe('useOnlineGame', () => {
 
   it('a lobby room keeps a fresh board with its settings', () => {
     const { result, push } = setup()
-    push({ t: 'room', room: roomView({ phase: 'lobby', settings: settingsFor('ghana', 4, 'firstWins') }), you: { id: 1, host: true } })
-    expect(result.current.game.players).toHaveLength(createGame(settingsFor('ghana', 4, 'firstWins')).players.length)
+    // A game was under way; the room went back to the lobby (a rematch) with a 3-player setting.
+    push({ t: 'room', room: roomView({ log: [{ type: 'roll', value: 3 }], seq: 1 }), you: { id: 1, seat: 'red', host: true } })
+    push({ t: 'room', room: roomView({ phase: 'lobby', settings: settingsFor('ghana', 3, 'firstWins'), seq: 1 }), you: { id: 1, host: true } })
+    expect(result.current.game.log).toEqual([])
+    expect(result.current.game.players.map((p) => p.color)).toEqual(createGame(settingsFor('ghana', 3, 'firstWins')).players.map((p) => p.color))
   })
 })
