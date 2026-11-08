@@ -158,9 +158,18 @@ function refuse(ctx: Ctx, device: string, code: ErrorCode): void {
   if (m) sendRoom(ctx, m)
 }
 
-/** The next connected seated member in colour order, else any connected member. */
-function handOver(room: Room): void {
-  const next = COLORS.map((c) => room.members.find((m) => m.seat === c && m.connected)).find(Boolean) ?? room.members.find((m) => m.connected)
+/**
+ * The one place the host is chosen, called after anything that can change it: the owner if
+ * connected; else the current host if connected and seated (or nobody connected is seated);
+ * else the first connected seated member in colour order; else any connected member.
+ */
+function pickHost(room: Room): void {
+  const owner = memberOf(room, room.owner ?? '')
+  if (owner?.connected) return void (room.host = owner.device)
+  const connected = room.members.filter((m) => m.connected)
+  const current = connected.find((m) => m.device === room.host)
+  if (current && (current.seat || !connected.some((m) => m.seat))) return
+  const next = COLORS.map((c) => connected.find((m) => m.seat === c)).find(Boolean) ?? connected[0]
   if (next) room.host = next.device
 }
 
@@ -175,7 +184,7 @@ function connect(ctx: Ctx, device: string, name: string): void {
     m = { id: room.nextId++, device, name: cleanName(name) ?? 'Player', connected: true }
     room.members.push(m)
   }
-  if (device === room.owner || !memberOf(room, room.host)?.connected) room.host = device
+  pickHost(room)
   back(ctx, m.seat, wasIdle)
   broadcastRoom(ctx)
 }
@@ -212,7 +221,7 @@ function disconnect(ctx: Ctx, device: string): void {
   m.connected = false
   // In the lobby the seat stays theirs (phones drop sockets all the time); nobody else can take it. Start leaves them out.
   if (room.phase === 'playing') leaveGame(ctx, m)
-  if (room.host === device) handOver(room)
+  pickHost(room)
   prune(room)
   broadcastRoom(ctx)
 }
@@ -228,12 +237,14 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !room.members.some((o) => o.seat === msg.color)
       if (!free) return refuse(ctx, device, 'illegal')
       m.seat = msg.color
+      pickHost(room)
       prune(room)
       return broadcastRoom(ctx)
     }
     case 'stand':
       if (room.phase !== 'lobby') return refuse(ctx, device, 'illegal')
       m.seat = undefined
+      pickHost(room)
       return broadcastRoom(ctx)
     case 'takeover':
       return takeover(ctx, m, msg.color)
@@ -242,6 +253,7 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       room.settings = cleanSettings(msg.settings)
       room.timer = msg.timer
       for (const o of room.members) if (o.seat && !SEATS[msg.settings.players].includes(o.seat)) o.seat = undefined
+      pickHost(room)
       return broadcastRoom(ctx)
     }
     case 'start':
@@ -272,6 +284,7 @@ function takeover(ctx: Ctx, m: Member, color: Color): void {
   // Covered until its next turn starts, like a player who is back.
   room.covering.push(color)
   m.seat = color
+  pickHost(room)
   back(ctx, color, wasIdle)
   broadcastRoom(ctx)
 }
@@ -280,6 +293,7 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   const { room } = ctx
   // Nobody plays for a seat whose holder isn't here.
   for (const o of room.members) if (!o.connected) o.seat = undefined
+  pickHost(room)
   prune(room)
   const people = seated(room)
   if (empty === 'drop') {
@@ -447,6 +461,7 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
       room.pausedFor = undefined
       room.deadline = room.botAt = room.readyAt = undefined
       for (const o of room.members) if (!o.connected) o.seat = undefined
+      pickHost(room)
       prune(room)
       return broadcastRoom(ctx)
     default:

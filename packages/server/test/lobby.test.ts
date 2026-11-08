@@ -159,4 +159,43 @@ describe('lobby', () => {
     expect(step.sends).toHaveLength(1)
     expect(step.sends[0]).toMatchObject({ to: 'kofi', msg: { t: 'room' } })
   })
+
+  describe('the host is someone at the table, or the creator', () => {
+    const noOwner = (room = lobby(4)) => ({ ...room, owner: undefined })
+
+    it('a watching host with two seated players hands host to the first seated one (the reported case)', () => {
+      const room = noOwner()
+      room.members = []
+      room.host = 'dede'
+      room.members = [
+        { id: 1, device: 'dede', name: 'Dede', connected: true },
+        { id: 2, device: 'kofi', name: 'Kofi', connected: true, seat: 'yellow' },
+        { id: 3, device: 'ama', name: 'Ama', connected: true, seat: 'red' },
+      ]
+      const step = run(room, [join('esi')])
+      expect(step.room.host).toBe('ama')
+      expect(sentTo(step, 'ama').filter((m) => m.t === 'room').at(-1)).toMatchObject({ you: { host: true } })
+    })
+
+    it('an owner who is only watching stays host', () => {
+      const step = run(lobby(4), [join('host'), say('host', { t: 'stand' }), join('kofi'), say('kofi', { t: 'sit', color: 'green' })])
+      expect(step.room.host).toBe('host')
+    })
+
+    it('a non-owner host who stands up hands host to a seated player', () => {
+      const room = noOwner()
+      room.members = []
+      room.host = 'dede'
+      const step = run(room, [join('dede'), join('kofi'), say('dede', { t: 'sit', color: 'red' }), say('kofi', { t: 'sit', color: 'green' }), say('dede', { t: 'stand' })])
+      expect(step.room.host).toBe('kofi')
+    })
+
+    it('a watching host stays while nobody connected is seated', () => {
+      const room = noOwner()
+      room.members = []
+      room.host = 'dede'
+      const step = run(room, [join('dede'), join('kofi')])
+      expect(step.room.host).toBe('dede')
+    })
+  })
 })

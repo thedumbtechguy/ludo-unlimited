@@ -156,7 +156,7 @@ type Room = {
 - **Start:** host only, needing at least 2 seated humans, or 1 human with `empty: 'computers'`.
   - `computers` fills the other seats up to the room's chosen player count.
   - `drop` sets the player count to the number of seated humans, which must be at least 2.
-- **Host leaving:** the creator is host again whenever they connect. Otherwise the host role passes to the next connected seated player in seat order, or else to the next connected watcher.
+- **Host:** one rule, re-applied after every change (connect, disconnect, sit, stand, takeover, start, rematch, settings, prune). The creator is host whenever connected, even when only watching. Otherwise the current host stays if connected and seated (or if nobody connected is seated). Otherwise the first connected seated player in colour order, else any connected member, else it is unchanged. So the host is always someone at the table, or the room's creator. The current host and the creator are never pruned.
 
 **Playing**
 - **Who acts:** the seat that has to act is `currentMover(game)` while a roll is pending, otherwise `game.turn`.
