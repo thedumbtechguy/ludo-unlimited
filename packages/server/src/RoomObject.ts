@@ -12,6 +12,12 @@ export class RoomObject extends DurableObject<Env> {
   /** null once we know there's no room here. */
   private room?: Room | null
 
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env)
+    // Devices ping to find dead sockets; answered without waking the room.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+  }
+
   private async load(): Promise<Room | undefined> {
     if (this.room === undefined) this.room = (await this.ctx.storage.get<Room>('room')) ?? null
     return this.room ?? undefined

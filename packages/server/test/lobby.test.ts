@@ -69,7 +69,7 @@ describe('lobby', () => {
     expect(room.members.map((m) => m.device)).toEqual(['host'])
   })
 
-  it('a disconnect in the lobby frees the seat; the host role passes on', () => {
+  it('a disconnect in the lobby keeps the seat; the host role passes on', () => {
     const step = run(lobby(), [
       join('host'),
       join('kofi'),
@@ -78,8 +78,19 @@ describe('lobby', () => {
       say('esi', { t: 'sit', color: 'blue' }),
       { type: 'disconnect', device: 'host' },
     ])
-    expect(seatOf(step.room, 'host')).toBeUndefined()
+    expect(seatOf(step.room, 'host')).toBe('red')
     expect(step.room.host).toBe('esi') // seated before watchers
+    expect(seatOf(run(step.room, [join('host')]).room, 'host')).toBe('red') // back on it
+  })
+
+  it('a seat whose player has dropped out of the lobby can be taken, and start leaves them out', () => {
+    let step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'green' }), { type: 'disconnect', device: 'kofi' }])
+    expect(seatOf(step.room, 'kofi')).toBe('green')
+    step = run(step.room, [join('esi'), say('esi', { t: 'sit', color: 'green' })])
+    expect([seatOf(step.room, 'kofi'), seatOf(step.room, 'esi')]).toEqual([undefined, 'green'])
+    step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'green' }), { type: 'disconnect', device: 'kofi' }, say('host', { t: 'start', empty: 'computers' })])
+    expect(step.room.computers).toEqual(['green', 'yellow', 'blue'])
+    expect(seatOf(step.room, 'kofi')).toBeUndefined()
   })
 
   it('start with computers fills the empty seats', () => {

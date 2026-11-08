@@ -70,6 +70,13 @@ describe('playing', () => {
     expect(alarm(room, room.botAt!).room.log).toHaveLength(1)
   })
 
+  it('a computer decision the engine refuses stops the clocks instead of retrying', () => {
+    const room = run(lobby(2), [join('host'), say('host', { t: 'sit', color: 'yellow' }), say('host', { t: 'start', empty: 'computers' })]).room
+    const step = alarm(room, room.botAt!, () => 1) // a die of 7
+    expect([step.room.log, step.room.botAt, step.room.deadline]).toEqual([[], undefined, undefined])
+    expect(step.alarm).toBe(step.room.lastActive + DAY)
+  })
+
   it('no timer: a human is never timed out', () => {
     expect(started('off').deadline).toBeUndefined()
   })
@@ -135,7 +142,7 @@ describe('playing', () => {
     let step = run(started(), [say('host', { t: 'react', id: 'fire' })], T0)
     expect(sentTo(step, 'kofi')).toContainEqual({ t: 'reaction', color: 'red', id: 'fire' })
     step = run(step.room, [say('host', { t: 'react', id: 'clap' })], T0 + 1000)
-    expect(sentTo(step, 'host')[0]).toEqual({ t: 'error', code: 'too_fast' })
+    expect(step.sends).toEqual([{ to: 'host', msg: { t: 'error', code: 'too_fast' } }])
     step = run(step.room, [say('host', { t: 'react', id: 'clap' })], T0 + 3000)
     expect(sentTo(step, 'kofi')).toContainEqual({ t: 'reaction', color: 'red', id: 'clap' })
   })

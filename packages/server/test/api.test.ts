@@ -87,6 +87,19 @@ describe('api', () => {
     expect(host.got.length).toBe(before)
   })
 
+  it('answers a ping with a pong', async () => {
+    const code = await newRoom()
+    const res = await exports.default.fetch(`${BASE}/api/rooms/${code}/socket?device=host&name=host&v=${PROTOCOL_VERSION}`, { headers: { Upgrade: 'websocket' } })
+    const ws = res.webSocket!
+    const got: string[] = []
+    ws.addEventListener('message', (e: MessageEvent) => got.push(e.data as string))
+    ws.accept()
+    await settle()
+    ws.send('ping')
+    await settle()
+    expect(got.at(-1)).toBe('pong')
+  })
+
   it('tells an old app to update, and an unknown room that it is gone', async () => {
     const code = await newRoom()
     const old = await open(code, 'x', PROTOCOL_VERSION - 1)

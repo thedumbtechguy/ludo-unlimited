@@ -137,12 +137,12 @@ export function gameOf(room: Room): GameState {
   return game
 }
 /** The seat that has to act: the Labourer owner while they play someone's roll, otherwise the turn player. */
-export const actorOf = (game: GameState): Color => currentMover(game) ?? game.turn
+const actorOf = (game: GameState): Color => currentMover(game) ?? game.turn
 
 const memberOf = (room: Room, device: string) => room.members.find((m) => m.device === device)
 const seated = (room: Room) => room.members.filter((m) => m.seat)
 const seatConnected = (room: Room, color: Color) => room.members.some((m) => m.seat === color && m.connected)
-export const anyoneSeatedConnected = (room: Room) => room.members.some((m) => m.seat && m.connected)
+const anyoneSeatedConnected = (room: Room) => room.members.some((m) => m.seat && m.connected)
 
 function sendRoom(ctx: Ctx, m: Member): void {
   ctx.sends.push({ to: m.device, msg: { t: 'room', room: viewOf(ctx.room, ctx.now), you: youOf(ctx.room, m) } })
@@ -207,8 +207,8 @@ function disconnect(ctx: Ctx, device: string): void {
   const m = memberOf(room, device)
   if (!m) return
   m.connected = false
-  if (room.phase === 'lobby') m.seat = undefined
-  if (room.phase === 'playing') leaveGame(ctx, m) // Task 5
+  // In the lobby the seat stays theirs (phones drop sockets all the time); others can still take it.
+  if (room.phase === 'playing') leaveGame(ctx, m)
   if (room.host === device) handOver(room)
   prune(room)
   broadcastRoom(ctx)
@@ -255,7 +255,7 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
     case 'sync':
       return sendRoom(ctx, m)
     default:
-      return play(ctx, m, msg) // Task 5: roll, move, stop, pause, resume, react, rematch
+      return play(ctx, m, msg)
   }
 }
 
@@ -371,11 +371,11 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
   return true
 }
 
-/** The computer plays one decision for whoever has to act. */
-function computerAct(ctx: Ctx, game: GameState): void {
+/** The computer plays one decision for whoever has to act; false when the engine refuses it. */
+function computerAct(ctx: Ctx, game: GameState): boolean {
   const event: GameEvent =
     game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random)! }
-  apply(ctx, game, event, 'computer')
+  return apply(ctx, game, event, 'computer')
 }
 
 function tick(ctx: Ctx): void {
@@ -383,7 +383,8 @@ function tick(ctx: Ctx): void {
   if (room.phase !== 'playing' || room.paused) return
   const due = room.botAt ?? room.deadline
   if (due === undefined || now < due) return
-  computerAct(ctx, gameOf(room))
+  // Should never fail; if it does, stop the clocks rather than wake up for it again and again.
+  if (!computerAct(ctx, gameOf(room))) room.deadline = room.botAt = undefined
 }
 
 function leaveGame(ctx: Ctx, m: Member): void {
@@ -426,7 +427,11 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
       return clock(ctx)
     case 'react':
       if (!m.seat || !REACTIONS.includes(msg.id)) return refuse(ctx, m.device, 'illegal')
-      if (m.reactedAt !== undefined && now - m.reactedAt < REACT_GAP) return refuse(ctx, m.device, 'too_fast')
+      if (m.reactedAt !== undefined && now - m.reactedAt < REACT_GAP) {
+        // Just the error: nothing in the room changed.
+        ctx.sends.push({ to: m.device, msg: { t: 'error', code: 'too_fast' } })
+        return
+      }
       m.reactedAt = now
       ctx.sends.push({ to: 'all', msg: { t: 'reaction', color: m.seat, id: msg.id } })
       return
