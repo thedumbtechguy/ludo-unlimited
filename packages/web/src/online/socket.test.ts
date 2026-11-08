@@ -32,7 +32,7 @@ describe('openConnection', () => {
 
   it('passes messages both ways once open', () => {
     const onMessage = vi.fn()
-    const conn = openConnection({ url: 'ws://x', onMessage, onStatus: vi.fn(), create: () => new FakeSocket() })
+    const conn = openConnection({ url: () => 'ws://x', onMessage, onStatus: vi.fn(), create: () => new FakeSocket() })
     const socket = FakeSocket.made[0]
     expect(conn.send({ t: 'roll' })).toBe(false) // not open yet
     socket.open()
@@ -45,7 +45,7 @@ describe('openConnection', () => {
   it('reconnects with a growing wait, and stops for good on close()', () => {
     vi.useFakeTimers()
     const onStatus = vi.fn()
-    const conn = openConnection({ url: 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
+    const conn = openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
     FakeSocket.made[0].close()
     expect(onStatus).toHaveBeenLastCalledWith('reconnecting')
     vi.advanceTimersByTime(499)
@@ -65,7 +65,7 @@ describe('openConnection', () => {
 
   it('caps the wait at 8 s and starts over once open', () => {
     vi.useFakeTimers()
-    openConnection({ url: 'ws://x', onMessage: vi.fn(), onStatus: vi.fn(), create: () => new FakeSocket() })
+    openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus: vi.fn(), create: () => new FakeSocket() })
     for (const wait of [500, 1000, 2000, 4000, 8000, 8000]) {
       const count = FakeSocket.made.length
       FakeSocket.made[count - 1].close()
@@ -81,10 +81,29 @@ describe('openConnection', () => {
     expect(FakeSocket.made).toHaveLength(8)
   })
 
+  it('builds the URL afresh on each reconnect', () => {
+    vi.useFakeTimers()
+    const urls: string[] = []
+    let name = 'Ama'
+    openConnection({
+      url: () => `ws://x?name=${name}`,
+      onMessage: vi.fn(),
+      onStatus: vi.fn(),
+      create: (url) => {
+        urls.push(url)
+        return new FakeSocket()
+      },
+    })
+    name = 'Kofi'
+    FakeSocket.made[0].close()
+    vi.advanceTimersByTime(500)
+    expect(urls).toEqual(['ws://x?name=Ama', 'ws://x?name=Kofi'])
+  })
+
   it.each([4000, 4001])('does not reconnect when the room closes it with %i', (code) => {
     vi.useFakeTimers()
     const onStatus = vi.fn()
-    openConnection({ url: 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
+    openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
     FakeSocket.made[0].open()
     FakeSocket.made[0].close(code)
     vi.advanceTimersByTime(10_000)

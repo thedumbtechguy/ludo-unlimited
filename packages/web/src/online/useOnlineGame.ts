@@ -36,6 +36,13 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
   const [waiting, setWaiting] = useState(false)
   // The last event shown. Counts across rematches, so it's never the log's length.
   const seq = useRef(0)
+  // Whether the board shows the room's game. Starting it doesn't move seq, so seq alone can't tell.
+  const live = useRef(false)
+  // A sync is on its way: one is enough until the room answers.
+  const syncing = useRef(false)
+  const reactionTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
+  const latestName = useRef(name)
+  latestName.current = name
   const conn = useRef<Connection>()
   const reactionId = useRef(0)
   const seat = you?.seat
@@ -54,15 +61,18 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
     switch (msg.t) {
       case 'room': {
         const r = msg.room
+        syncing.current = false
         setRoom(r)
         setYou(msg.you)
         setWaiting(false)
         setClock(clockFrom(r.deadlineIn, { paused: r.paused, pausedFor: r.pausedFor, covering: r.covering }))
         if (r.phase === 'lobby') {
+          live.current = false
           seq.current = r.seq
           view.reset(createGame(r.settings))
-        } else if (r.seq !== seq.current) {
-          // Behind or ahead of the room: start over from its log. Same seq: the board is right, keep animating.
+        } else if (!live.current || r.seq !== seq.current) {
+          // New to the game, or out of step with it: start over from its log. Otherwise keep animating.
+          live.current = true
           seq.current = r.seq
           view.reset(replay(r.settings, r.log))
         }
@@ -70,7 +80,7 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
       }
       case 'event':
         if (msg.seq !== seq.current + 1) {
-          conn.current?.send({ t: 'sync' })
+          if (!syncing.current) syncing.current = conn.current?.send({ t: 'sync' }) ?? false
           return
         }
         seq.current = msg.seq
@@ -83,7 +93,11 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
       case 'reaction': {
         const id = ++reactionId.current
         setReactions((all) => [...all, { id, color: msg.color, reaction: msg.id }])
-        setTimeout(() => setReactions((all) => all.filter((r) => r.id !== id)), REACTION_MS)
+        const timer = setTimeout(() => {
+          reactionTimers.current.delete(timer)
+          setReactions((all) => all.filter((r) => r.id !== id))
+        }, REACTION_MS)
+        reactionTimers.current.add(timer)
         return
       }
       case 'error':
@@ -100,9 +114,13 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
   handler.current = handle
 
   useEffect(() => {
-    const c = connect({ url: socketUrl(code, device, name), onMessage: (m) => handler.current(m), onStatus: setStatus })
+    const c = connect({ url: () => socketUrl(code, device, latestName.current), onMessage: (m) => handler.current(m), onStatus: setStatus })
     conn.current = c
-    return () => c.close()
+    const timers = reactionTimers.current
+    return () => {
+      c.close()
+      timers.forEach(clearTimeout)
+    }
   }, [code, device])
 
   const send = (msg: ClientMessage) => conn.current?.send(msg) ?? false

@@ -40,6 +40,18 @@ describe('useGameView', () => {
     expect(result.current.game.players[0].pieces[0]).toEqual(track(9))
   })
 
+  it('reset clears the last roll and the effects, and effect ids keep counting', () => {
+    const { result } = renderHook(() => useGameView({ initial: createGame(settings), timing: FAST_TIMING, controls: () => false, act: vi.fn() }))
+    act(() => result.current.enqueue({ type: 'roll', value: 6 }))
+    expect(result.current.lastRoll).toBe(6)
+    const before = result.current.effects.at(-1)!.id
+    act(() => result.current.reset(createGame(settings)))
+    expect(result.current.lastRoll).toBeUndefined()
+    expect(result.current.effects).toEqual([])
+    act(() => result.current.enqueue({ type: 'roll', value: 6 }))
+    expect(result.current.effects[0].id).toBeGreaterThan(before)
+  })
+
   it('reset during a tumble drops the roll in flight and the events behind it', () => {
     vi.useFakeTimers()
     const timing = { botRoll: 0, botMove: 0, step: 100, roll: 300 }

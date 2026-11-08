@@ -17,9 +17,12 @@ const LONGEST_WAIT = 8000
 /** Close codes the room uses when coming back won't help: no such room, old version, replaced by another tab. */
 const FINAL_CODES = [4000, 4001]
 
-/** A socket to the room that reconnects by itself, until `close()`. `send` is false while it's down. */
+/**
+ * A socket to the room that reconnects by itself, until `close()`. `send` is false while it's down.
+ * `url` is asked afresh on each attempt, so a reconnect carries the latest name.
+ */
 export function openConnection(o: {
-  url: string
+  url: () => string
   onMessage: (msg: ServerMessage) => void
   onStatus: (status: Status) => void
   create?: (url: string) => SocketLike
@@ -31,7 +34,7 @@ export function openConnection(o: {
   let timer: ReturnType<typeof setTimeout> | undefined
 
   function open() {
-    socket = create(o.url)
+    socket = create(o.url())
     socket.onopen = () => {
       wait = FIRST_WAIT
       o.onStatus('open')

@@ -1,4 +1,4 @@
-import { createGame, settingsFor, type RoomView, type ServerMessage } from '@ludo/engine'
+import { createGame, settingsFor, type ClientMessage, type RoomView, type ServerMessage } from '@ludo/engine'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FAST_TIMING } from '../useGame'
@@ -23,18 +23,22 @@ const roomView = (over: Partial<RoomView> = {}): RoomView => ({
   ...over,
 })
 
-function setup() {
+function setup(name = 'Ama') {
   let deliver: (msg: ServerMessage) => void = () => {}
-  const send = vi.fn(() => true)
+  const send = vi.fn((_msg: ClientMessage) => true)
   const close = vi.fn()
-  const connect = vi.fn((o: { onMessage: (m: ServerMessage) => void; onStatus: (s: 'open') => void }) => {
+  let url: () => string = () => ''
+  const connect = vi.fn((o: { url: () => string; onMessage: (m: ServerMessage) => void; onStatus: (s: 'open') => void }) => {
     deliver = o.onMessage
+    url = o.url
     o.onStatus('open')
     return { send, close }
   })
-  const hook = renderHook(() => useOnlineGame({ code: 'KQZM', device: 'd1', name: 'Ama', timing: FAST_TIMING, connect }))
+  const hook = renderHook((p: { name: string }) => useOnlineGame({ code: 'KQZM', device: 'd1', name: p.name, timing: FAST_TIMING, connect }), {
+    initialProps: { name },
+  })
   const push = (msg: ServerMessage) => act(() => deliver(msg))
-  return { ...hook, push, send, close }
+  return { ...hook, push, send, close, connect, url: () => url() }
 }
 
 const ama = { id: 1, seat: 'red' as const, host: true }
@@ -79,6 +83,40 @@ describe('useOnlineGame', () => {
     push({ t: 'event', seq: 8, event: { type: 'roll', value: 3 }, by: 'human' })
     expect(result.current.game.log).toEqual([{ type: 'roll', value: 3 }])
     expect(send).not.toHaveBeenCalledWith({ t: 'sync' })
+  })
+
+  it('asks for one sync at a time, until the room answers', () => {
+    const { push, send } = setup()
+    push({ t: 'room', room: roomView(), you: ama })
+    push({ t: 'event', seq: 3, event: { type: 'roll', value: 2 }, by: 'computer' })
+    push({ t: 'event', seq: 4, event: { type: 'roll', value: 2 }, by: 'computer' })
+    expect(send.mock.calls.filter(([m]) => m.t === 'sync')).toHaveLength(1)
+    push({ t: 'room', room: roomView({ seq: 4, log: [{ type: 'roll', value: 3 }] }), you: ama })
+    push({ t: 'event', seq: 6, event: { type: 'roll', value: 2 }, by: 'computer' })
+    expect(send.mock.calls.filter(([m]) => m.t === 'sync')).toHaveLength(2)
+  })
+
+  it('builds the board from the first room even at seq 0', () => {
+    const { result, push } = setup()
+    push({ t: 'room', room: roomView(), you: ama })
+    expect(result.current.game.players.map((p) => p.color)).toEqual(['red', 'yellow'])
+  })
+
+  it('rebuilds the board when the game starts, though seq has not moved', () => {
+    const { result, push } = setup()
+    push({ t: 'room', room: roomView({ phase: 'lobby', settings: settingsFor('classic', 4, 'firstWins') }), you: ama })
+    expect(result.current.game.players).toHaveLength(4)
+    // Started with empty seats dropped: two players.
+    push({ t: 'room', room: roomView(), you: ama })
+    expect(result.current.game.players.map((p) => p.color)).toEqual(['red', 'yellow'])
+  })
+
+  it('reconnects with the latest name', () => {
+    const { rerender, url, connect } = setup()
+    expect(url()).toContain('name=Ama')
+    rerender({ name: 'Kofi' })
+    expect(url()).toContain('name=Kofi')
+    expect(connect).toHaveBeenCalledTimes(1)
   })
 
   it('a resync rebuilds the board from the log', () => {

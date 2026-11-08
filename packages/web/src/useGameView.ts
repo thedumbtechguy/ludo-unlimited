@@ -144,6 +144,9 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     setCallout(undefined)
     setWasted(undefined)
     setMessage(undefined)
+    setLastRoll(undefined)
+    // Ids keep counting, so a listener never mistakes a new effect for one it has seen.
+    setEffects([])
     setGame(next)
   }
 
