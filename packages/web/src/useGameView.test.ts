@@ -1,4 +1,4 @@
-import { createGame, HOME, roll, settingsFor, track } from '@ludo/engine'
+import { createGame, HOME, roll, settingsFor, track, type GameState } from '@ludo/engine'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FAST_TIMING } from './useGame'
@@ -53,6 +53,47 @@ describe('useGameView', () => {
     expect(result.current.rolling).toBe(false)
     expect(result.current.busy).toBe(false)
     expect(result.current.game.log).toEqual([])
+  })
+
+  it('reset mid-move drops the move: no stale landing, effects or callout', () => {
+    vi.useFakeTimers()
+    const initial = createGame(settings)
+    initial.players[0].pieces = [track(5), HOME, HOME, HOME]
+    initial.players[1].pieces[0] = track(8)
+    const timing = { botRoll: 0, botMove: 0, step: 100, roll: 0 }
+    const { result } = renderHook(() => useGameView({ initial: roll(initial, 3), timing, controls: () => false, act: vi.fn() }))
+    act(() => result.current.enqueue({ type: 'move', move: { kind: 'forward', piece: { color: 'red', index: 0 }, to: track(8), kick: { color: 'yellow', index: 0 }, rolls: 1 } }))
+    act(() => vi.advanceTimersByTime(200))
+    expect(result.current.moving).toBeDefined()
+    const later: GameState = createGame(settings)
+    later.players[0].pieces[0] = track(20)
+    // The last step's timer is already set when the reset comes in.
+    act(() => {
+      vi.advanceTimersByTime(99)
+      result.current.reset(later)
+      vi.advanceTimersByTime(1000)
+    })
+    expect(result.current.moving).toBeUndefined()
+    expect(result.current.game.players[0].pieces[0]).toEqual(track(20))
+    expect(result.current.game.players[1].pieces[0]).toEqual({ kind: 'base' })
+    expect(result.current.effects).toEqual([])
+    expect(result.current.callout).toBeUndefined()
+  })
+
+  it('a pass clears the selection and any wasted roll', () => {
+    // Ghana: red on 10 with yellow on 7 can go forward or kick back, so selecting keeps the selection.
+    const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+    initial.players[0].pieces[0] = track(10)
+    initial.players[1].pieces[0] = track(7)
+    const { result } = renderHook(() => useGameView({ initial, timing: FAST_TIMING, controls: () => true, act: vi.fn() }))
+    act(() => result.current.enqueue({ type: 'roll', value: 3 }))
+    act(() => result.current.select({ color: 'red', index: 0 }))
+    expect(result.current.selected).toEqual({ color: 'red', index: 0 })
+    act(() => result.current.enqueue({ type: 'pass' }))
+    expect(result.current.selected).toBeUndefined()
+    expect(result.current.wasted).toBeUndefined()
+    expect(result.current.message).toBeUndefined()
+    expect(result.current.game.turn).toBe('yellow')
   })
 
   it('a person’s single real choice is played through act after timing.botMove', () => {

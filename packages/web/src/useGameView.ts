@@ -90,6 +90,8 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
   const queue = useRef<GameEvent[]>([])
   const [queued, setQueued] = useState(0)
   const busy = animation !== undefined || rolling || queued > 0
+  // Bumped by reset, so a timer set before it does nothing.
+  const generation = useRef(0)
 
   useEffect(
     () => () => {
@@ -118,7 +120,7 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
       case 'stop':
         return showStop()
       case 'pass':
-        return setGame(pass(game))
+        return showPass()
     }
   }
 
@@ -133,6 +135,7 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
   function reset(next: GameState) {
     clearTimeout(rollTimer.current)
     clearTimeout(wickedTimer.current)
+    generation.current++
     queue.current = []
     setQueued(0)
     setAnimation(undefined)
@@ -168,6 +171,13 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     setMessage(undefined)
     setWasted(next.pendingRoll === undefined ? { color: game.turn, value: 6 } : undefined)
     setGame(next)
+  }
+
+  function showPass() {
+    setSelected(undefined)
+    setMessage(undefined)
+    setWasted(undefined)
+    setGame(pass(game))
   }
 
   function showRoll(value: number) {
@@ -212,7 +222,9 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     emit(effects.filter((e) => e.type !== 'wicked'))
     const onTop = effects.filter((e) => e.type === 'wicked')
     if (onTop.length === 0) return
+    const gen = generation.current
     const later = () => {
+      if (gen !== generation.current) return
       if (wicked) showCallout(wicked)
       emit(onTop)
     }
@@ -249,7 +261,9 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
   // Step the animation; apply the move once the piece reaches the end of its path.
   useEffect(() => {
     if (!animation) return
+    const gen = generation.current
     const id = setTimeout(() => {
+      if (gen !== generation.current) return
       if (animation.step + 1 < animation.path.length) {
         playSound(stepSound(animation, animation.step + 1))
         setAnimation({ ...animation, step: animation.step + 1 })
@@ -267,7 +281,8 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     if (!humanToMove) return
     const only = realChoices(legalMoves(game))
     if (only.length !== 1) return
-    const id = setTimeout(() => play(only[0]), timing.botMove)
+    const gen = generation.current
+    const id = setTimeout(() => gen === generation.current && play(only[0]), timing.botMove)
     return () => clearTimeout(id)
   }, [game, humanToMove])
 
