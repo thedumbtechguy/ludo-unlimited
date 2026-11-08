@@ -1,5 +1,5 @@
 {
-  "name": "ludo",
+  "name": "ludo-unlimited",
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {

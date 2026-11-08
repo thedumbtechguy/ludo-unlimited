@@ -1,4 +1,4 @@
-# Ludo Rules Engine — Design
+# Ludo Unlimited — Rules Engine Design
 
 **Date:** 2026-11-07
 **Scope:** The rules engine only. Board UI, online multiplayer, and accounts/lobby get their own specs later.
