@@ -63,8 +63,8 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 
 - Each arm of the board has two outer track columns with a middle column between them.
   - In rows 1–5 of an arm, the middle squares are that arm's home lane squares 1–5.
-  - In row 0, the outer tip, the middle square is a track square. **Row 0 never Line Kicks.**
-- The Line Kick is checked after an enter, forward or backward move whose landing square is empty or holds the mover's own piece. If that square is in rows 1–5 and a lone opponent sits on the matching square across the arm, the mover may Line Kick.
+  - In row 0, the outer tip, the middle square is a track square (the arm's lane entry). **Row 0 Line Kicks too**, across that tip square, and any piece standing on the tip blocks it.
+- The Line Kick is checked after an enter, forward or backward move whose landing square is empty or holds the mover's own piece. If that square is in rows 0–5 and a lone opponent sits on the matching square across the arm, the mover may Line Kick.
 - The lane square between the two must be empty.
 - On a Line Kick, **the mover jumps across onto the opponent's square and stays there.** The opponent goes to base.
 - It works across any colour's lane, including the mover's own. Across your own lane, it can be a huge shortcut.
@@ -118,7 +118,7 @@ type Position =
 
 **`path(piece, steps, direction)`** returns the squares passed through and the destination, or `null` if the move is illegal. A move is illegal if an opponent block is on the path or at the destination, or if the roll overshoots home.
 
-**`lineAcross` table**, built once: `trackIndex → { across: trackIndex, between: { lane owner, lane index } }`. It covers rows 1–5 of every arm, which is 40 entries.
+**`lineAcross` table**, built once: `trackIndex → { across: trackIndex, between: Position }`. It covers rows 0–5 of every arm (row 0 across the tip square), which is 48 entries.
 
 ### Game state
 
@@ -192,7 +192,7 @@ type Move =
 ## Testing (Vitest)
 
 - **Scenario tests**, one file per rule: `frontKick`, `backKick`, `lineKick`, `homeKick`, `labourer`, `blocks`, `finishing`. A `place({ red: [...], yellow: [...] })` helper sets up the board. Each rule decision in this spec gets at least one test, including:
-  - no Line Kick on row 0
+  - a Line Kick on row 0 across the tip, blocked by a piece on the tip
   - a piece in the lane blocks a Line Kick
   - Back Kick into a Line Kick
   - a Line Kick across your own lane as a shortcut
@@ -202,7 +202,7 @@ type Move =
   - an owner being Labourered while still owning someone
 - **Rule-combination tests:** the scenarios run with the relevant toggles on and off.
 - **Invariant tests on random games:** thousands of seeded games with random rulesets. After every move, each player has 4 pieces, no block has been passed or kicked, and every game ends.
-- **Geometry tests:** `lineAcross` has exactly 40 entries, and coordinates are checked against the board drawing.
+- **Geometry tests:** `lineAcross` has exactly 48 entries, and coordinates are checked against the board drawing.
 - **Replay test:** replaying `log` rebuilds the same state.
 
 ## Out of scope (separate specs)

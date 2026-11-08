@@ -1,4 +1,4 @@
-import { lane } from './position'
+import { lane, track } from './position'
 import { COLORS, type Color, type Position } from './types'
 
 export type Cell = readonly [column: number, row: number]
@@ -59,17 +59,21 @@ const trackIndexByCell = new Map(TRACK.map(([c, r], i) => [`${c},${r}`, i]))
 
 export type Across = { across: number; between: Position }
 
-/** Track squares facing each other across a lane square (rows 1–5 of each arm). */
+/**
+ * Track squares facing each other across the middle column of an arm: rows 1–5 face each other across
+ * a lane square, row 0 across the arm's tip (the owner's lane entry, a track square).
+ */
 export const LINE_ACROSS: ReadonlyMap<number, Across> = (() => {
   const pairs = new Map<number, Across>()
   for (const owner of COLORS) {
-    for (let i = 1; i <= LANE_LENGTH; i++) {
+    for (let i = 0; i <= LANE_LENGTH; i++) {
       const [c, r] = laneCell(owner, i)
       const horizontal = r === 7
       const a = trackIndexByCell.get(horizontal ? `${c},6` : `6,${r}`)!
       const b = trackIndexByCell.get(horizontal ? `${c},8` : `8,${r}`)!
-      pairs.set(a, { across: b, between: lane(owner, i) })
-      pairs.set(b, { across: a, between: lane(owner, i) })
+      const between = i === 0 ? track(entryIndex(owner)) : lane(owner, i)
+      pairs.set(a, { across: b, between })
+      pairs.set(b, { across: a, between })
     }
   }
   return pairs

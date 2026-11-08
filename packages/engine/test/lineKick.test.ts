@@ -34,8 +34,21 @@ describe('line kick', () => {
     expect(lines(s)).toEqual([])
   })
 
-  it('never happens on row 0', () => {
-    expect(lines(setup({ rules, roll: 2, pieces: { red: [8], yellow: [12] } }))).toEqual([])
+  it('works on row 0, across the tip square', () => {
+    expect(lines(setup({ rules, roll: 2, pieces: { red: [8], yellow: [12] } }))).toEqual([
+      { kind: 'line', piece: piece('red'), via: track(10), to: track(12), kick: piece('yellow') },
+    ])
+  })
+
+  it('on row 0, a piece on the tip square blocks it', () => {
+    expect(lines(setup({ rules, roll: 2, pieces: { red: [8], yellow: [12], blue: [11] } }))).toEqual([])
+  })
+
+  it('green steps back from its start onto row 0 and kicks red across the tip', () => {
+    const s = setup({ rules: { lineKick: true, backKick: true }, turn: 'green', roll: 1, pieces: { green: [13], red: [10] } })
+    expect(lines(s)).toEqual([
+      { kind: 'line', piece: piece('green'), via: track(12), to: track(10), kick: piece('red') },
+    ])
   })
 
   it('works across your own lane as a shortcut', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LINE_ACROSS, TRACK, entryIndex, laneCell, startIndex } from '../src/board'
-import { lane } from '../src/position'
+import { lane, track } from '../src/position'
 import { COLORS } from '../src/types'
 
 const touches = (a: readonly number[], b: readonly number[]) =>
@@ -34,8 +34,8 @@ describe('board geometry', () => {
     for (const color of COLORS) expect(touches(laneCell(color, 1), TRACK[entryIndex(color)])).toBe(true)
   })
 
-  it('pairs 40 squares across lanes, symmetrically', () => {
-    expect(LINE_ACROSS.size).toBe(40)
+  it('pairs 48 squares across lanes and tips, symmetrically', () => {
+    expect(LINE_ACROSS.size).toBe(48)
     for (const [index, pair] of LINE_ACROSS) expect(LINE_ACROSS.get(pair.across)?.across).toBe(index)
   })
 
@@ -47,7 +47,9 @@ describe('board geometry', () => {
     expect(LINE_ACROSS.get(0)).toEqual({ across: 48, between: lane('red', 1) })
   })
 
-  it('never pairs row 0 (the arm tips)', () => {
-    for (const index of [10, 12, 23, 25, 36, 38, 49, 51]) expect(LINE_ACROSS.has(index)).toBe(false)
+  it('pairs row 0 across the tip square', () => {
+    expect(LINE_ACROSS.get(10)).toEqual({ across: 12, between: track(11) })
+    expect(LINE_ACROSS.get(51)).toEqual({ across: 49, between: track(50) })
+    for (const index of [23, 25, 36, 38]) expect(LINE_ACROSS.has(index)).toBe(true)
   })
 })
