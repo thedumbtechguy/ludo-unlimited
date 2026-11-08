@@ -1,9 +1,17 @@
 import {
+  ANIMATION_TIMING,
+  applyMove,
+  chooseMove,
   COLORS,
   createGame,
   currentMover,
+  eventMs,
+  REACTIONS,
   replay,
+  roll,
   SEATS,
+  stopRolling,
+  TIMER_SECONDS,
   type ClientMessage,
   type Color,
   type ErrorCode,
@@ -211,14 +219,16 @@ function rejoin(ctx: Ctx, m: Member, color: Color): void {
   const { room } = ctx
   const old = room.members.find((o) => o.seat === color)
   if (room.phase === 'lobby' || !old || old.connected || old === m || m.seat) return refuse(ctx, m.device, 'illegal')
+  const wasIdle = !anyoneSeatedConnected(room)
   old.seat = undefined
   m.seat = color
   if (room.host === old.device) room.host = m.device
-  if (room.pausedFor === color) {
+  const unpaused = room.pausedFor === color
+  if (unpaused) {
     room.paused = false
     room.pausedFor = undefined
-    schedule(ctx, gameOf(room), ctx.now)
   }
+  if (room.phase === 'playing' && (wasIdle || unpaused)) schedule(ctx, gameOf(room), ctx.now)
   broadcastRoom(ctx)
 }
 
@@ -247,11 +257,142 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   return true
 }
 
-// Task 5 replaces these with the game.
-function schedule(_ctx: Ctx, _game: GameState, _readyAt: number): void {}
-function leaveGame(_ctx: Ctx, _m: Member): void {}
-function tick(_ctx: Ctx): void {}
-function play(ctx: Ctx, m: Member, _msg: ClientMessage): void {
-  refuse(ctx, m.device, 'illegal')
+const REACT_GAP = 3000
+const dieRoll = (random: () => number) => 1 + Math.floor(random() * 6)
+
+function clock(ctx: Ctx): void {
+  const { room, now } = ctx
+  const deadlineIn = room.deadline === undefined ? undefined : room.deadline - now
+  ctx.sends.push({ to: 'all', msg: { t: 'clock', deadlineIn, paused: room.paused, pausedFor: room.pausedFor, covering: room.covering } })
 }
-export { seatConnected }
+
+/**
+ * Who acts next and when, once devices have shown the last event (`readyAt`). Covering ends at the
+ * start of the covered seat's own turn if its player is back, so the computer finishes a turn it began.
+ */
+function schedule(ctx: Ctx, game: GameState, readyAt: number): void {
+  const { room } = ctx
+  room.deadline = room.botAt = undefined
+  if (room.phase !== 'playing' || room.paused || !anyoneSeatedConnected(room)) return
+  const startOfTurn = game.pendingRoll === undefined && game.queuedRolls.length === 0
+  if (startOfTurn) room.covering = room.covering.filter((c) => !(c === game.turn && seatConnected(room, c)))
+  const actor = actorOf(game)
+  const rolling = game.pendingRoll === undefined
+  if (room.computers.includes(actor) || room.covering.includes(actor)) {
+    room.botAt = readyAt + (rolling ? ANIMATION_TIMING.botRoll : ANIMATION_TIMING.botMove)
+  } else if (room.timer !== 'off') {
+    room.deadline = readyAt + TIMER_SECONDS[room.timer] * 1000
+  }
+}
+
+function step(game: GameState, event: GameEvent): GameState {
+  switch (event.type) {
+    case 'roll':
+      return roll(game, event.value)
+    case 'move':
+      return applyMove(game, event.move)
+    case 'stop':
+      return stopRolling(game)
+    case 'pass':
+      throw new Error('not played in rooms')
+  }
+}
+
+/** Play an event; false when the engine refuses it. */
+function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'computer'): boolean {
+  const { room } = ctx
+  let next: GameState
+  try {
+    next = step(game, event)
+  } catch {
+    return false
+  }
+  // The engine's own record of it: a move as matched against the legal moves, with its roll count.
+  const recorded = next.log.at(-1)!
+  room.log.push(recorded)
+  room.seq += 1
+  ctx.sends.push({ to: 'all', msg: { t: 'event', seq: room.seq, event: recorded, by } })
+  if (next.status === 'finished') {
+    room.phase = 'finished'
+    room.deadline = room.botAt = undefined
+  } else {
+    schedule(ctx, next, ctx.now + eventMs(game, recorded))
+  }
+  clock(ctx)
+  return true
+}
+
+/** The computer plays one decision for whoever has to act. */
+function computerAct(ctx: Ctx, game: GameState): void {
+  const event: GameEvent =
+    game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random)! }
+  apply(ctx, game, event, 'computer')
+}
+
+function tick(ctx: Ctx): void {
+  const { room, now } = ctx
+  if (room.phase !== 'playing' || room.paused) return
+  const due = room.botAt ?? room.deadline
+  if (due === undefined || now < due) return
+  computerAct(ctx, gameOf(room))
+}
+
+function leaveGame(ctx: Ctx, m: Member): void {
+  const { room } = ctx
+  if (!m.seat || room.computers.includes(m.seat)) return
+  if (!room.covering.includes(m.seat)) room.covering.push(m.seat)
+  // Only their own decision, or a room left with nobody, changes the clock.
+  const game = gameOf(room)
+  if (actorOf(game) === m.seat || !anyoneSeatedConnected(room)) schedule(ctx, game, ctx.now)
+  clock(ctx)
+}
+
+function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
+  const { room, now } = ctx
+  const host = room.host === m.device
+  switch (msg.t) {
+    case 'roll':
+    case 'move':
+    case 'stop': {
+      if (room.phase !== 'playing' || room.paused) return refuse(ctx, m.device, 'not_your_turn')
+      const game = gameOf(room)
+      const actor = actorOf(game)
+      if (m.seat !== actor || room.computers.includes(actor) || room.covering.includes(actor)) return refuse(ctx, m.device, 'not_your_turn')
+      const event: GameEvent =
+        msg.t === 'roll' ? { type: 'roll', value: dieRoll(ctx.random) } : msg.t === 'move' ? { type: 'move', move: msg.move } : { type: 'stop' }
+      if (!apply(ctx, game, event, 'human')) refuse(ctx, m.device, 'illegal')
+      return
+    }
+    case 'pause':
+      if (!host || room.phase !== 'playing' || room.paused) return refuse(ctx, m.device, 'illegal')
+      room.paused = true
+      room.pausedFor = msg.for
+      room.deadline = room.botAt = undefined
+      return clock(ctx)
+    case 'resume':
+      if (!host || !room.paused) return refuse(ctx, m.device, 'illegal')
+      room.paused = false
+      room.pausedFor = undefined
+      schedule(ctx, gameOf(room), now)
+      return clock(ctx)
+    case 'react':
+      if (!m.seat || !REACTIONS.includes(msg.id)) return refuse(ctx, m.device, 'illegal')
+      if (m.reactedAt !== undefined && now - m.reactedAt < REACT_GAP) return refuse(ctx, m.device, 'too_fast')
+      m.reactedAt = now
+      ctx.sends.push({ to: 'all', msg: { t: 'reaction', color: m.seat, id: msg.id } })
+      return
+    case 'rematch':
+      if (!host || room.phase !== 'finished') return refuse(ctx, m.device, 'illegal')
+      room.phase = 'lobby'
+      room.log = []
+      room.computers = []
+      room.covering = []
+      room.paused = false
+      room.pausedFor = undefined
+      room.deadline = room.botAt = undefined
+      for (const o of room.members) if (!o.connected) o.seat = undefined
+      return broadcastRoom(ctx)
+    default:
+      return refuse(ctx, m.device, 'illegal')
+  }
+}
