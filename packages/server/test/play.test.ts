@@ -1,4 +1,4 @@
-import { ANIMATION_TIMING, applyMove, chooseMove, roll, settingsFor, TIMER_SECONDS, type ClientMessage } from '@ludo/engine'
+import { ANIMATION_TIMING, applyMove, chooseMove, replay, roll, settingsFor, TIMER_SECONDS, type ClientMessage } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { DAY, gameOf, reduce, type Room } from '../src/room'
 import { die, fixedRandom, join, lobby, run, say, seatOf, sentTo, T0 } from './helpers'
@@ -225,6 +225,24 @@ describe('playing', () => {
     expect([room.deadline, room.botAt]).toEqual([undefined, undefined])
     const step = alarm(room, room.lastActive + 60_000)
     expect([step.room.log.length, step.sends, step.alarm]).toEqual([room.log.length, [], room.lastActive + DAY])
+  })
+
+  it('a long game played through the room stays fast, and matches a fresh replay', () => {
+    const t = performance.now()
+    const room = playOut(started(), (r) => r.phase !== 'playing', seeded(11))
+    expect(performance.now() - t).toBeLessThan(300) // replaying every input took over a second
+    expect(room.log.length).toBeGreaterThan(200)
+    expect(gameOf(structuredClone(room))).toEqual(replay(room.settings, room.log))
+    expect(gameOf(room).status).toBe('finished')
+  })
+
+  it('rooms that share a code never get each other’s game', () => {
+    const three = run(started(), [say('host', { t: 'roll' })], T0, fixedRandom([die(3)])).room
+    const six = run(started(), [say('host', { t: 'roll' })], T0, fixedRandom([die(6)])).room
+    expect([three.code, three.seq, three.log.length]).toEqual([six.code, six.seq, six.log.length])
+    expect(gameOf(three).turn).toBe('yellow')
+    expect(gameOf(six).turn).toBe('red')
+    expect(gameOf(three).turn).toBe('yellow')
   })
 
   it('a covered player who finishes is no longer covered', () => {

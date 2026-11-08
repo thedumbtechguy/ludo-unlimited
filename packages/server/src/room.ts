@@ -119,7 +119,21 @@ export function viewOf(room: Room, now: number): RoomView {
 
 const youOf = (room: Room, m: Member): YouView => ({ id: m.id, seat: m.seat, host: room.host === m.device })
 
-export const gameOf = (room: Room): GameState => replay(room.settings, room.log)
+/**
+ * The last replayed game per room, so an input doesn't replay the whole log. A hit needs the same
+ * settings and log, so rooms that share a code (as in tests) never get another's game.
+ */
+const games = new Map<string, { key: string; game: GameState }>()
+const gameKey = (settings: Settings, log: GameEvent[]) => JSON.stringify([settings, log])
+
+export function gameOf(room: Room): GameState {
+  const key = gameKey(room.settings, room.log)
+  const cached = games.get(room.code)
+  if (cached?.key === key) return cached.game
+  const game = replay(room.settings, room.log)
+  games.set(room.code, { key, game })
+  return game
+}
 /** The seat that has to act: the Labourer owner while they play someone's roll, otherwise the turn player. */
 export const actorOf = (game: GameState): Color => currentMover(game) ?? game.turn
 
@@ -337,6 +351,7 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
   const recorded = next.log.at(-1)!
   room.log.push(recorded)
   room.seq += 1
+  games.set(room.code, { key: gameKey(room.settings, room.log), game: next })
   ctx.sends.push({ to: 'all', msg: { t: 'event', seq: room.seq, event: recorded, by } })
   if (next.status === 'finished') {
     room.phase = 'finished'
