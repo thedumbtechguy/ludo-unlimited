@@ -1,4 +1,4 @@
-import { createGame, settingsFor, track } from '@ludo/engine'
+import { createGame, HOME, settingsFor, track } from '@ludo/engine'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixedDice, seededDice } from './dice'
@@ -11,30 +11,47 @@ const red0 = { color: 'red', index: 0 } as const
 describe('useGame', () => {
   afterEach(() => vi.useRealTimers())
 
+  // Red's only piece in play is on 5, the rest are home: any roll under 6 has exactly one move.
+  const lonePiece = () => {
+    const initial = createGame(classic2)
+    initial.players[0].pieces = [track(5), HOME, HOME, HOME]
+    return initial
+  }
+
   it('a human with exactly one legal move has it played automatically', async () => {
-    const dice = fixedDice([6, 3])
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING }))
+    const dice = fixedDice([3])
+    const { result } = renderHook(() =>
+      useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING, initial: lonePiece() }),
+    )
     expect(result.current.humanToRoll).toBe(true)
     act(() => result.current.roll())
-    expect(result.current.humanToRoll).toBe(true) // a 6: roll again before moving
-    act(() => result.current.roll())
-    // The 6 can only enter and the 3 can only advance that piece: both play themselves.
-    await waitFor(() => expect(result.current.game.players[0].pieces[0]).toEqual(track(3)))
+    await waitFor(() => expect(result.current.game.players[0].pieces[0]).toEqual(track(8)))
     expect(result.current.game.turn).toBe('yellow')
   })
 
   it('auto-plays the single move after timing.botMove', () => {
     vi.useFakeTimers()
     const timing = { botRoll: 0, botMove: 400, step: 0, roll: 0 }
+    const dice = fixedDice([3])
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing, initial: lonePiece() }))
+    act(() => result.current.roll())
+    expect(result.current.game.pendingRoll).toBe(3)
+    act(() => vi.advanceTimersByTime(399))
+    expect(result.current.game.players[0].pieces[0]).toEqual(track(5))
+    act(() => vi.advanceTimersByTime(1))
+    expect(result.current.game.players[0].pieces[0]).toEqual(track(8))
+  })
+
+  it('a 6 then another roll from base offers enter, or enter and move on, so the human chooses', () => {
     const dice = fixedDice([6, 3])
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing }))
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice, timing: FAST_TIMING }))
     act(() => result.current.roll())
     act(() => result.current.roll())
     expect(result.current.game.pendingRoll).toBe(6)
-    act(() => vi.advanceTimersByTime(399))
-    expect(result.current.game.players[0].pieces[0]).toEqual({ kind: 'base' })
-    act(() => vi.advanceTimersByTime(1))
-    expect(result.current.game.players[0].pieces[0]).toEqual(track(0))
+    expect(result.current.targets).toEqual([
+      { kind: 'enter', piece: red0, to: track(0) },
+      { kind: 'forward', piece: red0, to: track(3), rolls: 2 },
+    ])
   })
 
   it('with several legal moves the human still chooses', () => {
@@ -183,7 +200,8 @@ describe('useGame', () => {
       expect(result.current.currentIndex).toBe(0)
       expect(result.current.movable).toEqual([red0, { color: 'red', index: 1 }])
       expect(result.current.targets).toContainEqual({ kind: 'forward', piece: red0, to: track(13), kick: { color: 'yellow', index: 0 }, rolls: 2 })
-      expect(result.current.targets).toHaveLength(3)
+      expect(result.current.targets).toContainEqual({ kind: 'forward', piece: { color: 'red', index: 1 }, to: track(2), rolls: 2 })
+      expect(result.current.targets).toHaveLength(4)
     })
   })
 

@@ -33,7 +33,7 @@ export function currentMover(state: GameState): Color | undefined {
 }
 
 /**
- * The single-roll moves, then the kicks that combine the pending roll with the next queued rolls.
+ * The single-roll moves, then the moves that combine the pending roll with the next queued rolls.
  * Single-roll moves come first, so a combined move with the same outcome is dropped.
  */
 export function legalMoves(state: GameState): Move[] {
@@ -52,7 +52,10 @@ export function legalMoves(state: GameState): Move[] {
   })
 }
 
-/** Kicks using the pending roll plus the next 1..n queued rolls as one move. A Labourer owner never combines. */
+/** Rolls add up for any forward move; anything else (back, line, home kick) only when it kicks. */
+const combines = (move: Move): boolean => move.kind === 'forward' || move.kick !== undefined
+
+/** Moves using the pending roll plus the next 1..n queued rolls as one. A Labourer owner never combines. */
 function combinedKicks(state: GameState, pieces: PieceId[], mover: Color): Move[] {
   if (mover !== state.turn) return []
   let total = state.pendingRoll!
@@ -61,7 +64,7 @@ function combinedKicks(state: GameState, pieces: PieceId[], mover: Color): Move[
     const steps = total
     return pieces.flatMap((piece) =>
       COMBINING.flatMap((generate) => generate(state, piece, steps))
-        .filter((move) => move.kick)
+        .filter(combines)
         .map((move) => ({ ...move, rolls: i + 2 })),
     )
   })
@@ -69,7 +72,7 @@ function combinedKicks(state: GameState, pieces: PieceId[], mover: Color): Move[
 
 /**
  * A pending 6 enters a piece from base, then the next 1..n queued rolls move it on from the start
- * square, as one move, if that kicks. An enter that already kicks on the start square stops there.
+ * square, as one move: forward, or any kick. An enter that already kicks on the start square stops there.
  */
 function enterThenKicks(state: GameState, pieces: PieceId[], mover: Color): Move[] {
   if (mover !== state.turn || state.pendingRoll !== 6) return []
@@ -84,7 +87,7 @@ function enterThenKicks(state: GameState, pieces: PieceId[], mover: Color): Move
         const entered = cloneState(state)
         getPlayer(entered, mover).pieces[piece.index] = start
         return COMBINING.flatMap((generate) => generate(entered, piece, steps))
-          .filter((move) => move.kick)
+          .filter(combines)
           .map((move) => ({ ...move, rolls: i + 2 }))
       })
   })

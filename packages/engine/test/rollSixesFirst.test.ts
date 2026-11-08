@@ -41,9 +41,12 @@ describe('roll your sixes first', () => {
     expect(third.turn).toBe('green')
   })
 
-  it('never adds rolls together: each roll is its own move', () => {
+  it('each roll is its own move, or rolls add up for a forward move', () => {
     const s = rollAll(setup({ pieces: { red: lone(5) } }), [6, 3])
-    expect(legalMoves(s).map((m) => m.to)).toEqual([track(11)])
+    expect(legalMoves(s)).toEqual([
+      { kind: 'forward', piece: piece('red'), to: track(11) },
+      { kind: 'forward', piece: piece('red'), to: track(14), rolls: 2 },
+    ])
   })
 
   it('skips a roll with no legal move when its turn comes', () => {

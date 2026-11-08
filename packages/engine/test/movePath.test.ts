@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { roll } from '../src/game'
 import { legalMoves } from '../src/legalMoves'
 import { movePath } from '../src/movePath'
-import { lane, track } from '../src/position'
+import { HOME, lane, track } from '../src/position'
 import type { GameState, Move } from '../src/types'
-import { setup } from './helpers'
+import { piece, setup } from './helpers'
 
 const find = (s: GameState, kind: Move['kind']) => legalMoves(s).find((m) => m.kind === kind)!
 
@@ -56,5 +57,19 @@ describe('movePath', () => {
   it('turns into the lane straight from the entry square for a home kick', () => {
     const s = setup({ rules: { homeKick: true }, roll: 3, pieces: { red: [24], yellow: [lane('yellow', 3)] } })
     expect(movePath(s, find(s, 'homeKick'))).toEqual([lane('yellow', 1), lane('yellow', 2), lane('yellow', 3)])
+  })
+
+  it('walks every square of a combined forward 6 + 4', () => {
+    const s = [6, 4].reduce(roll, setup({ pieces: { red: [5, HOME, HOME, HOME] } }))
+    const move = legalMoves(s).find((m) => m.rolls === 2)!
+    expect(move).toEqual({ kind: 'forward', piece: piece('red'), to: track(15), rolls: 2 })
+    expect(movePath(s, move)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(track))
+  })
+
+  it('enters on the 6, then walks on from the start square for a combined forward move from base', () => {
+    const s = [6, 4].reduce(roll, setup({}))
+    const move = legalMoves(s).find((m) => m.rolls === 2)!
+    expect(move).toEqual({ kind: 'forward', piece: piece('red'), to: track(4), rolls: 2 })
+    expect(movePath(s, move)).toEqual([0, 1, 2, 3, 4].map(track))
   })
 })

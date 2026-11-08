@@ -47,7 +47,10 @@ describe('App', () => {
     expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Stop rolling' }))
     expect(screen.queryByRole('button', { name: 'Stop rolling' })).toBeNull()
-    // The first 6 can only enter, so it plays itself; the second can enter again or advance.
+    // The first 6 can enter, or enter and move on with the second 6 as one move.
+    expect(screen.getByRole('button', { name: 'Move on square 7 using 6+6' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Move on square 1' }))
+    // The second 6 can enter again or advance.
     expect(await screen.findByRole('button', { name: 'Piece 1: Move on square 7' })).toBeInTheDocument()
     // Entering again would land on piece 1, so that square is left to piece 1's own button.
     expect(screen.queryByRole('button', { name: 'Piece 2: Move on square 1' })).toBeNull()
