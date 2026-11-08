@@ -155,7 +155,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
         />
       )
     case 'create':
-      return <Setup onBack={() => setScreen({ name: 'online' })} onStart={() => {}} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error, busy: screen.request !== undefined }} />
+      return <Setup onBack={() => setScreen({ name: 'online' })} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error, busy: screen.request !== undefined }} />
     case 'room':
       return (
         <RoomScreen

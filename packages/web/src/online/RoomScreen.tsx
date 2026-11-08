@@ -6,6 +6,8 @@ import { Lobby } from './Lobby'
 import { OnlineGame, type DevicePrefs } from './OnlineGame'
 import { useOnlineGame } from './useOnlineGame'
 
+const UPDATE_WAIT = 8000
+
 type Props = { code: string; device: string; name: string; timing: Timing; onLeave: () => void; prefs: DevicePrefs }
 
 /** A room, from the lobby to the game. It holds the connection: leaving the screen closes it. */
@@ -18,6 +20,12 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
   useEffect(() => {
     if (error === 'old_version') setUpdating(updateNow(code))
   }, [error, code])
+  // No new version came (offline, or none to get yet): say so rather than wait forever.
+  useEffect(() => {
+    if (error !== 'old_version' || !updating) return
+    const timer = setTimeout(() => setUpdating(false), UPDATE_WAIT)
+    return () => clearTimeout(timer)
+  }, [error, updating])
 
   if (error === 'old_version') return <Message text={updating ? 'Updating to keep playing…' : 'Update the app to keep playing. Close it and open it again.'} onHome={onLeave} />
   if (error === 'not_found') return <Message text={room ? 'This room has ended' : 'No room with that code'} onHome={onLeave} />
@@ -30,7 +38,6 @@ export function RoomScreen({ code, device, name, timing, onLeave, prefs }: Props
         <Setup
           {...prefs}
           onBack={() => setEditing(false)}
-          onStart={() => {}}
           online={{
             initial: { settings: room.settings, timer: room.timer },
             submitLabel: 'Save',

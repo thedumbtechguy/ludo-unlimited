@@ -1,5 +1,5 @@
 import { MODES, type ErrorCode, type RoomView, type YouView } from '@ludo/engine'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { updateNow } from '../update'
@@ -87,6 +87,19 @@ describe('RoomScreen', () => {
     renderRoom()
     expect(updateNow).toHaveBeenCalledWith('KQMZ')
     expect(screen.getByRole('status')).toHaveTextContent('Updating to keep playing…')
+  })
+
+  it('asks for an update when none has come after 8 seconds', () => {
+    vi.useFakeTimers()
+    vi.mocked(updateNow).mockReturnValue(true)
+    given({ error: 'old_version' })
+    renderRoom()
+    act(() => vi.advanceTimersByTime(7999))
+    expect(screen.getByRole('status')).toHaveTextContent('Updating to keep playing…')
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.getByRole('status')).toHaveTextContent('Update the app to keep playing. Close it and open it again.')
+    expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('asks for an update when one was tried already for this room', async () => {

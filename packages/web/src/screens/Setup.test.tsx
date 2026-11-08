@@ -202,7 +202,7 @@ describe('Setup', () => {
     const renderOnline = (online: Partial<ComponentProps<typeof Setup>['online']> = {}) => {
       const onCreate = vi.fn()
       render(
-        <Setup onStart={vi.fn()} onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate, ...online }} />,
+        <Setup onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate, ...online }} />,
       )
       return onCreate
     }
@@ -234,7 +234,7 @@ describe('Setup', () => {
   })
 
   it('online: holds the button while the room is being made', () => {
-    render(<Setup onStart={vi.fn()} onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate: vi.fn(), busy: true }} />)
+    render(<Setup onBack={vi.fn()} hand="right" onHand={vi.fn()} theme="system" onTheme={vi.fn()} online={{ submitLabel: 'Create room', onCreate: vi.fn(), busy: true }} />)
     expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled()
   })
 })

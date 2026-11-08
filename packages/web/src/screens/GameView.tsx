@@ -56,7 +56,7 @@ export type GameViewProps = {
 }
 
 const HAND_NAME: Record<Hand, string> = { right: 'Right', left: 'Left' }
-export const THEME_NAME: Record<ThemePref, string> = { system: 'System', light: 'Light', dark: 'Dark' }
+const THEME_NAME: Record<ThemePref, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 const NEXT_THEME: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' }
 const EFFECTS_NAME: Record<EffectsLevel, string> = { full: 'Full', reduced: 'Reduced' }
 

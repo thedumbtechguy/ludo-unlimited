@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ReactionBubbles, ReactionButton } from './Reactions'
@@ -13,6 +13,19 @@ describe('reactions', () => {
     await userEvent.click(screen.getByRole('button', { name: '🔥' }))
     expect(onReact).toHaveBeenCalledWith('fire')
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('rests for 3 seconds after a reaction, as the room does', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    render(<ReactionButton onReact={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'React' }))
+    await userEvent.click(screen.getByRole('button', { name: '🔥' }))
+    expect(screen.getByRole('button', { name: 'React' })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(2900))
+    expect(screen.getByRole('button', { name: 'React' })).toBeDisabled()
+    act(() => vi.advanceTimersByTime(100))
+    expect(screen.getByRole('button', { name: 'React' })).toBeEnabled()
+    vi.useRealTimers()
   })
 
   it('pops each reaction over its sender’s yard, turned with the board', () => {

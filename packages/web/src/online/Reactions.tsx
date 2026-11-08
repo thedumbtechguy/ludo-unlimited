@@ -1,5 +1,5 @@
 import type { Color, Reaction } from '@ludo/engine'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { yardCentre } from '../fx/actions'
 import { BOARD_SIZE, turnPoint } from '../layout'
@@ -7,11 +7,20 @@ import type { ShownReaction } from './useOnlineGame'
 
 export const REACTION_TEXT: Record<Reaction, string> = { laugh: '😂', clap: '👏', shock: '😱', fire: '🔥', hurry: 'Hurry up', wicked: 'Wicked!' }
 
+/** The room takes one reaction per 3 seconds from each player. */
+const REACT_GAP = 3000
+
 export function ReactionButton({ onReact }: { onReact: (id: Reaction) => void }) {
   const [open, setOpen] = useState(false)
+  const [resting, setResting] = useState(false)
+  useEffect(() => {
+    if (!resting) return
+    const timer = setTimeout(() => setResting(false), REACT_GAP)
+    return () => clearTimeout(timer)
+  }, [resting])
   return (
     <>
-      <button type="button" className="secondary react-button" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <button type="button" className="secondary react-button" aria-haspopup="dialog" disabled={resting} onClick={() => setOpen(true)}>
         React
       </button>
       {open && (
@@ -25,6 +34,7 @@ export function ReactionButton({ onReact }: { onReact: (id: Reaction) => void })
                 onClick={() => {
                   onReact(id)
                   setOpen(false)
+                  setResting(true)
                 }}
               >
                 {REACTION_TEXT[id]}

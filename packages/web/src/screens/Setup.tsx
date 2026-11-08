@@ -32,7 +32,8 @@ const labelOf = <T,>(options: readonly (readonly [T, string, ...string[]])[], va
 
 type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'rules' | 'hand' | 'theme'
 type Props = {
-  onStart: (settings: Settings, seats: Seats) => void
+  /** Local games only. */
+  onStart?: (settings: Settings, seats: Seats) => void
   onBack: () => void
   hand: Hand
   onHand: (hand: Hand) => void
@@ -78,7 +79,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
 
   function start() {
     const chosen = Object.fromEntries(seated.map((color) => [color, seats[color] ?? 'computer'])) as Seats
-    onStart({ players, endCondition, rules, afterKick }, chosen)
+    onStart?.({ players, endCondition, rules, afterKick }, chosen)
   }
 
   const pickerRow = (name: Open, label: string, value?: string) => (
