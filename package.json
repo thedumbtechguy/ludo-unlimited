@@ -2,9 +2,12 @@
   "name": "ludo-unlimited",
   "private": true,
   "license": "MIT",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "test": "npm test --workspaces",
-    "typecheck": "npm run typecheck --workspaces"
+    "typecheck": "npm run typecheck --workspaces",
+    "deploy": "npm run deploy -w @ludo/web"
   }
 }
