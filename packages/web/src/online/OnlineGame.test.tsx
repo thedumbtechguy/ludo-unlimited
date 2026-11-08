@@ -89,7 +89,41 @@ describe('OnlineGame', () => {
 
   it('names the player whose turn it is', () => {
     renderOnline({ you: KOFI })
-    expect(within(dice()).getByText("Ama's turn")).toBeInTheDocument()
+    expect(dice().querySelector('.turn-label')).toHaveTextContent("Ama's turn")
+  })
+
+  it('cuts a long name short, never the "\'s turn" after it', () => {
+    const long = 'TheVirginBrokey'
+    renderOnline({ you: KOFI, room: { members: [{ ...ROOM.members[0], name: long }, ROOM.members[1]] } })
+    const label = dice().querySelector('.turn-label')!
+    expect(label.querySelector('.turn-name')).toHaveTextContent(long)
+    expect(label.querySelector('.turn-of')).toHaveTextContent("'s turn")
+  })
+
+  it('shows nobody watching when everyone has a seat', () => {
+    renderOnline()
+    expect(screen.queryByRole('button', { name: /watching/ })).toBeNull()
+  })
+
+  it('counts the connected watchers in the top bar, and names them in a sheet', async () => {
+    const members = [
+      ...ROOM.members,
+      { id: 3, name: 'Esi', connected: true },
+      { id: 4, name: 'Yaw', connected: true },
+      { id: 5, name: 'Gone', connected: false },
+    ]
+    renderOnline({ room: { members } })
+    const button = screen.getByRole('button', { name: '2 watching' })
+    expect(button.closest('header.topbar')).not.toBeNull()
+    await userEvent.click(button)
+    const sheet = screen.getByRole('dialog', { name: 'Watching' })
+    expect([...sheet.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Esi', 'Yaw'])
+  })
+
+  it('a watcher sees themselves in the list', async () => {
+    renderOnline({ you: WATCHER, room: { members: [...ROOM.members, { id: 3, name: 'Esi', connected: true }] } })
+    await userEvent.click(screen.getByRole('button', { name: '1 watching' }))
+    expect(within(screen.getByRole('dialog', { name: 'Watching' })).getByText('Esi (you)')).toBeInTheDocument()
   })
 
   it('a watcher sees Watching, never Your turn, and gets no reaction button', () => {
@@ -104,6 +138,18 @@ describe('OnlineGame', () => {
     await userEvent.click(screen.getByRole('button', { name: 'React' }))
     await userEvent.click(screen.getByRole('button', { name: 'Hurry up' }))
     expect(send).toHaveBeenCalledWith({ t: 'react', id: 'hurry' })
+  })
+
+  it('keeps the react button in the top bar during your own turn, beside Menu', async () => {
+    const { send } = renderOnline({ you: AMA })
+    expect(screen.getByText('Tap the dice to roll')).toBeInTheDocument()
+    const react = screen.getByRole('button', { name: 'React' })
+    expect(react.closest('header.topbar')).not.toBeNull()
+    expect(react.nextElementSibling).toBe(screen.getByRole('button', { name: 'Menu' }))
+    await userEvent.click(react)
+    await userEvent.click(screen.getByRole('button', { name: '🔥' }))
+    expect(send).toHaveBeenCalledWith({ t: 'react', id: 'fire' })
+    expect(screen.getByRole('button', { name: 'React' })).toBeDisabled()
   })
 
   it('tells the host who left, and pauses to wait for them', async () => {

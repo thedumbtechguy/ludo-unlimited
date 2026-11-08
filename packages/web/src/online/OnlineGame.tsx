@@ -6,6 +6,7 @@ import { GameView, type GameViewProps } from '../screens/GameView'
 import { OnlineResults } from './OnlineResults'
 import { ReactionBubbles, ReactionButton } from './Reactions'
 import { TurnClock } from './TurnClock'
+import { Watchers } from './Watchers'
 import type { useOnlineGame } from './useOnlineGame'
 
 /** This device's own settings, which stay the same in every game and room. */
@@ -104,7 +105,12 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
       turnText={online.watching ? 'Watching' : undefined}
       turnNames={names}
       overlay={<ReactionBubbles reactions={online.reactions} turn={quarterTurns(viewer, prefs.hand)} names={names} />}
-      side={you.seat && <ReactionButton onReact={(id) => send({ t: 'react', id })} />}
+      topbarExtra={
+        <>
+          <Watchers members={room.members} youId={you.id} />
+          {you.seat && <ReactionButton onReact={(id) => send({ t: 'react', id })} />}
+        </>
+      }
       away={away}
     />
   )

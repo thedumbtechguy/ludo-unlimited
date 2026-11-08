@@ -20,8 +20,19 @@ export function ReactionButton({ onReact }: { onReact: (id: Reaction) => void })
   }, [resting])
   return (
     <>
-      <button type="button" className="secondary react-button" aria-haspopup="dialog" disabled={resting} onClick={() => setOpen(true)}>
-        React
+      <button type="button" className="menu-button react-button"
+        aria-label="React"
+        aria-haspopup="dialog"
+        title={resting ? 'Wait a moment to react again' : undefined}
+        disabled={resting}
+        onClick={() => setOpen(true)}
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <circle cx="10" cy="10" r="7.5" />
+          <path d="M6.7 11.8a3.8 3.8 0 0 0 6.6 0" />
+          <path d="M7.3 7.8v.4M12.7 7.8v.4" strokeWidth="2.4" />
+        </svg>
+        <span aria-hidden="true">React</span>
       </button>
       {open && (
         <Sheet title="React" onClose={() => setOpen(false)}>

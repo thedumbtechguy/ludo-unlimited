@@ -108,7 +108,7 @@ button.row { cursor: pointer; }
 
 /* Game screen. Phone: top bar, the board full width, then the controls on the table at the bottom. */
 .game { display: flex; flex-direction: column; gap: 18px; max-width: 560px; min-height: 100vh; min-height: 100dvh; margin: 0 auto; padding: 14px 16px 24px; }
-.topbar { display: flex; align-items: center; gap: 20px; height: 40px; flex: none; }
+.topbar { display: flex; align-items: center; gap: 12px; height: 40px; flex: none; }
 .title { margin-right: auto; font-weight: 900; font-size: 19px; letter-spacing: -0.4px; }
 .rules-name { display: none; color: var(--muted); font-weight: 700; font-size: 15px; }
 .menu-button { display: grid; place-items: center; width: 44px; height: 44px; margin-right: -10px; padding: 0; border: 0; border-radius: 12px; background: transparent; cursor: pointer; }
@@ -142,6 +142,7 @@ button.row { cursor: pointer; }
 /* Desktop and landscape tablet: the board centred, the controls in a column to its right. */
 @media (min-width: 900px) and (orientation: landscape) {
   .game { max-width: none; height: 100vh; height: 100dvh; padding: 20px 32px; gap: 16px; }
+  .topbar { gap: 20px; }
   .title { font-size: 22px; letter-spacing: -0.5px; }
   .rules-name { display: block; }
   .menu-button { width: auto; height: 40px; margin-right: 0; padding: 0 14px; font-weight: 700; font-size: 15px; }
@@ -290,9 +291,12 @@ button.row { cursor: pointer; }
 
 /* Six streak. The fire itself is drawn on the effects canvas; the dice sits above that canvas so the
    flames burn behind and around it. */
-.dice-slot { position: relative; z-index: 6; flex: none; display: grid; place-items: center; }
-/* Whose turn it is, just above the dice. */
-.turn-label { display: flex; align-items: center; gap: 6px; height: 20px; margin: 0; font-weight: 800; font-size: 14px; white-space: nowrap; }
+.dice-slot { position: relative; z-index: 6; flex: none; display: grid; place-items: center; width: 120px; }
+/* Whose turn it is, just above the dice: never wider than the dice, so a long name can't move it. On phones it lines up with the dice's outer edge. */
+.turn-label { display: flex; align-items: center; justify-self: stretch; gap: 6px; min-width: 0; height: 20px; margin: 0; font-weight: 800; font-size: 14px; white-space: nowrap; }
+.controls[data-hand="right"] .turn-label { justify-content: flex-end; }
+.turn-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.turn-of { flex: none; margin-left: -6px; }
 .turn-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--turn-color); }
 .streak-label { position: absolute; top: 4px; right: -6px; font-weight: 900; font-size: 15px; color: var(--streak); white-space: nowrap; pointer-events: none; }
 .controls[data-hand="right"] .streak-label { right: auto; left: -6px; }
@@ -307,6 +311,9 @@ button.row { cursor: pointer; }
   .fire-slot { display: none; }
   .on-fire-desk { display: block; position: absolute; bottom: calc(100% + 36px); left: 50%; translate: -50% 0; font-size: 44px; -webkit-text-stroke: 8px #ffffff; }
   .streak-label, .controls[data-hand="right"] .streak-label { left: auto; right: -10px; }
+  .dice-slot { width: 150px; }
+  /* The column is centred, so the label can use its whole width, centred over the dice. */
+  .turn-label, .controls[data-hand="right"] .turn-label { justify-content: center; margin: 0 -55px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .on-fire, .on-fire.leaving { animation: none; }
@@ -362,7 +369,14 @@ p.row { margin: 0; }
 .turn-clock { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); transform: rotate(-90deg); pointer-events: none; }
 .turn-clock circle { fill: none; stroke: var(--button-bg); stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.25s linear; }
 .turn-clock.warn circle { stroke: var(--warn); stroke-width: 4; }
-.react-button { min-height: 44px; padding: 0 18px; font-size: 16px; }
+.react-button { margin-right: 0; }
+.react-button:disabled { opacity: 0.45; cursor: default; }
+/* Who's watching an online game: a quiet count in the top bar. */
+.watching-button { min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.watching-list { list-style: none; margin: 0; padding: 0 0 12px; }
+.watching-list li { display: flex; align-items: center; min-height: 48px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 17px; }
+.watching-list li:last-child { border-bottom: 0; }
+@media (min-width: 900px) and (orientation: landscape) { .watching-button { font-size: 15px; } }
 .reaction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 0 12px; }
 .reaction-choice { min-height: 60px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; }
 /* The emoji read small at text size. */

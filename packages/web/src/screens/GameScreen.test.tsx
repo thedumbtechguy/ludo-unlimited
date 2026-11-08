@@ -44,6 +44,13 @@ describe('GameScreen', () => {
       expect(screen.getByText('Classic rules')).toBeInTheDocument()
     })
 
+    it('has no React or watching button in a local game', () => {
+      renderGame()
+      expect(screen.queryByRole('button', { name: 'React' })).toBeNull()
+      expect(screen.queryByRole('button', { name: /watching/ })).toBeNull()
+      expect(screen.getByRole('banner').querySelectorAll('button')).toHaveLength(1)
+    })
+
     it('names Ghana and custom rules', () => {
       const { unmount } = renderGame({ settings: settingsFor('ghana', 2, 'firstWins') })
       expect(screen.getByText('Ghana rules')).toBeInTheDocument()
@@ -162,6 +169,19 @@ describe('GameScreen', () => {
       expect(screen.queryByRole('button', { name: 'Roll again' })).toBeNull()
     })
 
+    it('puts Roll again next to the dice, under the thumb, for either hand', async () => {
+      const order = () => [...document.querySelectorAll('.roll-again button')].map((b) => b.textContent)
+      const { unmount } = renderGame({ dice: fixedDice([6]) })
+      await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
+      // Right hand: the dice is bottom-right, so [Stop][Roll again][dice].
+      expect(order()).toEqual(['Stop', 'Roll again'])
+      unmount()
+      renderGame({ dice: fixedDice([6]) }, { hand: 'left' })
+      await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
+      // Left hand, mirrored: [dice][Roll again][Stop].
+      expect(order()).toEqual(['Roll again', 'Stop'])
+    })
+
     it('makes Roll again the main button, in the fixed button colour rather than a player’s', async () => {
       renderGame({ dice: fixedDice([6]) })
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
@@ -195,13 +215,20 @@ describe('GameScreen', () => {
   })
 
   describe('whose turn', () => {
+    it('keeps "\'s turn" apart from the name, so only the name is cut short', () => {
+      renderGame({ seats: { red: 'computer', yellow: 'human' }, timing: { ...FAST_TIMING, botRoll: 60_000 } })
+      const label = document.querySelector('.turn-label')!
+      expect(label.querySelector('.turn-name')).toHaveTextContent(/^Red$/)
+      expect(label.querySelector('.turn-of')).toHaveTextContent("'s turn")
+    })
+
     it('names the current player above the dice', async () => {
       renderGame({ dice: fixedDice([3]) })
       const dice = screen.getByRole('region', { name: 'Dice' })
       expect(within(dice).getByText('Your turn')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
       // Red's 3 had no move, so it is Yellow's turn now.
-      expect(within(dice).getByText("Yellow's turn")).toBeInTheDocument()
+      expect(dice.querySelector('.turn-label')).toHaveTextContent("Yellow's turn")
     })
   })
 
@@ -242,7 +269,7 @@ describe('GameScreen', () => {
       renderGame(slowBot)
       expect(screen.getByTestId('yard-label-yellow')).toHaveTextContent('You0 home')
       expect(screen.getByTestId('yard-label-red')).toHaveTextContent('Computer0 home')
-      expect(within(screen.getByRole('region', { name: 'Dice' })).getByText("Red's turn")).toBeInTheDocument()
+      expect(document.querySelector('.turn-label')).toHaveTextContent("Red's turn")
     })
 
     it('a Labourer owner moves with the victim’s roll: the owner’s turn shows, the victim’s yard says Labourer', () => {

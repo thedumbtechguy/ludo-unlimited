@@ -11,7 +11,7 @@ import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
 import { SwitchMark } from '../components/Picker'
-import { rulesName, turnTag, wastedText } from '../labels'
+import { COLOR_NAME, rulesName, wastedText } from '../labels'
 import { quarterTurns } from '../layout'
 import type { EffectsLevel, Hand, ThemePref } from '../types'
 import { COLOR_HEX } from '../theme'
@@ -47,8 +47,8 @@ export type GameViewProps = {
   diceRing?: ReactNode
   /** Replaces the turn label's text ("Watching"). */
   turnText?: string
-  /** In the action slot while there's nothing to say there (the reaction button). */
-  side?: ReactNode
+  /** In the top bar, just left of Menu (the online reaction button). */
+  topbarExtra?: ReactNode
   /** Names for the turn label ("Kofi's turn"); the local game keeps colour names. */
   turnNames?: Partial<Record<Color, string>>
   /** Seats whose player has disconnected, marked on their yard. */
@@ -86,7 +86,7 @@ export function GameView({
   notice,
   diceRing,
   turnText,
-  side,
+  topbarExtra,
   turnNames,
   away,
 }: GameViewProps) {
@@ -125,6 +125,12 @@ export function GameView({
   // Only a person's own wasted roll is worth a word; a computer's is just noise.
   const noMove = g.wasted && g.controls(g.wasted.color) ? wastedText(g.wasted, you) : undefined
 
+  const rollAgain = (
+    <button type="button" className="primary" onClick={g.roll}>
+      Roll again
+    </button>
+  )
+
   return (
     // Effects are skipped when timing is instant (the browser tests' ?fast), so they never slow a game down.
     <FxLayer level={effectsLevel} enabled={animated}>
@@ -132,6 +138,7 @@ export function GameView({
         <header className="topbar">
           <span className="title">Ludo Unlimited</span>
           <span className="rules-name">{rulesName(rules)}</span>
+          {topbarExtra}
           <button type="button" className="menu-button" aria-label="Menu" aria-haspopup="dialog" onClick={() => setMenuOpen(true)}>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
               <path d="M3 5h14M3 10h14M3 15h14" />
@@ -175,7 +182,7 @@ export function GameView({
                 {game.status === 'playing' && (
                   <>
                     <span className="turn-dot" aria-hidden="true" />
-                    {turnText ?? turnTag(mover, you, turnNames)}
+                    {turnText ?? (mover === you ? 'Your turn' : <TurnOf name={turnNames?.[mover] ?? COLOR_NAME[mover]} />)}
                   </>
                 )}
               </p>
@@ -191,16 +198,14 @@ export function GameView({
               <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />
               <div className="action-slot">
                 {g.canStop ? (
+                  // Roll again sits next to the dice, under the thumb: [Stop][Roll again][dice], mirrored for the left hand.
                   <div className="roll-again">
-                    <button type="button" className="primary" onClick={g.roll}>
-                      Roll again
-                    </button>
+                    {hand === 'left' && rollAgain}
                     <button type="button" className="secondary" onClick={g.stop}>
                       Stop
                     </button>
+                    {hand === 'right' && rollAgain}
                   </div>
-                ) : side && !hint && !noMove ? (
-                  side
                 ) : (
                   <p className="hint">
                     {noMove && <span className="hint-note">{noMove}</span>}
@@ -272,5 +277,15 @@ export function GameView({
         )}
       </main>
     </FxLayer>
+  )
+}
+
+/** "Kofi's turn": a long name gives way (an ellipsis), never "'s turn" or the dice's place. */
+function TurnOf({ name }: { name: string }) {
+  return (
+    <>
+      <span className="turn-name">{name}</span>
+      <span className="turn-of">'s turn</span>
+    </>
   )
 }
