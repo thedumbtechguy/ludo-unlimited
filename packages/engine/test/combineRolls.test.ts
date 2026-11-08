@@ -90,3 +90,58 @@ describe('combining rolls for a kick', () => {
     expect(next.turn).toBe('red')
   })
 })
+
+describe('entering and using the next rolls in one kicking move', () => {
+  // Red, all in base, rolls 6 then 3; blue sits alone on 45, across red's lane 2 from track 3.
+  const userCase = () => rollAll(setup({ rules: { lineKick: true }, pieces: { blue: [45] } }), [6, 3])
+  const lineKick = { kind: 'line', piece: piece('red'), via: track(3), to: track(45), kick: piece('blue'), rolls: 2 }
+
+  it('enters and line kicks with the next roll', () => {
+    expect(legalMoves(userCase())).toContainEqual(lineKick)
+  })
+
+  it('playing it puts the piece across, kicks, and uses both rolls', () => {
+    const s = userCase()
+    const next = applyMove(s, combined(s)[0])
+    expect(getPlayer(next, 'red').pieces[0]).toEqual(track(45))
+    expect(getPlayer(next, 'blue').pieces[0]).toEqual(BASE)
+    expect(next.pendingRoll).toBeUndefined()
+    expect(next.queuedRolls).toEqual([])
+    expect(next.turn).toBe('green')
+  })
+
+  it('from base it still makes a Labourer and earns the bonus roll', () => {
+    const s = rollAll(setup({ rules: { lineKick: true, labourer: true }, afterKick: 'bonusRoll', pieces: { blue: [45] } }), [6, 3])
+    const next = applyMove(s, combined(s)[0])
+    expect(next.labourers).toEqual({ blue: 'red' })
+    expect(next.turn).toBe('red')
+    expect(next.pendingRoll).toBeUndefined()
+  })
+
+  it('walks from the start square, then hops across', () => {
+    const s = userCase()
+    expect(movePath(s, combined(s)[0])).toEqual([0, 1, 2, 3, 45].map(track))
+  })
+
+  it('enters and front kicks with the next roll', () => {
+    const s = rollAll(setup({ pieces: { yellow: [2] } }), [6, 2])
+    expect(combined(s)).toEqual([{ kind: 'forward', piece: piece('red'), to: track(2), kick: piece('yellow'), rolls: 2 }])
+    expect(movePath(s, combined(s)[0])).toEqual([0, 1, 2].map(track))
+  })
+
+  it('never combines an enter without a kick', () => {
+    const s = rollAll(setup({ rules: { lineKick: true, backKick: true } }), [6, 3])
+    expect(combined(s)).toEqual([])
+  })
+
+  it('an opponent block on the start square stops it', () => {
+    const s = rollAll(setup({ rules: { lineKick: true }, pieces: { blue: [0, 0, 45] } }), [6, 3])
+    expect(combined(s)).toEqual([])
+  })
+
+  it('an enter that kicks on the start square does not combine further', () => {
+    const s = rollAll(setup({ rules: { lineKick: true }, pieces: { blue: [0, 45] } }), [6, 3])
+    expect(combined(s)).toEqual([])
+    expect(legalMoves(s)).toContainEqual({ kind: 'enter', piece: piece('red'), to: track(0), kick: piece('blue') })
+  })
+})

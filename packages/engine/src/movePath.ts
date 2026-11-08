@@ -1,14 +1,19 @@
-import { entryIndex } from './board'
-import { moveSteps } from './legalMoves'
+import { entryIndex, startIndex } from './board'
+import { entersFirst, moveSteps } from './legalMoves'
 import { backwardPath, forwardPath } from './path'
-import { lane, samePos } from './position'
+import { lane, samePos, track } from './position'
 import { positionOf } from './state'
 import type { GameState, Move, Position } from './types'
 
 /** Every square the moving piece visits, in order, ending at `move.to`. For animation. */
 export function movePath(state: GameState, move: Move): Position[] {
+  if (!entersFirst(state, move)) return walkFrom(state, move, positionOf(state, move.piece))
+  const start = track(startIndex(move.piece.color))
+  return [start, ...walkFrom(state, move, start)]
+}
+
+function walkFrom(state: GameState, move: Move, from: Position): Position[] {
   const color = move.piece.color
-  const from = positionOf(state, move.piece)
   const roll = moveSteps(state, move)
   const routes = (steps: number) => [forwardPath(color, from, steps), backwardPath(color, from, steps)]
 
