@@ -20,7 +20,13 @@ Guiding principles:
 
 - 2–4 players, each with 4 pieces. One die.
 - A 6 brings a piece from base onto the player's start square.
-- A 6 gives another roll. Three 6s in a row carry no penalty.
+- **Roll your sixes first** (always on, except in `endsTurn` mode):
+  - A player keeps rolling while they roll 6s, and stops at the first non-6. Three or more 6s carry no penalty.
+  - The rolls are then played **in the order rolled**, one move per roll. Rolls are never added together.
+  - When a roll's turn comes and it has no legal move, it's skipped and play moves to the next roll.
+  - When all the rolls are used, play passes to the next player.
+  - If the player finishes while rolls remain, the remaining rolls are dropped.
+- **In `endsTurn` mode, one roll at a time:** roll, move, and a 6 then rolls again. Three 6s in a row carry no penalty.
 - Getting a piece home gives no bonus roll.
 - **After a kick** is a game setting, `afterKick`:
   - `endsTurn`: any kick ends the turn, even on a 6. Kicks other than a Front Kick are optional, so a player can skip one to keep their extra roll.
@@ -126,7 +132,8 @@ type GameState = {
   settings: Settings                        // fixed for the whole game
   players: { color: Color; pieces: Position[]; finishedPlace?: number }[]
   turn: Color                               // who rolls next
-  pendingRoll?: number
+  pendingRoll?: number                     // the roll being played now
+  queuedRolls: number[]                     // rolled this turn: while rolling, every roll so far; while playing, the rolls after pendingRoll
   labourers: Partial<Record<Color, Color>>  // victim → owner
   log: Event[]                              // every roll and move; source of truth
   status: 'playing' | 'finished'
@@ -165,17 +172,20 @@ type Move =
 
 ### Turn flow
 
-1. The server rolls.
-2. If the roller is a Labourer victim and rolled a 6, the Labourer ends.
-3. `legalMoves` runs. If the list is empty, the roll is wasted.
+1. **Rolling.** The server rolls, and the roll joins `queuedRolls`.
+   - If the roller is a Labourer victim and rolled a 6, the Labourer ends. They keep rolling for themselves.
+   - A 6 (outside `endsTurn` mode) means roll again.
+   - A non-6 starts the playing phase.
+2. **Playing.** The first queued roll becomes `pendingRoll`. If it has no legal move, it's skipped and the next one is taken.
+3. `legalMoves` runs for `pendingRoll`, and the player picks one.
 4. The move is applied, and kicked pieces go to base.
 5. If Labourer is on and the kick left the victim with no pieces in play, a new Labourer is created.
 6. If all 4 of the mover's pieces are home, they get the next place, and the end condition is checked.
-7. Next roll:
-   - If the move kicked and `afterKick` is `endsTurn`, play passes to the next player.
-   - If the move kicked, `afterKick` is `bonusRoll` and the kicker is the turn player, the roller goes again.
-   - Otherwise, on a 6 the roller goes again. That's still true if the 6 was wasted.
-   - Otherwise play passes to the next unfinished player after the roller.
+7. Next:
+   - Any queued rolls left: the next one becomes `pendingRoll`, as in step 2.
+   - Queue empty, and a move this turn kicked with `afterKick` `bonusRoll` by the turn player: that player starts a new rolling phase.
+   - Queue empty otherwise: play passes to the next unfinished player.
+   - **`endsTurn` mode** (one roll at a time): a kick passes play on. Otherwise a 6 rolls again, even if it was wasted, and any other roll passes play on.
 
 ## Testing (Vitest)
 
