@@ -126,9 +126,65 @@ describe('useGame', () => {
     act(() => result.current.select(red0))
     expect(result.current.selected).toEqual(red0)
     expect(result.current.targets.length).toBeGreaterThan(0)
+    const selectedTargets = result.current.targets
     act(() => result.current.deselect())
     expect(result.current.selected).toBeUndefined()
-    expect(result.current.targets).toEqual([])
+    // With nothing selected, every movable piece's targets show again (here a single piece).
+    expect(result.current.targets).toEqual(selectedTargets)
+  })
+
+  describe('rolling phase and the roll tray', () => {
+    it('rolling a 6 as a human leaves turnRolls [6] and allows stop()', () => {
+      const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING }))
+      act(() => result.current.roll())
+      expect(result.current.turnRolls).toEqual([6])
+      expect(result.current.currentIndex).toBeUndefined()
+      expect(result.current.canStop).toBe(true)
+      expect(result.current.humanToRoll).toBe(true)
+      expect(result.current.message).toBeUndefined()
+    })
+
+    it('stop() moves to playing the rolls so far', () => {
+      const initial = createGame(classic2)
+      initial.players[0].pieces[0] = track(5)
+      const { result } = renderHook(() =>
+        useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING, initial }),
+      )
+      act(() => result.current.roll())
+      act(() => result.current.roll())
+      expect(result.current.turnRolls).toEqual([6, 6])
+      act(() => result.current.stop())
+      expect(result.current.game.pendingRoll).toBe(6)
+      expect(result.current.turnRolls).toEqual([6, 6])
+      expect(result.current.currentIndex).toBe(0)
+      expect(result.current.canStop).toBe(false)
+      expect(result.current.humanToMove).toBe(true)
+      expect(result.current.message).toBeUndefined()
+    })
+
+    it('a computer never gets canStop', () => {
+      const { result } = renderHook(() =>
+        useGame({ settings: classic2, seats: { red: 'human', yellow: 'computer' }, dice: fixedDice([6]), timing: FAST_TIMING, initial: { ...createGame(classic2), turn: 'yellow', queuedRolls: [6] } }),
+      )
+      expect(result.current.canStop).toBe(false)
+    })
+
+    it('a combined-kick target is exposed in the targets, with every movable piece’s targets shown', () => {
+      const settings = settingsFor('classic', 4, 'firstWins')
+      const initial = createGame(settings)
+      initial.players[0].pieces[0] = track(5)
+      initial.players.find((p) => p.color === 'yellow')!.pieces[0] = track(13)
+      const dice = fixedDice([6, 2])
+      const { result } = renderHook(() => useGame({ settings, seats: { red: 'human' }, dice, timing: FAST_TIMING, initial }),
+      )
+      act(() => result.current.roll())
+      act(() => result.current.roll())
+      expect(result.current.turnRolls).toEqual([6, 2])
+      expect(result.current.currentIndex).toBe(0)
+      expect(result.current.movable).toEqual([red0, { color: 'red', index: 1 }])
+      expect(result.current.targets).toContainEqual({ kind: 'forward', piece: red0, to: track(13), kick: { color: 'yellow', index: 0 }, rolls: 2 })
+      expect(result.current.targets).toHaveLength(3)
+    })
   })
 
   describe('labourer turns', () => {

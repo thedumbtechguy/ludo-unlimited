@@ -7,6 +7,7 @@ import {
   movePath,
   replay,
   roll as rollDice,
+  stopRolling,
   type Color,
   type GameEvent,
   type GameState,
@@ -62,9 +63,15 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   function applyRoll(value: number) {
     const next = rollDice(game, value)
     setLastRoll(value)
-    const stillRolling = next.pendingRoll === undefined && next.queuedRolls.length > 0
-    const wasted = next.pendingRoll === undefined && !stillRolling
-    setMessage(stillRolling ? 'Rolled a 6! Roll again' : wasted ? 'No moves' : undefined)
+    // Still rolling after a 6 is not a wasted roll: the hint offers rolling again or stopping.
+    const wasted = next.pendingRoll === undefined && next.queuedRolls.length === 0
+    setMessage(wasted ? 'No moves' : undefined)
+    setGame(next)
+  }
+
+  function stop() {
+    const next = stopRolling(game)
+    setMessage(next.pendingRoll === undefined ? 'No moves' : undefined)
     setGame(next)
   }
 
@@ -140,9 +147,40 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     }
   }, [game, busy])
 
-  const movable = humanToMove ? moves.map((m) => m.piece).filter((p, i, all) => all.findIndex((q) => samePiece(p, q)) === i) : []
-  const targets = humanToMove && selected ? moves.filter((m) => samePiece(m.piece, selected)) : []
+  // Numbered on the board in this order, so keep it by piece index.
+  const movable = humanToMove
+    ? moves
+        .map((m) => m.piece)
+        .filter((p, i, all) => all.findIndex((q) => samePiece(p, q)) === i)
+        .sort((a, b) => a.index - b.index)
+    : []
+  // Nothing selected shows every movable piece's targets at once.
+  const targets = !humanToMove ? [] : selected ? moves.filter((m) => samePiece(m.piece, selected)) : moves
+  // Rolling: the 6s so far. Playing: the pending roll (at currentIndex) then the queued ones.
+  const turnRolls = game.pendingRoll === undefined ? game.queuedRolls : [game.pendingRoll, ...game.queuedRolls]
+  const currentIndex = game.pendingRoll === undefined ? undefined : 0
+  const canStop = humanToRoll && game.queuedRolls.length > 0
   const moving: Moving | undefined = animation && { piece: animation.piece, at: animation.path[animation.step] }
 
-  return { game, moving, movable, selected, targets, lastRoll, rolling, rollingTo, message, humanToRoll, humanToMove, roll, select, deselect, play }
+  return {
+    game,
+    moving,
+    movable,
+    selected,
+    targets,
+    turnRolls,
+    currentIndex,
+    canStop,
+    lastRoll,
+    rolling,
+    rollingTo,
+    message,
+    humanToRoll,
+    humanToMove,
+    roll,
+    stop,
+    select,
+    deselect,
+    play,
+  }
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const PIPS: Record<number, number[]> = {
+export const PIPS: Record<number, number[]> = {
   1: [4],
   2: [0, 8],
   3: [0, 4, 8],

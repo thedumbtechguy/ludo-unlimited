@@ -4,6 +4,7 @@
   --muted: #475569;
   --line: #cbd5e1;
   --accent: #3e63dd;
+  --kick: #e5484d;
   font-family: Inter, system-ui, sans-serif;
   color: var(--ink);
   background: var(--bg);
@@ -85,7 +86,26 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   .dice.rolling .dice-view, .dice.rolling::before { animation: none; }
   .cube, .face::before { transition: none; }
 }
+/* Roll tray: this turn's rolls as small dice. Holds its height so the panel doesn't jump. */
+.roll-tray { list-style: none; margin: -8px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 46px; }
+.chip { position: relative; width: 32px; height: 32px; padding: 5px; border-radius: 7px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
+.chip.now { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.chip.now::after { content: 'now'; position: absolute; left: 50%; top: 100%; margin-top: 3px; transform: translateX(-50%); font-size: 10px; font-weight: 700; line-height: 1; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+.chip.using { border-color: var(--kick); box-shadow: 0 0 0 2px var(--kick); background: #fff1f1; }
+.chip.now.using::after { color: var(--kick); }
+.chip-pips { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; }
+.chip-pip { place-self: center; width: 5px; height: 5px; border-radius: 50%; }
+.chip-pip.on { background: var(--ink); }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .hint { margin: 0; text-align: center; color: var(--muted); min-height: 20px; }
+.stop { align-self: center; min-width: 160px; font-weight: 600; }
+
+/* Several moves share a square: pick which piece goes there. */
+.chooser { position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: #ffffff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25); }
+.choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 6px 12px; border: 0; border-radius: 8px; background: #eef2ff; cursor: pointer; white-space: nowrap; }
+.choice.kick { background: #fff1f1; }
+.choice span { color: var(--muted); font-size: 14px; }
+.choice:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
 .message { min-height: 24px; margin: 0; font-weight: 600; text-align: center; }
 
 .results ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }

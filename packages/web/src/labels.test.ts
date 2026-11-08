@@ -1,6 +1,6 @@
-import { lane, track } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { describePosition, kickMessage, pieceLabel, targetLabel } from './labels'
+import { createGame, lane, settingsFor, track } from '@ludo/engine'
+import { combinedRolls, describePosition, kickMessage, listNumbers, numberedTargetLabel, pieceLabel, placeName, targetLabel } from './labels'
 
 describe('labels', () => {
   it('describes positions', () => {
@@ -24,5 +24,15 @@ describe('labels', () => {
     expect(kickMessage({ kind: 'line', piece, via: track(7), to: track(15), kick })).toBe('Red Line Kicked Yellow!')
     expect(kickMessage({ kind: 'forward', piece, to: track(8), kick })).toBe('Red kicked Yellow!')
     expect(kickMessage({ kind: 'forward', piece, to: track(8) })).toBeUndefined()
+  })
+
+  it('labels numbered targets and combined rolls', () => {
+    const move = { kind: 'forward', piece: { color: 'red', index: 0 }, to: track(8), kick: { color: 'yellow', index: 0 }, rolls: 2 } as const
+    const state = { ...createGame(settingsFor('classic', 2, 'firstWins')), pendingRoll: 6, queuedRolls: [4, 2] }
+    expect(combinedRolls(state, move)).toBe('6+4')
+    expect(combinedRolls(state, { ...move, rolls: undefined })).toBeUndefined()
+    expect(numberedTargetLabel(1, move, '6+4')).toBe('Piece 1: Kick Yellow on square 9 using 6+4')
+    expect(placeName(lane('yellow', 2))).toBe("Yellow's home lane, square 2")
+    expect(listNumbers([1, 2, 3])).toBe('1, 2 and 3')
   })
 })
