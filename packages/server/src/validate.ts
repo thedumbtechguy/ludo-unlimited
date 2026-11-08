@@ -6,10 +6,10 @@ export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ'
 export const makeCode = (random: () => number): string =>
   Array.from({ length: 4 }, () => CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)]).join('')
 
-/** A nickname: trimmed, single-spaced, at most 16 characters. */
+/** A nickname: no control or invisible characters, trimmed, single-spaced, at most 16 characters. */
 export function cleanName(name: unknown): string | undefined {
   if (typeof name !== 'string') return undefined
-  const clean = name.trim().replace(/\s+/g, ' ').slice(0, 16)
+  const clean = name.replace(/[\p{Cc}\p{Cf}]/gu, '').trim().replace(/\s+/g, ' ').slice(0, 16)
   return clean || undefined
 }
 
@@ -27,6 +27,12 @@ export function validSettings(value: unknown): value is Settings {
     rules !== null &&
     RULE_KEYS.every((key) => typeof rules[key] === 'boolean')
   )
+}
+
+/** Only the fields the game knows, so a room never stores anything extra it was sent. */
+export function cleanSettings({ players, endCondition, afterKick, rules }: Settings): Settings {
+  const { backKick, lineKick, homeKick, labourer } = rules
+  return { players, endCondition, afterKick, rules: { backKick, lineKick, homeKick, labourer } }
 }
 
 export const validTimer = (value: unknown): value is TurnTimer => ['relaxed', 'normal', 'quick', 'off'].includes(value as string)

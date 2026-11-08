@@ -1,6 +1,6 @@
 import { settingsFor } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { CODE_ALPHABET, cleanName, makeCode, validSettings, validTimer } from '../src/validate'
+import { CODE_ALPHABET, cleanName, cleanSettings, makeCode, validSettings, validTimer } from '../src/validate'
 
 describe('cleanName', () => {
   it('trims, collapses spaces and keeps 16 characters', () => {
@@ -10,6 +10,19 @@ describe('cleanName', () => {
   it('refuses an empty name', () => {
     expect(cleanName('   ')).toBeUndefined()
     expect(cleanName(42)).toBeUndefined()
+  })
+  it('drops control and invisible characters', () => {
+    expect(cleanName('Ko\u200bfi\u202e')).toBe('Kofi')
+    expect(cleanName('\u0007Ama\n')).toBe('Ama')
+    expect(cleanName('\u200b\u200d\u2066')).toBeUndefined()
+  })
+})
+
+describe('cleanSettings', () => {
+  it('keeps only the known fields', () => {
+    const settings = settingsFor('ghana', 4, 'firstWins')
+    const messy = { ...settings, junk: 'x'.repeat(100), rules: { ...settings.rules, extra: true } }
+    expect(cleanSettings(messy)).toEqual(settings)
   })
 })
 

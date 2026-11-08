@@ -24,7 +24,7 @@ import {
   type TurnTimer,
   type YouView,
 } from '@ludo/engine'
-import { cleanName, validSettings, validTimer } from './validate'
+import { cleanName, cleanSettings, validSettings, validTimer } from './validate'
 
 export const DAY = 24 * 60 * 60 * 1000
 
@@ -71,7 +71,7 @@ export function createRoom(o: { code: string; device: string; name: string; sett
     code: o.code,
     phase: 'lobby',
     host: o.device,
-    settings: o.settings,
+    settings: cleanSettings(o.settings),
     timer: o.timer,
     members: [{ id: 1, device: o.device, name: cleanName(o.name) ?? 'Player', connected: false }],
     nextId: 2,
@@ -232,9 +232,7 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       return rejoin(ctx, m, msg.color)
     case 'settings': {
       if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer)) return refuse(ctx, device, 'illegal')
-      const { players, endCondition, afterKick, rules } = msg.settings
-      const { backKick, lineKick, homeKick, labourer } = rules
-      room.settings = { players, endCondition, afterKick, rules: { backKick, lineKick, homeKick, labourer } }
+      room.settings = cleanSettings(msg.settings)
       room.timer = msg.timer
       for (const o of room.members) if (o.seat && !SEATS[msg.settings.players].includes(o.seat)) o.seat = undefined
       return broadcastRoom(ctx)

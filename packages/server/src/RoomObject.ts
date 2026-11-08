@@ -47,7 +47,7 @@ export class RoomObject extends DurableObject<Env> {
     if (Number(url.searchParams.get('v')) !== PROTOCOL_VERSION) return refuse('old_version')
     if (!device || device.length > 64 || !(await this.load())) return refuse('not_found')
     // The same device in another tab: the newest one plays.
-    for (const old of this.ctx.getWebSockets(device)) {
+    for (const old of this.open(device)) {
       old.send(JSON.stringify({ t: 'error', code: 'replaced' }))
       old.close(4001, 'replaced')
     }
@@ -71,7 +71,7 @@ export class RoomObject extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket): Promise<void> {
     const device = this.ctx.getTags(ws)[0]
     // A replaced tab closing doesn't mean the player left.
-    if (this.ctx.getWebSockets(device).some((other) => other !== ws && other.readyState === WebSocket.OPEN)) return
+    if (this.open(device).some((other) => other !== ws)) return
     await this.apply({ type: 'disconnect', device })
   }
 
@@ -83,17 +83,22 @@ export class RoomObject extends DurableObject<Env> {
     await this.apply({ type: 'alarm' })
   }
 
+  /** Sockets we can still send to; closing ones are on their way out. */
+  private open(device?: string): WebSocket[] {
+    return this.ctx.getWebSockets(device).filter((ws) => ws.readyState === WebSocket.OPEN)
+  }
+
   private async apply(input: Input): Promise<void> {
     const room = await this.load()
     if (!room) return
     const step = reduce(room, input, Date.now(), random)
     if (step.remove) {
+      await this.ctx.storage.deleteAll()
       this.room = null
-      for (const ws of this.ctx.getWebSockets()) {
+      for (const ws of this.open()) {
         ws.send(JSON.stringify({ t: 'error', code: 'not_found' }))
         ws.close(4000, 'not_found')
       }
-      await this.ctx.storage.deleteAll()
       return
     }
     this.room = step.room
@@ -101,13 +106,7 @@ export class RoomObject extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(step.alarm)
     for (const { to, msg } of step.sends) {
       const text = JSON.stringify(msg)
-      for (const ws of to === 'all' ? this.ctx.getWebSockets() : this.ctx.getWebSockets(to)) {
-        try {
-          ws.send(text)
-        } catch {
-          // Closing as we send: its close handler deals with it.
-        }
-      }
+      for (const ws of this.open(to === 'all' ? undefined : to)) ws.send(text)
     }
   }
 }

@@ -3,6 +3,8 @@ import { cleanName, makeCode, validSettings, validTimer } from './validate'
 
 export { RoomObject } from './RoomObject'
 
+const MAX_BODY = 4096
+
 const json = (body: unknown, status = 200) => Response.json(body, { status })
 
 /** /api/rooms (create), /api/rooms/:code (look up), /api/rooms/:code/socket (play). Everything else is static assets. */
@@ -26,7 +28,10 @@ export default {
 async function create(request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
   if (!(await env.CREATE_LIMIT.limit({ key: ip })).success) return json({ error: 'too_fast' }, 429)
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+  if (Number(request.headers.get('Content-Length')) > MAX_BODY) return json({ error: 'bad_request' }, 400)
+  const text = await request.text()
+  if (text.length > MAX_BODY) return json({ error: 'bad_request' }, 400)
+  const body = parse(text)
   const device = body?.device
   const name = cleanName(body?.name)
   if (typeof device !== 'string' || !device || device.length > 64 || !name || !validSettings(body?.settings) || !validTimer(body?.timer)) {
@@ -40,4 +45,12 @@ async function create(request: Request, env: Env): Promise<Response> {
     }
   }
   return json({ error: 'busy' }, 503)
+}
+
+function parse(text: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
 }

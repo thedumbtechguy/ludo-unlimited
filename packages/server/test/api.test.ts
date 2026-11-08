@@ -46,6 +46,17 @@ describe('api', () => {
     expect((await exports.default.fetch(`${BASE}/api/rooms/TOOLONG`)).status).toBe(404)
   })
 
+  it('refuses an oversized body', async () => {
+    expect((await create({ ...goodBody, pad: 'x'.repeat(5000) })).status).toBe(400)
+  })
+
+  it('stores only the known settings', async () => {
+    const res = await create({ ...goodBody, settings: { ...goodBody.settings, junk: 'x'.repeat(500), rules: { ...goodBody.settings.rules, extra: 1 } } })
+    const { code } = (await res.json()) as { code: string }
+    const room = await runInDurableObject(env.ROOMS.get(env.ROOMS.idFromName(code)), (_, state) => state.storage.get<Room>('room'))
+    expect(room!.settings).toEqual(goodBody.settings)
+  })
+
   it('allows 3 rooms a minute from one address', async () => {
     const statuses = []
     for (let i = 0; i < 4; i++) statuses.push((await create(goodBody, '10.9.9.9')).status)
@@ -111,5 +122,7 @@ describe('api', () => {
     expect(host.got.at(-1)).toEqual({ t: 'error', code: 'not_found' })
     expect((await exports.default.fetch(`${BASE}/api/rooms/${code}`)).status).toBe(404)
     expect(await runInDurableObject(stub, (_, state) => state.storage.list())).toEqual(new Map())
+    // The code can be used again.
+    expect(await stub.create({ code, device: 'next', name: 'Kofi', settings: goodBody.settings, timer: 'normal' })).toBe(true)
   })
 })
