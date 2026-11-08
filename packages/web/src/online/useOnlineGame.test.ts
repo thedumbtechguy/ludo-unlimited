@@ -1,11 +1,12 @@
-import { createGame, settingsFor, type ClientMessage, type RoomView, type ServerMessage } from '@ludo/engine'
+import { createGame, replay, settingsFor, type ClientMessage, type GameEvent, type RoomView, type ServerMessage } from '@ludo/engine'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FAST_TIMING } from '../useGame'
 import { useOnlineGame } from './useOnlineGame'
 
 const settings = settingsFor('classic', 2, 'firstWins')
-const roomView = (over: Partial<RoomView> = {}): RoomView => ({
+/** A room whose game is `log` played out (the room sends its game, not the log). */
+const roomView = ({ log = [], ...over }: Partial<RoomView> & { log?: GameEvent[] } = {}): RoomView => ({
   code: 'KQZM',
   phase: 'playing',
   host: 1,
@@ -18,7 +19,7 @@ const roomView = (over: Partial<RoomView> = {}): RoomView => ({
   computers: [],
   covering: [],
   paused: false,
-  log: [],
+  game: replay(over.settings ?? settings, log),
   seq: 0,
   ...over,
 })
@@ -119,7 +120,15 @@ describe('useOnlineGame', () => {
     expect(connect).toHaveBeenCalledTimes(1)
   })
 
-  it('a resync rebuilds the board from the log', () => {
+  it('a room starts the board from its game, without replaying a log', () => {
+    const { result, push } = setup()
+    // A game no log here would lead to: the room's word is final, whatever the rules on this device.
+    const game = { ...createGame(settings), turn: 'yellow' as const, queuedRolls: [6] }
+    push({ t: 'room', room: roomView({ game, seq: 5 }), you: ama })
+    expect(result.current.game).toEqual(game)
+  })
+
+  it('a resync rebuilds the board from the room', () => {
     const { result, push } = setup()
     const log = [{ type: 'roll' as const, value: 3 }]
     push({ t: 'room', room: roomView({ log, seq: 1 }), you: { id: 2, seat: 'yellow', host: false } })
@@ -172,7 +181,7 @@ describe('useOnlineGame', () => {
     expect(result.current.reactions).toEqual([])
   })
 
-  it.each(['old_version', 'not_found', 'replaced'] as const)('stops for good on %s', (code) => {
+  it.each(['old_version', 'not_found', 'replaced', 'broken'] as const)('stops for good on %s', (code) => {
     const { result, push, close } = setup()
     push({ t: 'error', code })
     expect(result.current.error).toBe(code)
@@ -201,4 +210,50 @@ describe('useOnlineGame', () => {
     expect(result.current.game.log).toEqual([])
     expect(result.current.game.players.map((p) => p.color)).toEqual(createGame(settingsFor('ghana', 3, 'firstWins')).players.map((p) => p.color))
   })
+
+  describe('a board that fails', () => {
+    // A move the board can't play: not one of the legal moves.
+    const badMove = { t: 'event' as const, seq: 1, event: { type: 'move' as const, move: { kind: 'enter' as const, piece: { color: 'red' as const, index: 0 }, to: { kind: 'track' as const, index: 40 } } as never }, by: 'human' as const }
+    const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    it('asks for the room once and carries on from it', () => {
+      const error = quiet()
+      const { result, push, send, close } = setup()
+      push({ t: 'room', room: roomView(), you: ama })
+      push(badMove)
+      expect(send.mock.calls.filter(([m]) => m.t === 'sync')).toHaveLength(1)
+      expect(error).toHaveBeenCalled()
+      // The room's game is fine: the board starts over from it, even at a seq it had seen.
+      push({ t: 'room', room: roomView({ log: [{ type: 'roll', value: 3 }], seq: 1 }), you: ama })
+      expect(result.current.game.log).toEqual([{ type: 'roll', value: 3 }])
+      expect(result.current.error).toBeUndefined()
+      expect(close).not.toHaveBeenCalled()
+      error.mockRestore()
+    })
+
+    it('says the room is broken when the room’s game fails too', () => {
+      const error = quiet()
+      const { result, push, close } = setup()
+      push({ t: 'room', room: roomView(), you: ama })
+      push(badMove)
+      // A game this device can't make sense of.
+      push({ t: 'room', room: roomView({ game: { ...createGame(settings), players: [], pendingRoll: 6 }, seq: 1 }), you: ama })
+      expect(result.current.error).toBe('broken')
+      expect(close).toHaveBeenCalled()
+      error.mockRestore()
+    })
+
+    it('a room game that fails from the start gets one sync, then gives up', () => {
+      const error = quiet()
+      const { result, push, send } = setup()
+      const broken = roomView({ game: { ...createGame(settings), players: [], pendingRoll: 6 }, seq: 2 })
+      push({ t: 'room', room: broken, you: ama })
+      expect(send).toHaveBeenCalledWith({ t: 'sync' })
+      expect(result.current.error).toBeUndefined()
+      push({ t: 'room', room: broken, you: ama })
+      expect(result.current.error).toBe('broken')
+      error.mockRestore()
+    })
+  })
 })
+

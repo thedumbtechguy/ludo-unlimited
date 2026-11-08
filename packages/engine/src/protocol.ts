@@ -1,7 +1,7 @@
-import type { Color, GameEvent, Move, Settings } from './types'
+import type { Color, GameEvent, GameState, Move, Settings } from './types'
 
 /** Bumped whenever messages change shape; a device on another version is asked to update. */
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 export type TurnTimer = 'relaxed' | 'normal' | 'quick' | 'off'
 export const TIMER_SECONDS: Record<Exclude<TurnTimer, 'off'>, number> = { relaxed: 60, normal: 30, quick: 15 }
@@ -23,7 +23,8 @@ export type RoomView = {
   covering: Color[]
   paused: boolean
   pausedFor?: Color
-  log: GameEvent[]
+  /** The game as the room has it (a fresh one in the lobby); devices start from it, never from replaying a log. */
+  game: GameState
   seq: number
   /** Milliseconds left for the current decision, when a human has the clock. */
   deadlineIn?: number
@@ -50,7 +51,7 @@ export type ClientMessage =
   | { t: 'rename'; name: string }
   | { t: 'sync' }
 
-export type ErrorCode = 'not_found' | 'old_version' | 'not_your_turn' | 'illegal' | 'too_fast' | 'replaced'
+export type ErrorCode = 'not_found' | 'old_version' | 'not_your_turn' | 'illegal' | 'too_fast' | 'replaced' | 'broken'
 
 export type ServerMessage =
   | { t: 'room'; room: RoomView; you: YouView }

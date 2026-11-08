@@ -38,6 +38,8 @@ export type ViewOptions = {
   you?: Color
   act: (intent: Intent) => void
   onChange?: (game: GameState) => void
+  /** An event this device can't play on its board. Without it, the error is thrown. */
+  onError?: (error: unknown) => void
 }
 
 /**
@@ -70,7 +72,7 @@ type CalloutText = Omit<Callout, 'id'>
 const samePiece = (a: PieceId, b: PieceId) => a.color === b.color && a.index === b.index
 
 /** Shows a game: applies and animates its events, whatever their source, and turns a person's actions into intents. */
-export function useGameView({ initial, timing, controls, you, act, onChange }: ViewOptions) {
+export function useGameView({ initial, timing, controls, you, act, onChange, onError }: ViewOptions) {
   const [game, setGame] = useState(initial)
   const [animation, setAnimation] = useState<Animation>()
   const [selected, setSelected] = useState<PieceId>()
@@ -128,8 +130,18 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     if (animation || rolling || queue.current.length === 0) return
     const event = queue.current.shift()!
     setQueued(queue.current.length)
-    show(event)
+    guard(() => show(event))
   }, [animation, rolling, queued, game])
+
+  /** Run `f`, handing a failure to `onError` (if any) rather than crashing the screen. */
+  function guard(f: () => void) {
+    if (!onError) return f()
+    try {
+      f()
+    } catch (error) {
+      onError(error)
+    }
+  }
 
   /** Start over from `next` (a fresh game, or a resync), dropping anything in flight. */
   function reset(next: GameState) {
@@ -190,7 +202,7 @@ export function useGameView({ initial, timing, controls, you, act, onChange }: V
     rollTimer.current = setTimeout(() => {
       setRollingTo(undefined)
       playSound({ type: 'diceLanded' })
-      applyRoll(value)
+      guard(() => applyRoll(value))
     }, timing.roll)
   }
 

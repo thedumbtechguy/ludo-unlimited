@@ -1,4 +1,4 @@
-import { createGame, replay, settingsFor, type ClientMessage, type Color, type ErrorCode, type Reaction, type RoomView, type ServerMessage, type Timing, type YouView } from '@ludo/engine'
+import { createGame, legalMoves, settingsFor, type ClientMessage, type Color, type ErrorCode, type Reaction, type RoomView, type ServerMessage, type Timing, type YouView } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import { useGameView } from '../useGameView'
 import { socketUrl } from './api'
@@ -8,7 +8,7 @@ export type Clock = { deadline?: number; paused: boolean; pausedFor?: Color; cov
 export type ShownReaction = { id: number; color: Color; reaction: Reaction }
 
 /** Errors after which there's no point reconnecting. */
-const FINAL: ErrorCode[] = ['not_found', 'old_version', 'replaced']
+const FINAL: ErrorCode[] = ['not_found', 'old_version', 'replaced', 'broken']
 const REACTION_MS = 2000
 
 export type OnlineOptions = {
@@ -40,6 +40,8 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
   const live = useRef(false)
   // A sync is on its way: one is enough until the room answers.
   const syncing = useRef(false)
+  // The board failed and a sync was asked for: if the room's answer fails too, the room can't continue here.
+  const troubled = useRef(false)
   const reactionTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
   const latestName = useRef(name)
   latestName.current = name
@@ -55,7 +57,35 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
     act: (intent) => {
       if (conn.current?.send(intent)) setWaiting(true)
     },
+    onError: (e) => failed(e),
   })
+
+  /** This device couldn't show the room's game: ask for it again once, then give up and say so. */
+  function failed(e: unknown) {
+    console.error(`room ${code}: the board failed`, e)
+    if (troubled.current) {
+      setError('broken')
+      conn.current?.close()
+      return
+    }
+    troubled.current = true
+    live.current = false
+    syncing.current = conn.current?.send({ t: 'sync' }) ?? false
+  }
+
+  /** Start the board over from the room's game; false if this device can't show it. */
+  function resetTo(r: RoomView): boolean {
+    try {
+      // What the board works out on every render: if this throws, so would the screen.
+      legalMoves(r.game)
+    } catch (e) {
+      failed(e)
+      return false
+    }
+    troubled.current = false
+    view.reset(r.game)
+    return true
+  }
 
   function handle(msg: ServerMessage) {
     switch (msg.t) {
@@ -69,16 +99,17 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
         if (r.phase === 'lobby') {
           live.current = false
           seq.current = r.seq
-          view.reset(createGame(r.settings))
+          resetTo(r)
         } else if (!live.current || r.seq !== seq.current) {
-          // New to the game, or out of step with it: start over from its log. Otherwise keep animating.
-          live.current = true
+          // New to the game, or out of step with it: start over from the room's game. Otherwise keep animating.
           seq.current = r.seq
-          view.reset(replay(r.settings, r.log))
+          live.current = resetTo(r)
         }
         return
       }
       case 'event':
+        // Waiting on a sync after a failure: the room's game will cover this event.
+        if (troubled.current) return
         if (msg.seq !== seq.current + 1) {
           if (!syncing.current) syncing.current = conn.current?.send({ t: 'sync' }) ?? false
           return

@@ -68,7 +68,7 @@ Devices only send what the person wants to do, and draw what the room tells them
 
 **Devices replay.** Every game change is broadcast as the engine `GameEvent` with a sequence number.
 - Each device applies it with the engine and derives effects with `describeRoll` and `describeMove`, as the local game does now. Callouts, sounds and animations are unchanged.
-- A device that misses a number asks for a full sync and rebuilds with `replay(settings, log)`.
+- A device that misses a number asks for a full sync and starts over from the room's game snapshot (`room.game`). Devices never replay a full log: the engine is the same version on both sides (the protocol version check), but a log recorded under older rules may not replay under newer ones.
 
 ## Data
 
@@ -95,14 +95,16 @@ type Room = {
   computers: Color[]                   // seats played by the computer from the start
   covering: Color[]                    // human seats the computer is covering now (timeout or disconnect)
   paused: boolean
-  log: GameEvent[]                     // the game, replayable with the engine
+  log: GameEvent[]                     // the events played this game (kept for the record; never replayed once `game` exists)
+  game?: GameState                     // the game snapshot: set at Start, updated with every event, cleared by Rematch
   seq: number                          // last event number sent
   deadline?: number                    // when the current decision times out
   lastActive: number
 }
 ```
 
-- **Saving:** the room is saved to Durable Object storage after every input that changes it. The game state is rebuilt with `replay(settings, log)` when the object wakes up.
+- **Saving:** the room, with its game snapshot, is saved to Durable Object storage after every input that changes it. The room plays on from `game` and never replays its log, so a rule change in a new engine can't break a game in progress: the snapshot is simply played on under the new rules.
+- **Recovery for rooms stored without a snapshot** (from before it existed): when such a room is loaded, its log is replayed event by event. If an event no longer plays (the rules changed), the game goes on from just before it: the log is cut there, `game` is set to that state, `seq` moves on by one (so devices resync), the clocks are rescheduled, and a finished game cut short is playing again. This is logged with `console.warn`.
 - **Expiry:** the alarm deletes the room 24 hours after `lastActive`.
 
 ## Protocol
@@ -136,15 +138,15 @@ type Room = {
 
 | Message | Meaning |
 |---|---|
-| `{ t: 'room', room, you }` | Full state: the room without device IDs, plus `you` (your seat or `'watching'`, and whether you host). Sent on connect, on `sync`, and after a refused action. |
+| `{ t: 'room', room, you }` | Full state: the room without device IDs (including `game`, the game snapshot, which carries its own engine log; a fresh game in the lobby), plus `you` (your seat or `'watching'`, and whether you host). Sent on connect, on `sync`, and after a refused action. Devices reset their board from `room.game`. |
 | `{ t: 'event', seq, event, by }` | One game event. `by` is `'human'` or `'computer'`. |
 | `{ t: 'members', members, host }` | Someone joined, left, sat, stood, renamed, connected or disconnected. |
 | `{ t: 'lobby', settings, timer }` | The host changed the settings. |
 | `{ t: 'deadline', at }` / `{ t: 'paused', paused }` | The turn clock, and pause. |
 | `{ t: 'reaction', color, id }` | Show a reaction over that yard. |
-| `{ t: 'error', code }` | `not_found`, `old_version`, `not_your_turn`, `illegal`, `too_fast`, `replaced` (opened in another tab). |
+| `{ t: 'error', code }` | `not_found`, `old_version`, `not_your_turn`, `illegal`, `too_fast`, `replaced` (opened in another tab), `broken` (the room hit an error it can't recover from; the socket closes with 4000). |
 
-**Old versions:** when `v` doesn't match, the room sends `old_version` and closes. `PROTOCOL_VERSION` is 2 since `rejoin` was replaced by `takeover`. The app shows "Update to keep playing" and reloads, which picks up the new service worker.
+**Old versions:** when `v` doesn't match, the room sends `old_version` and closes. `PROTOCOL_VERSION` is 3 since the room message carries the game snapshot instead of the log (2 was when `rejoin` was replaced by `takeover`). The app shows "Update to keep playing" and reloads, which picks up the new service worker.
 
 ## Room rules
 
@@ -208,10 +210,14 @@ Device-only settings stay per device, as now: playing hand, theme, sound, music 
 
 ## Error handling
 
-- **Network:** dropped connections reconnect by themselves. A sequence gap triggers `sync`, and the device rebuilds from the log.
+- **Network:** dropped connections reconnect by themselves. A sequence gap triggers `sync`, and the device starts over from the room's game snapshot.
 - **Bad input:** a malformed or oversized message is ignored. An illegal or out-of-turn action gets `error` plus the full state.
 - **Lost rooms:** if a room is gone (expired, or a bad code), the socket gets `not_found` and the screen offers Home.
 - **Durable Object restarts:** the room is rebuilt from storage, and devices reconnect and resync.
+- **Rule changes:** a game in progress plays on from its snapshot; an old room without one is recovered as in Data.
+- **Unexpected errors in the room:** the Durable Object catches anything the reducer throws, changes nothing, and logs it with `console.error` (room code, input, error and stack; Workers observability keeps it). The socket that sent the input gets `broken` and is closed with 4000. The device treats `broken` as final, like `not_found`: no reconnecting, and the screen says "This room ran into a problem and can't continue." with the room code and Home.
+- **Errors on the device:** if applying an event or a room's snapshot fails on the device, it logs it, asks for a `sync` once and starts over from the room's game. If that fails too, it shows the same problem screen. An error boundary around the room's screens catches anything else (logged with `console.error`) and shows the same screen, never a blank page or an endless "Connecting…".
+- **Local saved games** are separate: `loadGame` replays the saved log, and a save that no longer replays is dropped.
 - **Limits:** room creation is rate-limited per IP address. Reactions are limited to one every 3 seconds per device; extra ones are dropped with `too_fast`.
 
 ## Testing

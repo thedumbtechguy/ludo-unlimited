@@ -1,15 +1,16 @@
-import { MODES, type ErrorCode, type RoomView, type YouView } from '@ludo/engine'
+import { createGame, MODES, type ErrorCode, type RoomView, type YouView } from '@ludo/engine'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { updateNow } from '../update'
 import { FAST_TIMING } from '../useGame'
+import { OnlineGame } from './OnlineGame'
 import { RoomScreen } from './RoomScreen'
 import { useOnlineGame } from './useOnlineGame'
 
 vi.mock('./useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
 vi.mock('../update', () => ({ updateNow: vi.fn() }))
-vi.mock('./OnlineGame', () => ({ OnlineGame: () => <p>Game in progress</p> }))
+vi.mock('./OnlineGame', () => ({ OnlineGame: vi.fn(() => <p>Game in progress</p>) }))
 
 const ROOM: RoomView = {
   code: 'KQMZ',
@@ -21,7 +22,7 @@ const ROOM: RoomView = {
   computers: [],
   covering: [],
   paused: false,
-  log: [],
+  game: createGame({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }),
   seq: 0,
 }
 const HOST: YouView = { id: 1, seat: 'red', host: true }
@@ -79,6 +80,15 @@ describe('RoomScreen', () => {
     renderRoom()
     expect(screen.getByText('This room is open in another tab')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument()
+  })
+
+  it('says when the room ran into a problem, and goes home', async () => {
+    given({ room: ROOM, you: HOST, error: 'broken' })
+    const onLeave = renderRoom()
+    expect(screen.getByText("This room ran into a problem and can't continue.")).toBeInTheDocument()
+    expect(screen.getByText('Room KQMZ')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Home' }))
+    expect(onLeave).toHaveBeenCalled()
   })
 
   it('updates the app when the room needs a newer one', () => {
@@ -141,5 +151,24 @@ describe('RoomScreen', () => {
     rerender(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} prefs={prefs} />)
     expect(screen.queryByText('Game in progress')).toBeNull()
     expect(screen.getByText('KQMZ')).toBeInTheDocument()
+  })
+
+  it('a screen that throws shows the problem and the way home, not a blank page', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(OnlineGame).mockImplementation(() => {
+      throw new Error('boom')
+    })
+    try {
+      given({ room: { ...ROOM, phase: 'playing' }, you: HOST })
+      const onLeave = renderRoom()
+      expect(screen.getByText("This room ran into a problem and can't continue.")).toBeInTheDocument()
+      expect(screen.getByText('Room KQMZ')).toBeInTheDocument()
+      expect(error).toHaveBeenCalledWith('room KQMZ: the screen failed', expect.any(Error))
+      await userEvent.click(screen.getByRole('button', { name: 'Home' }))
+      expect(onLeave).toHaveBeenCalled()
+    } finally {
+      vi.mocked(OnlineGame).mockImplementation(() => <p>Game in progress</p>)
+      error.mockRestore()
+    }
   })
 })

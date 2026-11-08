@@ -1,7 +1,7 @@
-import { PROTOCOL_VERSION, settingsFor, type ServerMessage } from '@ludo/engine'
+import { PROTOCOL_VERSION, replay, settingsFor, type GameEvent, type ServerMessage } from '@ludo/engine'
 import { runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test'
 import { env, exports } from 'cloudflare:workers'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DAY, type Room } from '../src/room'
 
 const BASE = 'http://ludo.test'
@@ -139,5 +139,46 @@ describe('api', () => {
     expect(await runInDurableObject(stub, (_, state) => state.storage.list())).toEqual(new Map())
     // The code can be used again.
     expect(await stub.create({ code, device: 'next', name: 'Kofi', settings: goodBody.settings, timer: 'normal' })).toBe(true)
+  })
+
+  it('a room that throws says it is broken, logs why, and closes, rather than leave the device waiting', async () => {
+    const code = await newRoom()
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(code))
+    await runInDurableObject(stub, async (instance, state) => {
+      const room = (await state.storage.get<Room>('room'))!
+      // A stored room the code can't handle.
+      ;(room as unknown as { members: null }).members = null
+      await state.storage.put('room', room)
+      ;(instance as unknown as { room?: Room }).room = undefined
+    })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const host = await open(code, 'host')
+    const closed = new Promise<number>((resolve) => host.ws.addEventListener('close', (e: CloseEvent) => resolve(e.code)))
+    await settle()
+    expect(host.got).toEqual([{ t: 'error', code: 'broken' }])
+    expect(await closed).toBe(4000)
+    expect(error).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^room ${code}: connect failed: TypeError`)))
+    error.mockRestore()
+  })
+
+  it('an old room whose log no longer plays goes on from before the bad event', async () => {
+    const code = await newRoom()
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(code))
+    const roll3: GameEvent = { type: 'roll', value: 3 }
+    const illegal: GameEvent = { type: 'move', move: { kind: 'enter', piece: { color: 'red', index: 0 }, to: { kind: 'track', index: 40 } } }
+    await runInDurableObject(stub, async (instance, state) => {
+      const room = (await state.storage.get<Room>('room'))!
+      // Stored before rooms kept their game, under rules that allowed that move.
+      Object.assign(room, { phase: 'playing', log: [roll3, illegal, roll3], seq: 3, computers: ['yellow', 'green', 'blue'] })
+      await state.storage.put('room', room)
+      ;(instance as unknown as { room?: Room }).room = undefined
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const host = await open(code, 'host')
+    await settle()
+    expect(lastRoom(host.got)).toMatchObject({ room: { phase: 'playing', seq: 4, game: JSON.parse(JSON.stringify(replay(goodBody.settings, [roll3]))) } })
+    const stored = await runInDurableObject(stub, (_, state) => state.storage.get<Room>('room'))
+    expect([stored!.log, stored!.game]).toEqual([[roll3], replay(goodBody.settings, [roll3])])
+    warn.mockRestore()
   })
 })

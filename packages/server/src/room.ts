@@ -9,6 +9,7 @@ import {
   eventMs,
   REACTIONS,
   replay,
+  pass,
   roll,
   SEATS,
   stopRolling,
@@ -45,6 +46,11 @@ export type Room = {
   paused: boolean
   pausedFor?: Color
   log: GameEvent[]
+  /**
+   * The game being played, kept so a room never has to replay its log: a rule change can make an
+   * old log unreplayable. Absent in the lobby, and in rooms stored before it existed (see `recover`).
+   */
+  game?: GameState
   /** Keeps counting across rematches; devices take it from the room message, never from log.length. */
   seq: number
   /** When devices have finished showing the last event. */
@@ -116,7 +122,7 @@ export function viewOf(room: Room, now: number): RoomView {
     covering: room.covering,
     paused: room.paused,
     pausedFor: room.pausedFor,
-    log: room.log,
+    game: gameOf(room),
     seq: room.seq,
     deadlineIn: room.deadline === undefined ? undefined : Math.max(0, room.deadline - now),
   }
@@ -124,20 +130,35 @@ export function viewOf(room: Room, now: number): RoomView {
 
 const youOf = (room: Room, m: Member): YouView => ({ id: m.id, seat: m.seat, host: room.host === m.device })
 
-/**
- * The last replayed game per room, so an input doesn't replay the whole log. A hit needs the same
- * settings and log, so rooms that share a code (as in tests) never get another's game.
- */
-const games = new Map<string, { key: string; game: GameState }>()
-const gameKey = (settings: Settings, log: GameEvent[]) => JSON.stringify([settings, log])
+/** The room's game: its snapshot, or in the lobby (empty log) a fresh one. */
+export const gameOf = (room: Room): GameState => room.game ?? replay(room.settings, room.log)
 
-export function gameOf(room: Room): GameState {
-  const key = gameKey(room.settings, room.log)
-  const cached = games.get(room.code)
-  if (cached?.key === key) return cached.game
-  const game = replay(room.settings, room.log)
-  games.set(room.code, { key, game })
-  return game
+/**
+ * A room stored before it kept a snapshot, as loaded: replay its log event by event, and if the
+ * rules have changed so that an event no longer plays, keep the game as it stood before it. The log
+ * is cut there and seq moves on, so devices that were in the game start over from the room.
+ */
+export function recover(stored: Room, now: number): Room {
+  if (stored.game || stored.phase === 'lobby') return stored
+  const room = structuredClone(stored)
+  let game = createGame(room.settings)
+  let played = 0
+  try {
+    for (const event of room.log) {
+      game = step(game, event)
+      played += 1
+    }
+  } catch (error) {
+    console.warn(`room ${room.code}: event ${played} of ${room.log.length} no longer plays; the game goes on from before it`, error)
+  }
+  room.game = game
+  if (played === room.log.length) return room
+  room.log = room.log.slice(0, played)
+  room.seq += 1
+  room.phase = game.status === 'finished' ? 'finished' : 'playing'
+  room.readyAt = undefined
+  schedule({ room, sends: [], now, random: Math.random }, game, now)
+  return room
 }
 /** The seat that has to act: the Labourer owner while they play someone's roll, otherwise the turn player. */
 const actorOf = (game: GameState): Color => currentMover(game) ?? game.turn
@@ -311,11 +332,12 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   }
   room.phase = 'playing'
   room.log = []
+  room.game = createGame(room.settings)
   room.covering = []
   room.paused = false
   room.pausedFor = undefined
   room.readyAt = undefined
-  schedule(ctx, createGame(room.settings), ctx.now)
+  schedule(ctx, room.game, ctx.now)
   return true
 }
 
@@ -357,7 +379,7 @@ function step(game: GameState, event: GameEvent): GameState {
     case 'stop':
       return stopRolling(game)
     case 'pass':
-      throw new Error('not played in rooms')
+      return pass(game)
   }
 }
 
@@ -373,8 +395,8 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
   // The engine's own record of it: a move as matched against the legal moves, with its roll count.
   const recorded = next.log.at(-1)!
   room.log.push(recorded)
+  room.game = next
   room.seq += 1
-  games.set(room.code, { key: gameKey(room.settings, room.log), game: next })
   ctx.sends.push({ to: 'all', msg: { t: 'event', seq: room.seq, event: recorded, by } })
   if (next.status === 'finished') {
     room.phase = 'finished'
@@ -455,6 +477,7 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
       if (!host || room.phase !== 'finished') return refuse(ctx, m.device, 'illegal')
       room.phase = 'lobby'
       room.log = []
+      room.game = undefined
       room.computers = []
       room.covering = []
       room.paused = false

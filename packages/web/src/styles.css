@@ -355,6 +355,7 @@ p.row { margin: 0; }
 .setup-error + .start { margin-top: 0; }
 .message { align-items: center; justify-content: center; min-height: 60vh; gap: 16px; text-align: center; font-size: 17px; }
 .message .primary, .message .secondary { min-width: 160px; }
+.message .detail { margin: -8px 0 0; font-size: 15px; color: var(--muted); }
 
 /* The online game. */
 /* Notices sit under the top bar as a plain line, with their button on the right. */

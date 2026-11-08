@@ -22,7 +22,7 @@ const ROOM: RoomView = {
   computers: [],
   covering: [],
   paused: false,
-  log: [],
+  game: createGame(settings),
   seq: 0,
 }
 const AMA: YouView = { id: 1, seat: 'red', host: true }

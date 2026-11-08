@@ -1,6 +1,6 @@
 import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type RoomInfo, type Settings, type TurnTimer } from '@ludo/engine'
 import { DurableObject } from 'cloudflare:workers'
-import { createRoom, DAY, reduce, type Input, type Room } from './room'
+import { createRoom, DAY, recover, reduce, type Input, type Room, type Step } from './room'
 
 export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; CREATE_LIMIT: RateLimit }
 
@@ -19,7 +19,11 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   private async load(): Promise<Room | undefined> {
-    if (this.room === undefined) this.room = (await this.ctx.storage.get<Room>('room')) ?? null
+    if (this.room === undefined) {
+      const stored = await this.ctx.storage.get<Room>('room')
+      this.room = stored ? recover(stored, Date.now()) : null
+      if (stored && this.room !== stored) await this.ctx.storage.put('room', this.room)
+    }
     return this.room ?? undefined
   }
 
@@ -58,7 +62,7 @@ export class RoomObject extends DurableObject<Env> {
       old.close(4001, 'replaced')
     }
     this.ctx.acceptWebSocket(server, [device])
-    await this.apply({ type: 'connect', device, name: url.searchParams.get('name') ?? '' })
+    await this.apply({ type: 'connect', device, name: url.searchParams.get('name') ?? '' }, server)
     return new Response(null, { status: 101, webSocket: client })
   }
 
@@ -71,7 +75,7 @@ export class RoomObject extends DurableObject<Env> {
       return
     }
     if (typeof msg?.t !== 'string') return
-    await this.apply({ type: 'message', device: this.ctx.getTags(ws)[0], msg })
+    await this.apply({ type: 'message', device: this.ctx.getTags(ws)[0], msg }, ws)
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
@@ -94,10 +98,27 @@ export class RoomObject extends DurableObject<Env> {
     return this.ctx.getWebSockets(device).filter((ws) => ws.readyState === WebSocket.OPEN)
   }
 
-  private async apply(input: Input): Promise<void> {
+  /**
+   * Run an input through the room. If the room throws (a bug, or a stored game the code can no
+   * longer play), nothing changes and the socket that sent it is told the room is broken, so its
+   * device stops waiting rather than reconnecting forever.
+   */
+  private async apply(input: Input, from?: WebSocket): Promise<void> {
     const room = await this.load()
     if (!room) return
-    const step = reduce(room, input, Date.now(), random)
+    let step: Step
+    try {
+      step = reduce(room, input, Date.now(), random)
+    } catch (error) {
+      // Can't be recovered here: say so in the logs (Workers observability keeps them).
+      const what = input.type === 'message' ? `message ${input.msg.t}` : input.type
+      console.error(`room ${room.code}: ${what} failed: ${error instanceof Error ? error.stack : String(error)}`)
+      if (from?.readyState === WebSocket.OPEN) {
+        from.send(JSON.stringify({ t: 'error', code: 'broken' }))
+        from.close(4000, 'broken')
+      }
+      return
+    }
     if (step.remove) {
       await this.ctx.storage.deleteAll()
       this.room = null

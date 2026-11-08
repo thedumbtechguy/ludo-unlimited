@@ -1,4 +1,4 @@
-import { MODES, type RoomView } from '@ludo/engine'
+import { createGame, MODES, type RoomView } from '@ludo/engine'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -270,7 +270,7 @@ describe('App online', () => {
     computers: [],
     covering: [],
     paused: false,
-    log: [],
+    game: createGame({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }),
     seq: 0,
   })
   const renderApp = () => render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)

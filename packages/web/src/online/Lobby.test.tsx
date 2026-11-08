@@ -1,4 +1,4 @@
-import { MODES, type MemberView, type RoomView, type YouView } from '@ludo/engine'
+import { createGame, MODES, type MemberView, type RoomView, type YouView } from '@ludo/engine'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -15,7 +15,7 @@ const room = (members: MemberView[], players: 2 | 3 | 4 = 4): RoomView => ({
   computers: [],
   covering: [],
   paused: false,
-  log: [],
+  game: createGame({ players, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }),
   seq: 0,
 })
 const ama: MemberView = { id: 1, name: 'Ama', connected: true, seat: 'red' }

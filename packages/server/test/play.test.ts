@@ -1,6 +1,6 @@
-import { ANIMATION_TIMING, applyMove, chooseMove, replay, roll, settingsFor, TIMER_SECONDS, type ClientMessage } from '@ludo/engine'
+import { ANIMATION_TIMING, applyMove, chooseMove, createGame, replay, roll, settingsFor, TIMER_SECONDS, type ClientMessage, type GameEvent } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { DAY, gameOf, reduce, type Room } from '../src/room'
+import { DAY, gameOf, recover, reduce, type Room } from '../src/room'
 import { die, fixedRandom, join, lobby, run, say, seatOf, sentTo, T0 } from './helpers'
 
 /** Ama (red) and Kofi (yellow) in a 2-player classic room, started at T0. */
@@ -17,6 +17,9 @@ function started(timer: Room['timer'] = 'normal'): Room {
   ]).room
 }
 const alarm = (room: Room, at: number, random = fixedRandom([die(3)])) => reduce(room, { type: 'alarm' }, at, random)
+
+/** A move no game here allows: red has nothing to enter with. */
+const ILLEGAL: GameEvent = { type: 'move', move: { kind: 'enter', piece: { color: 'red', index: 0 }, to: { kind: 'track', index: 40 } } }
 
 /** A repeatable stream of random values. */
 const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31)
@@ -227,6 +230,32 @@ describe('playing', () => {
     expect(gameOf(three).turn).toBe('yellow')
   })
 
+  it('keeps the game itself, from the start, through every event, and sends it to devices', () => {
+    const room = started()
+    expect(room.game).toEqual(createGame(room.settings))
+    const step = run(room, [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)]))
+    expect(step.room.game).toEqual(replay(room.settings, [{ type: 'roll', value: 3 }]))
+    const sync = run(step.room, [say('kofi', { t: 'sync' })])
+    expect(sentTo(sync, 'kofi')[0]).toMatchObject({ t: 'room', room: { game: step.room.game, seq: 1 } })
+  })
+
+  it('plays on from its game, never replaying the log', () => {
+    // A log the rules no longer allow: the room doesn't look at it.
+    const room: Room = { ...started(), log: [ILLEGAL] }
+    const step = run(room, [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)]))
+    expect(step.room.seq).toBe(1)
+    expect(gameOf(step.room).turn).toBe('yellow')
+  })
+
+  it('rematch forgets the game; the next start begins a fresh one', () => {
+    const played = run(started(), [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)])).room
+    const lobby = run({ ...played, phase: 'finished', deadline: undefined }, [say('host', { t: 'rematch' })]).room
+    expect(lobby.game).toBeUndefined()
+    expect(gameOf(lobby)).toEqual(createGame(lobby.settings))
+    const again = run(lobby, [say('host', { t: 'start', empty: 'computers' })]).room
+    expect(again.game).toEqual(createGame(again.settings))
+  })
+
   it('a covered player who finishes is no longer covered', () => {
     let room = lobby(4)
     room.settings = settingsFor('classic', 4, 'playForPlaces')
@@ -252,7 +281,7 @@ describe('playing', () => {
     const before = (g: typeof game) => g.players.every((p) => p.color === 'red' || p.finishedPlace === undefined)
     while (before(game)) game = game.pendingRoll === undefined ? roll(game, 1 + Math.floor(random() * 6)) : applyMove(game, chooseMove(game, random)!)
     const log = game.log.slice(0, -1)
-    room = { ...room, log, seq: log.length, deadline: undefined, botAt: room.lastActive }
+    room = { ...room, log, game: replay(room.settings, log), seq: log.length, deadline: undefined, botAt: room.lastActive }
     const finished = (r: Room) => gameOf(r).players.filter((p) => p.color !== 'red' && p.finishedPlace !== undefined)
     expect(finished(room)).toEqual([])
     room = playOut(room, (r) => finished(r).length > 0, random)
@@ -373,3 +402,44 @@ describe('taking over a computer seat', () => {
   })
 })
 
+
+describe('recovering a room stored without its game', () => {
+  const stored = (room: Room): Room => ({ ...room, game: undefined })
+
+  it('replays the log once to get its game', () => {
+    const room = run(started(), [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)])).room
+    const recovered = recover(stored(room), T0 + 20)
+    expect(recovered).toEqual(room)
+  })
+
+  it('leaves a lobby alone', () => {
+    const room = lobby()
+    expect(recover(room, T0)).toBe(room)
+  })
+
+  it('stops at the first event that no longer plays, and goes on from there', () => {
+    const room = run(started(), [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)])).room
+    const roll3 = { type: 'roll', value: 3 } as const
+    // A move the rules (now) refuse, between plays that were fine.
+    const bad: Room = { ...stored(room), log: [roll3, ILLEGAL, roll3], seq: 3, deadline: undefined }
+    const recovered = recover(bad, T0 + 50)
+    expect(recovered.log).toEqual([roll3])
+    expect(recovered.game).toEqual(replay(room.settings, [roll3]))
+    // seq moves on, so every device starts over from the room.
+    expect(recovered.seq).toBe(4)
+    expect(recovered.phase).toBe('playing')
+    // Yellow (a human) has the turn and the clock.
+    expect(recovered.deadline).toBe(T0 + 50 + TIMER_SECONDS.normal * 1000)
+    // And the room plays on.
+    const step = run(recovered, [say('kofi', { t: 'roll' })], T0 + 60, fixedRandom([die(3)]))
+    expect(step.room.seq).toBe(5)
+    expect(step.room.log).toHaveLength(2)
+  })
+
+  it('a finished game cut short is playing again', () => {
+    const room = run(started(), [say('host', { t: 'roll' })], T0 + 10, fixedRandom([die(3)])).room
+    const bad: Room = { ...stored(room), phase: 'finished' as const, log: [ILLEGAL] }
+    const recovered = recover(bad, T0 + 50)
+    expect([recovered.phase, recovered.log, recovered.game]).toEqual(['playing', [], createGame(room.settings)])
+  })
+})
