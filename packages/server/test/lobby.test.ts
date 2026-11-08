@@ -3,11 +3,12 @@ import { viewOf } from '../src/room'
 import { join, lobby, run, say, seatOf, sentTo } from './helpers'
 
 describe('lobby', () => {
-  it('the creator is the host; joining makes a watcher and tells everyone', () => {
+  it('the creator is the host on the first seat; joining makes a watcher and tells everyone', () => {
+    expect(lobby(2).members.map((m) => [m.name, m.connected, m.seat])).toEqual([['Ama', false, 'red']])
     const step = run(lobby(), [join('host', 'Ama'), join('kofi', 'Kofi')])
     expect(step.room.host).toBe('host')
     expect(step.room.members.map((m) => [m.name, m.connected, m.seat])).toEqual([
-      ['Ama', true, undefined],
+      ['Ama', true, 'red'],
       ['Kofi', true, undefined],
     ])
     const toHost = sentTo(step, 'host').find((m) => m.t === 'room')

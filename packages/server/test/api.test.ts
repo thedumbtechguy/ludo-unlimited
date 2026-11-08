@@ -36,7 +36,7 @@ describe('api', () => {
     const { code } = (await res.json()) as { code: string }
     expect(code).toMatch(/^[A-Z]{4}$/)
     const info = await exports.default.fetch(`${BASE}/api/rooms/${code.toLowerCase()}`)
-    expect(await info.json()).toEqual({ phase: 'lobby', players: 4, seatsFree: 4 })
+    expect(await info.json()).toEqual({ phase: 'lobby', players: 4, seatsFree: 3 }) // the creator sits on red
   })
 
   it('refuses a bad body and an unknown code', async () => {
@@ -67,7 +67,6 @@ describe('api', () => {
     const code = await newRoom()
     const host = await open(code, 'host')
     const kofi = await open(code, 'kofi')
-    host.ws.send(JSON.stringify({ t: 'sit', color: 'red' }))
     await settle()
     expect(lastRoom(host.got)).toMatchObject({ t: 'room', you: { host: true }, room: { members: [{ name: 'host', seat: 'red' }, { name: 'kofi' }] } })
     expect(kofi.got.some((m) => m.t === 'room')).toBe(true)
@@ -99,9 +98,7 @@ describe('api', () => {
     const second = await open(code, 'host')
     await settle()
     expect(first.got.at(-1)).toEqual({ t: 'error', code: 'replaced' })
-    second.ws.send(JSON.stringify({ t: 'sit', color: 'red' }))
-    await settle()
-    // The old tab closing didn't count as the player leaving.
+    // The old tab closing didn't count as the player leaving, so the creator keeps the first seat.
     expect(lastRoom(second.got)).toMatchObject({ room: { members: [{ name: 'host', seat: 'red', connected: true }] } })
   })
 

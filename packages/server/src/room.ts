@@ -66,14 +66,16 @@ export type Step = { room: Room; sends: Send[]; alarm: number; remove: boolean }
 
 type Ctx = { room: Room; sends: Send[]; now: number; random: () => number }
 
+/** The creator starts on the first seat; it stays theirs when they first connect. */
 export function createRoom(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; now: number }): Room {
+  const settings = cleanSettings(o.settings)
   return {
     code: o.code,
     phase: 'lobby',
     host: o.device,
-    settings: cleanSettings(o.settings),
+    settings,
     timer: o.timer,
-    members: [{ id: 1, device: o.device, name: cleanName(o.name) ?? 'Player', connected: false }],
+    members: [{ id: 1, device: o.device, name: cleanName(o.name) ?? 'Player', connected: false, seat: SEATS[settings.players][0] }],
     nextId: 2,
     computers: [],
     covering: [],
