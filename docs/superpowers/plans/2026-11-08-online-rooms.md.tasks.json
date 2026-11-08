@@ -1,0 +1,111 @@
+{
+  "planPath": "docs/superpowers/plans/2026-11-08-online-rooms.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Engine: pacing and protocol types",
+      "status": "pending",
+      "description": "**Goal:** One shared place for how long devices take to show each event, and the message types both sides compile against.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/engine/src/pace.ts\", \"packages/engine/src/protocol.ts\", \"packages/engine/src/index.ts\", \"packages/engine/test/pace.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/engine\", \"acceptanceCriteria\": [\"eventMs matches roll/move/wicked/stop rules\", \"protocol types exported from @ludo/engine\", \"engine tests pass\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Web: pacing comes from the engine",
+      "status": "pending",
+      "description": "**Goal:** The app animates with the engine's timing numbers, so the room and devices agree.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/useGame.ts\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"NORMAL_TIMING is ANIMATION_TIMING\", \"web tests pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: Server package: scaffold and validation",
+      "status": "pending",
+      "description": "**Goal:** A `packages/server` workspace that tests run in, with input validation and room codes.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/package.json\", \"packages/server/tsconfig.json\", \"packages/server/vitest.config.ts\", \"packages/server/src/validate.ts\", \"packages/server/test/validate.test.ts\", \"package.json\", \"packages/web/package.json\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"vitest runs in the Workers runtime\", \"cleanName/validSettings/validTimer/makeCode behave as tested\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        1
+      ]
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: Room reducer: lobby",
+      "status": "pending",
+      "description": "**Goal:** The pure room logic for everything before the game: joining, watching, seats, host, settings, start, rejoin, rename, sync. A `schedule` hook is ready for Task 5.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/room.ts\", \"packages/server/test/helpers.ts\", \"packages/server/test/lobby.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"createRoom/connect/sit/stand/settings/start/handover/rename/sync behave as tested\", \"refusals send error + room to the sender only\", \"room view has no device IDs\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        2
+      ]
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: Room reducer: the game",
+      "status": "pending",
+      "description": "**Goal:** The room plays the game:\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/room.ts\", \"packages/server/test/play.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/server\", \"acceptanceCriteria\": [\"only the acting seat can act; illegal refused\", \"events numbered and broadcast, then clock\", \"timeouts/computer seats/covered seats act on the alarm, paced by eventMs\", \"covering ends at the seat's next turn when back\", \"pause/resume/pausedFor/self-pause\", \"reactions limited\", \"finish, rematch, expiry\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        3
+      ]
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Durable Object, Worker routes and config",
+      "status": "pending",
+      "description": "**Goal:** Rooms run on Cloudflare: HTTP to create and look up rooms, WebSockets to play, storage and alarms. The Worker also keeps serving the app.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/RoomObject.ts\", \"packages/server/src/index.ts\", \"packages/server/wrangler.jsonc\", \"packages/server/vitest.config.ts\", \"packages/server/test/api.test.ts\", \"packages/server/test/globalSetup.ts\", \"packages/web/vite.config.ts\", \"packages/web/wrangler.jsonc\"], \"verifyCommand\": \"npm test -w @ludo/server && cd packages/server && npx wrangler deploy --dry-run\", \"acceptanceCriteria\": [\"create/info/socket routes work\", \"version and not_found checks\", \"newest socket wins\", \"storage, alarm and sends wired through reduce\", \"assets served for non-/api paths\", \"dev proxy\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        4
+      ]
+    },
+    {
+      "id": 6,
+      "subject": "Task 7: Web: split `useGame` into a view and a source",
+      "status": "pending",
+      "description": "**Goal:** A `useGameView` hook that applies game events and animates them, fed by any source. `useGame` becomes the local source (dice and computer seats). Nothing changes for the player.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/useGameView.ts\", \"packages/web/src/useGame.ts\", \"packages/web/src/useGameView.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/web && npm run e2e -w @ludo/web\", \"acceptanceCriteria\": [\"useGameView queues and animates events in order\", \"actions become intents via act\", \"reset works\", \"all existing web tests and e2e pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        5
+      ]
+    },
+    {
+      "id": 7,
+      "subject": "Task 8: Web: `GameView` takes a controller",
+      "status": "pending",
+      "description": "**Goal:** The game screen's body renders from a controller `g` and plain props, so the local and online games share it.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/screens/GameView.tsx\", \"packages/web/src/screens/GameScreen.tsx\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"GameView takes g and props, no useGame\", \"GameScreen keeps its props\", \"existing tests pass\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        6
+      ]
+    },
+    {
+      "id": 8,
+      "subject": "Task 9: Web: the connection and `useOnlineGame`",
+      "status": "pending",
+      "description": "**Goal:** A device identity, the API calls, a reconnecting socket, and the online controller: the same shape as `useGame`, with the room's state on top.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/api.ts\", \"packages/web/src/online/socket.ts\", \"packages/web/src/online/useOnlineGame.ts\", \"packages/web/src/online/socket.test.ts\", \"packages/web/src/online/useOnlineGame.test.ts\", \"packages/web/src/storage.ts\", \"packages/web/src/storage.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"device ID and nickname kept\", \"socket reconnects with backoff, close stops it\", \"room/event/clock/reaction/error handled as specified\", \"own seat controlled only when not covered, paused or waiting\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "subject": "Task 10: Web: Play online, create, join, lobby and room links",
+      "status": "pending",
+      "description": "**Goal:** People get from the home screen into a room by creating one, typing a code or opening a link, then sit, share and start.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/PlayOnline.tsx\", \"packages/web/src/online/Lobby.tsx\", \"packages/web/src/online/RoomScreen.tsx\", \"packages/web/src/online/OnlineGame.tsx\", \"packages/web/src/screens/Home.tsx\", \"packages/web/src/screens/Setup.tsx\", \"packages/web/src/App.tsx\", \"packages/web/src/update.ts\", \"packages/web/src/styles.css\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"Play online with nickname, create, join by code\", \"Setup online mode with turn timer\", \"lobby seats, share, host settings and start sheet\", \"room links and address bar\", \"error screens; old_version forces update\", \"online room counts as playing for updates\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        8
+      ]
+    },
+    {
+      "id": 10,
+      "subject": "Task 11: Web: the online game screen",
+      "status": "pending",
+      "description": "**Goal:** The game itself online, with the existing board plus names and away players, the turn clock, reactions, the host's pause, watching, connection state, leaving, and rematch.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/OnlineGame.tsx\", \"packages/web/src/online/TurnClock.tsx\", \"packages/web/src/online/Reactions.tsx\", \"packages/web/src/online/OnlineResults.tsx\", \"packages/web/src/screens/GameView.tsx\", \"packages/web/src/components/Board.tsx\", \"packages/web/src/labels.ts\", \"packages/web/src/styles.css\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"names, away, Computer on yards; names in turn label; Watching\", \"turn clock ring with warning\", \"reactions tray and bubbles\", \"host left notice and pause/carry on\", \"reconnecting note\", \"Leave room, no restart\", \"online results with host rematch\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [
+        9
+      ]
+    },
+    {
+      "id": 11,
+      "subject": "Task 12: End-to-end test, CI, docs and the user's check",
+      "status": "pending",
+      "description": "**Goal:** A two-browser test proves a room works end to end, CI runs it, the docs say how to deploy, and the user plays it for real.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/e2e/online.spec.ts\", \"packages/web/playwright.config.ts\", \"README.md\", \"docs/superpowers/specs/2026-11-08-online-rooms-design.md\"], \"verifyCommand\": \"npm run e2e -w @ludo/web\", \"acceptanceCriteria\": [\"two-browser e2e passes locally and in CI\", \"README covers dev and deploy\", \"user confirms online play works\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"Create a room on one device, join it from another with the code or link, and play a few turns (try leaving and coming back). Does online play work for you?\"}\n```",
+      "blockedBy": [
+        10
+      ]
+    }
+  ],
+  "lastUpdated": "2026-11-08T13:33:25.178955+00:00"
+}
