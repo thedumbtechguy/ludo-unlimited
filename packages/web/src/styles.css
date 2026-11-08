@@ -146,6 +146,9 @@ button.row { cursor: pointer; }
 .sheet { position: relative; width: 100%; max-width: 480px; padding: 8px 20px max(24px, env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; background: var(--sheet-bg); color: var(--text); animation: sheet-up 200ms ease-out; }
 .sheet-title { padding: 14px 0 6px; font-weight: 800; font-size: 15px; color: var(--muted); }
 .sheet-rows { display: flex; flex-direction: column; }
+.sheet-row .row-value { font-weight: 600; color: var(--muted); }
+.sheet-exits { margin-top: 24px; }
+.sheet-exits .sheet-row { justify-content: flex-start; }
 .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; font-weight: 700; font-size: 17px; cursor: pointer; }
 .sheet-row:last-child { border-bottom: 0; }
 @keyframes sheet-up { from { transform: translateY(100%); } }
@@ -174,10 +177,10 @@ button.row { cursor: pointer; }
 .yard-home { font-weight: 600; font-size: calc(14 * var(--u)); padding-right: calc(4 * var(--u)); }
 .yard-place { font-weight: 800; font-size: calc(15 * var(--u)); padding-right: calc(4 * var(--u)); }
 .yard-tag { font-weight: 800; font-size: calc(13 * var(--u)); background: #ffffff; padding: calc(4 * var(--u)) calc(9 * var(--u)); border-radius: 999px; }
-.yard-labourer { justify-content: center; gap: calc(6 * var(--u)); font-weight: 700; font-size: calc(14 * var(--u)); }
+.yard-labourer { justify-content: center; gap: calc(6 * var(--u)); font-weight: 700; font-size: calc(14 * var(--u)); line-height: 1; }
 .yard-labourer svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); }
 /* The owner's name painted in the owner's colour, so it reads at a glance on any yard. */
-.labourer-owner { padding: calc(2 * var(--u)) calc(8 * var(--u)); border-radius: 999px; box-shadow: 0 0 0 calc(2 * var(--u)) #ffffff; font-weight: 800; }
+.labourer-owner { display: inline-flex; align-items: center; height: calc(22 * var(--u)); padding: 0 calc(9 * var(--u)); border-radius: 999px; box-shadow: 0 0 0 calc(2 * var(--u)) #ffffff; font-weight: 800; line-height: 1; }
 
 /* Dice: a CSS 3D cube. Faces sit 44px out from the centre of an 88px cube.
    .dice-view holds the fixed three-quarter view tilt and the bounce, so neither fights the spin on .cube. */

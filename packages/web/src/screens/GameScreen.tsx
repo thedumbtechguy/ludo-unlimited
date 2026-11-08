@@ -9,6 +9,7 @@ import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
+import { SwitchMark } from '../components/Picker'
 import { firstHuman, rulesName, seatNames, turnTag, wastedText } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
 import type { EffectsLevel, Hand } from '../types'
@@ -100,7 +101,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
             active={game.status === 'playing' ? mover : undefined}
           >
             <KickCallout callout={g.callout} />
-            <BoardFx effects={g.effects} labourers={game.labourers} turn={turn} area={play} />
+            <BoardFx effects={g.effects} state={game} turn={turn} area={play} />
           </Board>
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
           {/* On phones the dice sits under the playing hand's thumb. */}
@@ -145,9 +146,35 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
         {menuOpen && (
           <Sheet title="Menu" hideTitle onClose={() => setMenuOpen(false)}>
             <div className="sheet-rows">
-              <button type="button" className="sheet-row" onClick={onQuit}>
-                Quit to home
+              <button
+                type="button"
+                className="sheet-row"
+                aria-label={`Playing hand: ${HAND_NAME[hand]}`}
+                onClick={() => onHand(hand === 'right' ? 'left' : 'right')}
+              >
+                <span>Playing hand</span>
+                <span className="row-value">{HAND_NAME[hand]}</span>
               </button>
+              <button
+                type="button"
+                className="sheet-row"
+                aria-label={`Effects: ${EFFECTS_NAME[effectsLevel]}`}
+                onClick={() => onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')}
+              >
+                <span>Effects</span>
+                <span className="row-value">{EFFECTS_NAME[effectsLevel]}</span>
+              </button>
+              <button type="button" role="switch" aria-checked={sound} aria-label="Sound" className="sheet-row" onClick={() => onSound(!sound)}>
+                <span>Sound</span>
+                <SwitchMark on={sound} />
+              </button>
+              <button type="button" role="switch" aria-checked={music} aria-label="Music" className="sheet-row" onClick={() => onMusic(!music)}>
+                <span>Music</span>
+                <SwitchMark on={music} />
+              </button>
+            </div>
+            {/* Leaving the game sits apart, at the bottom, away from the settings. */}
+            <div className="sheet-rows sheet-exits">
               <button
                 type="button"
                 className="sheet-row"
@@ -158,33 +185,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
               >
                 Restart game
               </button>
-              <button
-                type="button"
-                className="sheet-row"
-                onClick={() => onHand(hand === 'right' ? 'left' : 'right')}
-              >
-                Playing hand: {HAND_NAME[hand]}
-              </button>
-              <button
-                type="button"
-                className="sheet-row"
-                onClick={() => onEffectsLevel(effectsLevel === 'full' ? 'reduced' : 'full')}
-              >
-                Effects: {EFFECTS_NAME[effectsLevel]}
-              </button>
-              <button
-                type="button"
-                className="sheet-row"
-                onClick={() => onSound(!sound)}
-              >
-                Sound: {sound ? 'On' : 'Off'}
-              </button>
-              <button
-                type="button"
-                className="sheet-row"
-                onClick={() => onMusic(!music)}
-              >
-                Music: {music ? 'On' : 'Off'}
+              <button type="button" className="sheet-row" onClick={onQuit}>
+                Quit to home
               </button>
             </div>
           </Sheet>

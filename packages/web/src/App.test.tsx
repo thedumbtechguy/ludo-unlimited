@@ -28,14 +28,15 @@ describe('App', () => {
     await screen.findByRole('button', { name: 'Roll again' }) // a 6: roll again before moving
     await user.click(screen.getByRole('button', { name: /Roll dice/ }))
     await user.click(screen.getByRole('button', { name: /Roll dice/ })) // the 3 ends the rolling
-    // The first 6 can enter, or enter and move on with the next rolls: a real choice.
-    await screen.findByText('Tap a marked square')
-    expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(3)
+    // The first 6 only enters (entering and moving on is the same thing), so it plays itself.
+    // The second 6 is a real choice: advance the entered piece, or enter another.
+    await screen.findByText('Tap a numbered square, or a piece')
+    expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     await user.click(screen.getByRole('button', { name: 'Quit to home' }))
     await user.click(screen.getByRole('button', { name: 'Continue' }))
-    expect(screen.getByText('Tap a marked square')).toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(3)
+    expect(screen.getByText('Tap a numbered square, or a piece')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(2)
     expect(within(screen.getByRole('region', { name: 'Dice' })).getByText('Your turn')).toBeInTheDocument()
   })
 
@@ -98,12 +99,12 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'New game' }))
     await user.click(screen.getByRole('button', { name: 'Start game' }))
     await user.click(screen.getByRole('button', { name: 'Menu' }))
-    await user.click(screen.getByRole('button', { name: 'Sound: On' }))
+    await user.click(screen.getByRole('switch', { name: 'Sound' }))
     expect(localStorage.getItem('ludo-unlimited:sound')).toBe('off')
-    await user.click(screen.getByRole('button', { name: 'Music: On' }))
+    await user.click(screen.getByRole('switch', { name: 'Music' }))
     expect(localStorage.getItem('ludo-unlimited:music')).toBe('off')
-    expect(screen.getByRole('button', { name: 'Sound: Off' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Music: Off' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Sound' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: 'Music' })).toHaveAttribute('aria-checked', 'false')
     // Sound and music have their own switches: the effects level is untouched.
     expect(screen.getByRole('button', { name: 'Effects: Full' })).toBeInTheDocument()
   })
@@ -120,14 +121,11 @@ describe('App', () => {
     expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Stop' }))
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
-    // The first 6 can enter, or enter and move on with the second 6 as one move.
-    expect(screen.getByRole('button', { name: 'Move on square 7 using 6+6' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Move on square 1' }))
-    // The second 6 can enter again or advance.
+    // The first 6 only enters (entering and moving on with the second 6 is the same), so it plays itself.
+    // The second 6 can advance the entered piece, or enter another onto it.
     expect(await screen.findByRole('button', { name: 'Piece 1: Move on square 7' })).toBeInTheDocument()
-    // Entering again would land on piece 1, so that square is left to piece 1's own button.
-    expect(screen.queryByRole('button', { name: 'Piece 2: Move on square 1' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Piece 1: Red, on square 1' })).toBeInTheDocument()
+    // Entering again would land on piece 1, so that square asks which one you mean.
+    expect(screen.getByRole('button', { name: 'Piece 1 is on square 1, and piece 2 can move there: choose one' })).toBeInTheDocument()
     expect(screen.getByText('Tap a numbered square, or a piece')).toBeInTheDocument()
   })
 
