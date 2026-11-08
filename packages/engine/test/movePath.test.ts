@@ -37,4 +37,24 @@ describe('movePath', () => {
     const s = setup({ rules: { homeKick: true }, roll: 4, pieces: { red: [22], yellow: [lane('yellow', 2)] } })
     expect(movePath(s, find(s, 'homeKick'))).toEqual([track(23), track(24), lane('yellow', 1), lane('yellow', 2)])
   })
+
+  it('walks back out of your own lane onto the track for a wicked back kick', () => {
+    const s = setup({ rules: { backKick: true }, roll: 5, pieces: { red: [lane('red', 4)], yellow: [49] } })
+    expect(movePath(s, find(s, 'back'))).toEqual([lane('red', 3), lane('red', 2), lane('red', 1), track(50), track(49)])
+  })
+
+  it('hops across for a line kick reached by moving backward', () => {
+    const s = setup({ rules: { lineKick: true, backKick: true }, roll: 2, pieces: { red: [9], yellow: [15] } })
+    expect(movePath(s, find(s, 'line'))).toEqual([track(8), track(7), track(15)])
+  })
+
+  it('walks backward into the victim’s lane for a backward home kick', () => {
+    const s = setup({ rules: { homeKick: true, backKick: true }, roll: 5, pieces: { red: [27], yellow: [lane('yellow', 2)] } })
+    expect(movePath(s, find(s, 'homeKick'))).toEqual([track(26), track(25), track(24), lane('yellow', 1), lane('yellow', 2)])
+  })
+
+  it('turns into the lane straight from the entry square for a home kick', () => {
+    const s = setup({ rules: { homeKick: true }, roll: 3, pieces: { red: [24], yellow: [lane('yellow', 3)] } })
+    expect(movePath(s, find(s, 'homeKick'))).toEqual([lane('yellow', 1), lane('yellow', 2), lane('yellow', 3)])
+  })
 })
