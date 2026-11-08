@@ -62,7 +62,9 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   function applyRoll(value: number) {
     const next = rollDice(game, value)
     setLastRoll(value)
-    setMessage(next.pendingRoll === undefined ? 'No moves' : undefined)
+    const stillRolling = next.pendingRoll === undefined && next.queuedRolls.length > 0
+    const wasted = next.pendingRoll === undefined && !stillRolling
+    setMessage(stillRolling ? 'Rolled a 6! Roll again' : wasted ? 'No moves' : undefined)
     setGame(next)
   }
 
