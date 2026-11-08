@@ -15,11 +15,23 @@ export function roll(state: GameState, value: number): GameState {
   const next = cloneState(state)
   next.log.push({ type: 'roll', value })
   next.queuedRolls.push(value)
-  if (value === 6) delete next.labourers[next.turn]
-  if (value === 6 && next.settings.afterKick !== 'endsTurn') return next
+  if (value === 6) {
+    delete next.labourers[next.turn]
+    // A 6 earns another roll only if it can be played. One that can't is lost, the rolling stops,
+    // and any 6s rolled before it are played as usual.
+    if (!sixPlays(next)) {
+      next.queuedRolls.pop()
+      advance(next, undefined)
+      return next
+    }
+    if (next.settings.afterKick !== 'endsTurn') return next
+  }
   advance(next, value)
   return next
 }
+
+/** Whether a 6 has a legal move on the board as it stands now. */
+const sixPlays = (state: GameState): boolean => legalMoves({ ...state, pendingRoll: 6, queuedRolls: [] }).length > 0
 
 export function applyMove(state: GameState, move: Move): GameState {
   if (state.status !== 'playing') throw new Error('game is over')

@@ -29,8 +29,16 @@ describe('turn flow', () => {
     expect(s.turn).toBe('green')
   })
 
-  it('a 6 lets you roll again, even with no move for it', () => {
+  it('a 6 that cannot be played earns no further roll: it is lost and the turn passes', () => {
+    // Red's last piece needs exactly 3 to get home, so a 6 has nowhere to go.
     const s = roll(setup({ pieces: { red: [lane('red', 3), HOME, HOME, HOME] } }), 6)
+    expect(s.pendingRoll).toBeUndefined()
+    expect(s.queuedRolls).toEqual([])
+    expect(s.turn).toBe('green')
+  })
+
+  it('a 6 that can be played lets you roll again', () => {
+    const s = roll(setup({ pieces: { red: [5] } }), 6)
     expect(s.pendingRoll).toBeUndefined()
     expect(s.queuedRolls).toEqual([6])
     expect(s.turn).toBe('red')

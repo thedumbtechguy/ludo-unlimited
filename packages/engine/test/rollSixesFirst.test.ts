@@ -61,14 +61,15 @@ describe('roll your sixes first', () => {
     expect(done.turn).toBe('green')
   })
 
-  it('skips leading rolls with no legal move', () => {
-    const s = rollAll(setup({ pieces: { red: lone(lane('red', 3)) } }), [6, 2])
-    expect(s.pendingRoll).toBe(2)
+  it('an unplayable 6 ends the rolling, so there is no next roll', () => {
+    const s = roll(setup({ pieces: { red: lone(lane('red', 3)) } }), 6)
+    expect(s.pendingRoll).toBeUndefined()
     expect(s.queuedRolls).toEqual([])
+    expect(s.turn).toBe('green')
   })
 
-  it('a batch with no legal move at all passes play on', () => {
-    const s = rollAll(setup({ pieces: { red: lone(lane('red', 3)) } }), [6, 6, 4])
+  it('a roll with no legal move passes play on', () => {
+    const s = roll(setup({ pieces: { red: lone(lane('red', 3)) } }), 4)
     expect(s.pendingRoll).toBeUndefined()
     expect(s.queuedRolls).toEqual([])
     expect(s.turn).toBe('green')
@@ -104,11 +105,11 @@ describe('endsTurn mode: one roll at a time', () => {
     expect(next.queuedRolls).toEqual([])
   })
 
-  it('a wasted 6 still rolls again', () => {
+  it('a 6 that cannot be played earns no further roll', () => {
     const s = roll(setup({ afterKick, pieces: { red: lone(lane('red', 3)) } }), 6)
     expect(s.pendingRoll).toBeUndefined()
     expect(s.queuedRolls).toEqual([])
-    expect(s.turn).toBe('red')
+    expect(s.turn).toBe('green')
   })
 
   it('a kick on a 6 ends the turn', () => {

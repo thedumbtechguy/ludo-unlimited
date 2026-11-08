@@ -30,10 +30,10 @@ describe('stopping early after a 6', () => {
     expect(next.turn).toBe('green')
   })
 
-  it('stopped rolls with no legal move pass the turn straight away', () => {
-    const stopped = stopRolling(roll(setup({ pieces: { red: [lane('red', 3), HOME, HOME, HOME] } }), 6))
-    expect(stopped.pendingRoll).toBeUndefined()
-    expect(stopped.turn).toBe('green')
+  it('an unplayable 6 leaves nothing to stop: the turn has already passed', () => {
+    const rolled = roll(setup({ pieces: { red: [lane('red', 3), HOME, HOME, HOME] } }), 6)
+    expect(rolled.turn).toBe('green')
+    expect(() => stopRolling(rolled)).toThrow('not rolling')
   })
 
   it('a kick still earns the bonus roll', () => {

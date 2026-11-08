@@ -22,13 +22,14 @@ Guiding principles:
 - A 6 brings a piece from base onto the player's start square.
 - **Roll your sixes first** (always on, except in `endsTurn` mode):
   - A player keeps rolling while they roll 6s, and stops at the first non-6. Three or more 6s carry no penalty.
+  - **A 6 earns another roll only if it can be played.** A 6 with no legal move on the board as it stands is lost, the rolling stops, and any 6s rolled before it are played as usual.
   - The rolls are then played **in the order rolled**, one move per roll.
   - **Combining for a kick:** the current roll plus the next queued roll(s), in order, can be added together into ONE move. Rolls combine for any forward move; for a back, line or home kick they combine only when the move actually kicks. A pending 6 can also enter a piece from base and carry on forward from the start square with the next roll(s) as one move, under the same rule. Example: rolled 6 then 4 → one forward move of 10, or, with an opponent 10 behind, one Back Kick of 10 uses both rolls. Blocks on the path still stop it. A single-roll move with the same result is preferred. A Labourer owner never combines.
   - **Stopping early:** after rolling a 6, the player may choose to stop rolling and play the rolls they have. The turn then ends when those rolls are used, with no further rolling.
   - When a roll's turn comes and it has no legal move, it's skipped and play moves to the next roll.
   - When all the rolls are used, play passes to the next player.
   - If the player finishes while rolls remain, the remaining rolls are dropped.
-- **In `endsTurn` mode, one roll at a time:** roll, move, and a 6 then rolls again. Three 6s in a row carry no penalty.
+- **In `endsTurn` mode, one roll at a time:** roll, move, and a playable 6 then rolls again. Three 6s in a row carry no penalty.
 - Getting a piece home gives no bonus roll.
 - **After a kick** is a game setting, `afterKick`:
   - `endsTurn`: any kick ends the turn, even on a 6. Kicks other than a Front Kick are optional, so a player can skip one to keep their extra roll.
@@ -187,7 +188,7 @@ type Move =
    - Any queued rolls left: the next one becomes `pendingRoll`, as in step 2.
    - Queue empty, and a move this turn kicked with `afterKick` `bonusRoll` by the turn player: that player starts a new rolling phase.
    - Queue empty otherwise: play passes to the next unfinished player.
-   - **`endsTurn` mode** (one roll at a time): a kick passes play on. Otherwise a 6 rolls again, even if it was wasted, and any other roll passes play on.
+   - **`endsTurn` mode** (one roll at a time): a kick passes play on. Otherwise a playable 6 rolls again; a 6 that couldn't be played, and any other roll, passes play on.
 
 ## Testing (Vitest)
 
