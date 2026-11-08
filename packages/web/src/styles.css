@@ -50,8 +50,8 @@
   --chip-border: rgba(255, 255, 255, 0.18);
   --backdrop: rgba(0, 0, 0, 0.6);
   --board-shadow: none;
-  --board: #a9b4c2;
-  --tile: #e8ebef;
+  --board: #000000;
+  --tile: #1C1C1E;
   --streak: #F76B15;
   color-scheme: dark;
 }
