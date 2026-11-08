@@ -19,10 +19,14 @@ export function GameScreen({ options, onFinish, onQuit }: { options: GameOptions
   }, [game, g.moving])
 
   const mover = currentMover(game) ?? game.turn
-  const banner =
+  // Two fixed lines, so the banner keeps its height whatever it says.
+  const banner = `${COLOR_NAME[mover]} to ${game.pendingRoll === undefined ? 'roll' : 'move'}`
+  const bannerDetail =
     mover !== game.turn
-      ? `${COLOR_NAME[mover]} moves with ${COLOR_NAME[game.turn]}'s roll`
-      : `${COLOR_NAME[game.turn]} to ${game.pendingRoll === undefined ? 'roll' : 'move'}`
+      ? `with ${COLOR_NAME[game.turn]}'s roll (Labourer)`
+      : (options.seats[mover] ?? 'computer') === 'computer'
+        ? 'Computer playing'
+        : ''
   const hint = g.humanToRoll
     ? g.canStop
       ? 'Rolled a 6! Roll again or stop'
@@ -47,17 +51,21 @@ export function GameScreen({ options, onFinish, onQuit }: { options: GameOptions
         onPreview={setPreview}
       />
       <aside className="panel">
-        <p className="banner" style={{ background: COLOR_HEX[mover], color: ON_COLOR[mover] }}>
-          {banner}
-        </p>
+        <div className="banner" style={{ background: COLOR_HEX[mover], color: ON_COLOR[mover] }}>
+          <p className="banner-main">{banner}</p>
+          <p className="banner-detail">{bannerDetail}</p>
+        </div>
         <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
         <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />
         <p className="hint">{hint}</p>
-        {g.canStop && (
-          <button type="button" className="secondary stop" onClick={g.stop}>
-            Stop rolling
-          </button>
-        )}
+        {/* The slot keeps its height when the button is gone, so nothing below it moves. */}
+        <div className="stop-slot">
+          {g.canStop && (
+            <button type="button" className="secondary stop" onClick={g.stop}>
+              Stop rolling
+            </button>
+          )}
+        </div>
         <p className="message" role="status">
           {g.message ?? ''}
         </p>
