@@ -27,17 +27,22 @@ export type Settings = {
   afterKick: AfterKick
 }
 
+/**
+ * `rolls` is how many rolls the move uses: the pending roll plus the next `rolls - 1` queued ones,
+ * added together. Only kicks combine rolls. Absent means 1.
+ */
 export type Move =
-  | { kind: 'enter'; piece: PieceId; to: Position; kick?: PieceId }
-  | { kind: 'forward'; piece: PieceId; to: Position; kick?: PieceId }
-  | { kind: 'back'; piece: PieceId; to: Position; kick: PieceId }
-  | { kind: 'line'; piece: PieceId; via: Position; to: Position; kick: PieceId }
-  | { kind: 'homeKick'; piece: PieceId; to: Position; kick: PieceId }
+  | { kind: 'enter'; piece: PieceId; to: Position; kick?: PieceId; rolls?: number }
+  | { kind: 'forward'; piece: PieceId; to: Position; kick?: PieceId; rolls?: number }
+  | { kind: 'back'; piece: PieceId; to: Position; kick: PieceId; rolls?: number }
+  | { kind: 'line'; piece: PieceId; via: Position; to: Position; kick: PieceId; rolls?: number }
+  | { kind: 'homeKick'; piece: PieceId; to: Position; kick: PieceId; rolls?: number }
 
 export type GameEvent =
   | { type: 'roll'; value: number }
   | { type: 'move'; move: Move }
   | { type: 'pass' }
+  | { type: 'stop' }
 
 export type PlayerState = {
   color: Color

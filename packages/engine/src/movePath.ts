@@ -1,4 +1,5 @@
 import { entryIndex } from './board'
+import { moveSteps } from './legalMoves'
 import { backwardPath, forwardPath } from './path'
 import { lane, samePos } from './position'
 import { positionOf } from './state'
@@ -8,7 +9,7 @@ import type { GameState, Move, Position } from './types'
 export function movePath(state: GameState, move: Move): Position[] {
   const color = move.piece.color
   const from = positionOf(state, move.piece)
-  const roll = state.pendingRoll!
+  const roll = moveSteps(state, move)
   const routes = (steps: number) => [forwardPath(color, from, steps), backwardPath(color, from, steps)]
 
   switch (move.kind) {

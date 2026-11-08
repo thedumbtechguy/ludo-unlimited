@@ -26,9 +26,11 @@ export function applyMove(state: GameState, move: Move): GameState {
   const key = outcomeKey(state, move)
   const legal = legalMoves(state).find((m) => outcomeKey(state, m) === key)
   if (!legal) throw new Error('illegal move')
-  const rolled = state.pendingRoll
   const next = cloneState(state)
   next.log.push({ type: 'move', move: legal })
+  // A combined kick also uses up the queued rolls it added to the pending one.
+  const used = next.queuedRolls.splice(0, (legal.rolls ?? 1) - 1)
+  const rolled = used.at(-1) ?? state.pendingRoll
   setPosition(next, legal.piece, legal.to)
   if (legal.kick) {
     setPosition(next, legal.kick, BASE)
@@ -40,6 +42,22 @@ export function applyMove(state: GameState, move: Move): GameState {
   if (getPlayer(next, legal.piece.color).pieces.every((p) => p.kind === 'home')) finish(next, legal.piece.color)
   if (next.status !== 'playing' || getPlayer(next, next.turn).finishedPlace !== undefined) next.queuedRolls = []
   advance(next, rolled, legal.kick && legal.piece.color)
+  return next
+}
+
+/**
+ * After a 6, stop rolling and play the rolls so far. No flag is needed: `advance` takes the first
+ * playable roll as pending (so `roll` is refused) and ends the turn when the queue runs out.
+ * Stopping only cuts this turn's chain of 6s: a kick under `afterKick: 'bonusRoll'` still earns
+ * its bonus roll once the queue is played.
+ */
+export function stopRolling(state: GameState): GameState {
+  if (state.status !== 'playing') throw new Error('game is over')
+  const rolling = state.pendingRoll === undefined && state.queuedRolls.length > 0
+  if (!rolling || state.settings.afterKick === 'endsTurn') throw new Error('not rolling')
+  const next = cloneState(state)
+  next.log.push({ type: 'stop' })
+  advance(next, undefined)
   return next
 }
 
@@ -64,6 +82,8 @@ export function replay(settings: Settings, log: GameEvent[]): GameState {
         return applyMove(state, event.move)
       case 'pass':
         return pass(state)
+      case 'stop':
+        return stopRolling(state)
     }
   }, createGame(settings))
 }

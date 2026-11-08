@@ -1,4 +1,4 @@
-import { applyMove, roll } from '../src/game'
+import { applyMove, roll, stopRolling } from '../src/game'
 import { legalMoves } from '../src/legalMoves'
 import { createGame } from '../src/state'
 import type { GameState, Settings } from '../src/types'
@@ -27,7 +27,10 @@ export function* playRandom(settings: Settings, seed: number, maxSteps = 200_000
   const next = rng(seed)
   let state = createGame(settings)
   for (let step = 0; step < maxSteps && state.status === 'playing'; step++) {
-    if (state.pendingRoll === undefined) {
+    const canStop = state.pendingRoll === undefined && state.queuedRolls.length > 0 && settings.afterKick !== 'endsTurn'
+    if (canStop && next() < 0.2) {
+      state = stopRolling(state)
+    } else if (state.pendingRoll === undefined) {
       state = roll(state, 1 + Math.floor(next() * 6))
     } else {
       const moves = legalMoves(state)
