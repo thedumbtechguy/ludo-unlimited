@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Board } from '../components/Board'
 import { FxLayer } from '../fx/FxLayer'
 import { DiceFire, OnFire, StreakLabel, useSixStreak } from '../fx/SixStreak'
+import { useGameAudio } from '../fx/useGameAudio'
 import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
@@ -38,6 +39,7 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   const [menuOpen, setMenuOpen] = useState(false)
   const dice = useRef<HTMLDivElement>(null)
   const streak = useSixStreak(g.effects, game.turn)
+  useGameAudio({ enabled: options.timing.step > 0, streak: streak.count })
   useEffect(() => setPreview(undefined), [game])
 
   useEffect(() => {

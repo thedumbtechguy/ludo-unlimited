@@ -26,6 +26,10 @@ export interface AudioBackend {
 
 export type Prefs = { sound: boolean; music: boolean }
 
+/** A loop eases to a new level over this long, and fades out over the fire's die-down. */
+const LOOP_RAMP = 0.3
+const LOOP_FADE = 0.6
+
 /** How a sound is played: its volume, and how far its pitch may wander (0.05 is ±5%). */
 export type Sound = { volume: number; vary?: number }
 
@@ -42,6 +46,8 @@ export class AudioEngine {
   private clips = new Map<string, Promise<unknown>>()
   private ready = new Map<string, unknown>()
   private cleanup: (() => void)[] = []
+  private wantedLoop = { name: '', volume: 0 }
+  private loopVoice?: Voice
 
   constructor(
     private make: () => AudioBackend | undefined,
@@ -83,6 +89,7 @@ export class AudioEngine {
 
   setPrefs(prefs: Prefs): void {
     this.prefs = prefs
+    this.applyLoop()
   }
 
   /** Start loading clips; ones already loading or loaded are left alone. */
@@ -113,6 +120,28 @@ export class AudioEngine {
     const vary = sound.vary ?? 0
     const rate = 1 + (this.random() * 2 - 1) * vary
     return audio.play(clip, { bus: 'sfx', volume: sound.volume, rate })
+  }
+
+  /** One looping sound effect at `volume`, ramping between levels; 0 fades it out and stops it. */
+  setLoop(name: string, volume: number): void {
+    this.wantedLoop = { name, volume }
+    this.applyLoop()
+  }
+
+  private applyLoop(): void {
+    const audio = this.audio
+    if (!audio) return
+    const volume = this.prefs.sound ? this.wantedLoop.volume : 0
+    const now = audio.now()
+    if (volume > 0) {
+      const clip = this.ready.get(this.wantedLoop.name)
+      if (!this.loopVoice && clip !== undefined) this.loopVoice = audio.play(clip, { bus: 'sfx', volume: 0, loop: true })
+      this.loopVoice?.gain.ramp([{ value: volume, at: now + LOOP_RAMP }])
+    } else if (this.loopVoice) {
+      this.loopVoice.gain.ramp([{ value: 0, at: now + LOOP_FADE }])
+      this.loopVoice.stop(now + LOOP_FADE)
+      this.loopVoice = undefined
+    }
   }
 }
 

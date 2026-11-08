@@ -108,6 +108,40 @@ describe('AudioEngine', () => {
     expect(started.fake.played.map((p) => p.rate)).toEqual([0.9, 1.1, 0.95])
   })
 
+  describe('a looping sound', () => {
+    it('fades in, follows the level, and fades out and stops at 0', () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.preload(['fire'])
+      return flush().then(() => {
+        engine!.setLoop('fire', 0.2)
+        started.fake.time = 1
+        engine!.setLoop('fire', 0.4)
+        started.fake.time = 2
+        engine!.setLoop('fire', 0)
+        const [voice] = started.fake.played
+        expect(started.fake.played).toHaveLength(1)
+        expect(voice).toMatchObject({ clip: 'clip:fire', bus: 'sfx', volume: 0, loop: true })
+        expect(voice.ramps).toEqual([[{ value: 0.2, at: 0.3 }], [{ value: 0.4, at: 1.3 }], [{ value: 0, at: 2.6 }]])
+        expect(voice.stoppedAt).toBe(2.6)
+      })
+    })
+
+    it('stays silent while Sound is off, and picks up again when it comes back on', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.preload(['fire'])
+      await flush()
+      engine.setPrefs({ sound: false, music: true })
+      engine.setLoop('fire', 0.3)
+      expect(started.fake.played).toEqual([])
+      engine.setPrefs({ sound: true, music: true })
+      expect(started.fake.played).toHaveLength(1)
+      engine.setPrefs({ sound: false, music: true })
+      expect(started.fake.played[0].stoppedAt).toBeDefined()
+    })
+  })
+
   it('starts the audio on the first tap or key, once', async () => {
     const started = startedEngine()
     engine = started.engine

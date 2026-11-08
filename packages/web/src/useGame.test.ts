@@ -358,5 +358,37 @@ describe('useGame', () => {
       expect(played.mock.calls[0][0]).toEqual({ type: 'sixStreak', color: 'red', count: 1 })
       played.mockRestore()
     })
+
+    it('rattles the dice while it spins and clacks when it lands', () => {
+      vi.useFakeTimers()
+      const played = vi.spyOn(sound, 'playSound')
+      const timing = { botRoll: 0, botMove: 10_000, step: 100, roll: 650 }
+      const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3]), timing }))
+      act(() => result.current.roll())
+      expect(played.mock.calls.map(([e]) => e.type)).toEqual(['roll'])
+      act(() => vi.advanceTimersByTime(649))
+      expect(played).toHaveBeenCalledTimes(1)
+      act(() => vi.advanceTimersByTime(1))
+      expect(played.mock.calls.map(([e]) => e.type)).toEqual(['roll', 'diceLanded'])
+      played.mockRestore()
+    })
+
+    it('ticks each square of a move and clicks on the last; a piece out of its yard pops', () => {
+      vi.useFakeTimers()
+      const timing = { botRoll: 0, botMove: 10_000, step: 100, roll: 0 }
+      const steps = (initial: ReturnType<typeof createGame>, value: number) => {
+        const played = vi.spyOn(sound, 'playSound')
+        const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([value]), timing, initial }))
+        act(() => result.current.roll())
+        if (result.current.canStop) act(() => result.current.stop())
+        act(() => result.current.play(result.current.targets[0]))
+        for (let i = 0; i < 10; i++) act(() => vi.advanceTimersByTime(100))
+        const heard = played.mock.calls.map(([e]) => e).filter((e) => e.type === 'pieceStep')
+        played.mockRestore()
+        return heard.map((e) => sound.soundsFor(e)[0])
+      }
+      expect(steps(lonePiece(), 3)).toEqual(['step', 'step', 'land'])
+      expect(steps(createGame(classic2), 6)).toEqual(['enter'])
+    })
   })
 })

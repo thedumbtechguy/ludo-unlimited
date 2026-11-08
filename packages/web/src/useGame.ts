@@ -7,6 +7,7 @@ import {
   describeRoll,
   legalMoves,
   movePath,
+  positionOf,
   replay,
   roll as rollDice,
   stopRolling,
@@ -21,7 +22,7 @@ import {
 } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
-import { playSound } from './fx/sound'
+import { playSound, type SoundEvent } from './fx/sound'
 import type { EffectEvent } from './fx/stream'
 import { kickCallout, kickMessage } from './labels'
 import type { Moving } from './layout'
@@ -42,8 +43,14 @@ export type GameOptions = {
   onChange?: (game: GameState) => void
 }
 
-/** `effects` play when the piece arrives. */
-type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState; effects: GameEffect[] }
+/** `effects` play when the piece arrives. `fromBase`: the first square is where it comes out of its yard. */
+type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState; effects: GameEffect[]; fromBase: boolean }
+
+const stepSound = ({ path, fromBase }: Animation, step: number): SoundEvent => ({
+  type: 'pieceStep',
+  entered: fromBase && step === 0,
+  last: step === path.length - 1,
+})
 
 /** Enough recent effects for any listener a render or two behind. */
 const KEPT_EFFECTS = 32
@@ -103,8 +110,10 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     const value = dice()
     if (timing.roll === 0) return applyRoll(value)
     setRollingTo(value)
+    playSound({ type: 'roll' })
     rollTimer.current = setTimeout(() => {
       setRollingTo(undefined)
+      playSound({ type: 'diceLanded' })
       applyRoll(value)
     }, timing.roll)
   }
@@ -120,7 +129,10 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
       emit(landed)
       setGame(next)
     } else {
-      setAnimation({ piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed })
+      const fromBase = positionOf(game, move.piece).kind === 'base'
+      const start: Animation = { piece: move.piece, path: movePath(game, move), step: 0, next, effects: landed, fromBase }
+      playSound(stepSound(start, 0))
+      setAnimation(start)
     }
   }
 
@@ -146,6 +158,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     if (!animation) return
     const id = setTimeout(() => {
       if (animation.step + 1 < animation.path.length) {
+        playSound(stepSound(animation, animation.step + 1))
         setAnimation({ ...animation, step: animation.step + 1 })
       } else {
         setAnimation(undefined)
