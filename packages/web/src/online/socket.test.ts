@@ -126,4 +126,58 @@ describe('openConnection', () => {
     expect(FakeSocket.made).toHaveLength(1)
     expect(onStatus).toHaveBeenLastCalledWith('closed')
   })
+
+  it('pings every 20 s while open, and a pong is not passed on as a message', async () => {
+    vi.useFakeTimers()
+    const onMessage = vi.fn()
+    openConnection({ url: () => 'ws://x', onMessage, onStatus: vi.fn(), create: () => new FakeSocket() })
+    await opened()
+    const socket = FakeSocket.made[0]
+    socket.open()
+    vi.advanceTimersByTime(19_999)
+    expect(socket.sent).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(socket.sent).toEqual(['ping'])
+    socket.onmessage?.({ data: 'pong' })
+    expect(onMessage).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(20_000)
+    expect(socket.sent).toEqual(['ping', 'ping'])
+    socket.onmessage?.({ data: 'pong' })
+    vi.advanceTimersByTime(10_000)
+    expect(FakeSocket.made).toHaveLength(1) // answered, so still alive
+  })
+
+  it('a ping with no pong within 10 s closes the socket and reconnects as usual', async () => {
+    vi.useFakeTimers()
+    const onStatus = vi.fn()
+    openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus, create: () => new FakeSocket() })
+    await opened()
+    const socket = FakeSocket.made[0]
+    socket.open()
+    vi.advanceTimersByTime(20_000 + 9_999)
+    expect(socket.readyState).toBe(1)
+    vi.advanceTimersByTime(1)
+    expect(socket.readyState).toBe(3)
+    expect(onStatus).toHaveBeenLastCalledWith('reconnecting')
+    vi.advanceTimersByTime(500)
+    expect(FakeSocket.made).toHaveLength(2)
+    vi.advanceTimersByTime(60_000)
+    expect(FakeSocket.made).toHaveLength(2) // the old socket's pings are gone with it
+  })
+
+  it('pings at once when the app comes back into view', async () => {
+    vi.useFakeTimers()
+    const conn = openConnection({ url: () => 'ws://x', onMessage: vi.fn(), onStatus: vi.fn(), create: () => new FakeSocket() })
+    await opened()
+    const socket = FakeSocket.made[0]
+    socket.open()
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(socket.sent).toEqual(['ping'])
+    document.dispatchEvent(new Event('visibilitychange')) // one ping waiting for its pong at a time
+    expect(socket.sent).toEqual(['ping'])
+    socket.onmessage?.({ data: 'pong' })
+    conn.close()
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(socket.sent).toEqual(['ping'])
+  })
 })

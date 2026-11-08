@@ -33,10 +33,9 @@ const noop = () => {}
 type Given = { room?: Partial<RoomView>; you?: YouView; clock?: Partial<Clock>; status?: Status; game?: GameState; animated?: boolean }
 
 /** The online game's view, as `useOnlineGame` would give it, from a plain game view and room fields. */
-function renderOnline({ room = {}, you = AMA, clock = {}, status = 'open', game = createGame(settings), animated = false }: Given = {}) {
-  const send = vi.fn(() => true)
+function onlineFor({ room = {}, you = AMA, clock = {}, status = 'open', game = createGame(settings) }: Given, send: () => boolean) {
   const { result } = renderHook(() => useGameView({ initial: game, timing: FAST_TIMING, you: you.seat, controls: (c) => c === you.seat, act: noop }))
-  const online = {
+  return {
     ...result.current,
     room: { ...ROOM, ...room },
     you,
@@ -47,11 +46,15 @@ function renderOnline({ room = {}, you = AMA, clock = {}, status = 'open', game 
     send,
     watching: !you.seat,
   } as ReturnType<typeof useOnlineGame>
+}
+
+function renderOnline(given: Given = {}) {
+  const send = vi.fn(() => true)
   const onLeave = vi.fn()
-  render(
+  const ui = (g: Given) => (
     <OnlineGame
-      online={online}
-      animated={animated}
+      online={onlineFor(g, send)}
+      animated={g.animated ?? false}
       onLeave={onLeave}
       hand="right"
       onHand={noop}
@@ -63,9 +66,10 @@ function renderOnline({ room = {}, you = AMA, clock = {}, status = 'open', game 
       onSound={noop}
       music={false}
       onMusic={noop}
-    />,
+    />
   )
-  return { send, onLeave }
+  const { rerender } = render(ui(given))
+  return { send, onLeave, rerender: (g: Given) => rerender(ui(g)) }
 }
 const dice = () => screen.getByRole('region', { name: 'Dice' })
 
@@ -145,6 +149,33 @@ describe('OnlineGame', () => {
     expect(screen.queryByText(/A computer is playing/)).toBeNull()
   })
 
+  it('a watcher can rejoin as a player who has gone', async () => {
+    const { send } = renderOnline({
+      you: WATCHER,
+      room: { members: [{ id: 1, name: 'Ama', connected: true, seat: 'red' }, { id: 2, name: 'Kofi', connected: false, seat: 'yellow' }] },
+      clock: { covering: ['yellow'] },
+    })
+    expect(screen.getByText('Kofi left')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Rejoin as Kofi' }))
+    expect(send).toHaveBeenCalledWith({ t: 'rejoin', color: 'yellow' })
+  })
+
+  it('offers every gone seat to a watcher when nobody is left playing', () => {
+    renderOnline({ you: WATCHER, room: { members: ROOM.members.map((m) => ({ ...m, connected: false })) }, clock: { covering: ['red', 'yellow'] } })
+    expect(screen.getByText('Waiting for players to come back')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Rejoin as/ }).map((b) => b.textContent)).toEqual(['Rejoin as Ama', 'Rejoin as Kofi'])
+  })
+
+  it('no rejoin for a seated player, for a seat whose player is here, or while reconnecting', () => {
+    const away = { members: [{ id: 1, name: 'Ama', connected: true, seat: 'red' as const }, { id: 2, name: 'Kofi', connected: false, seat: 'yellow' as const }] }
+    const { rerender } = renderOnline({ room: away })
+    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
+    rerender({ you: WATCHER })
+    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
+    rerender({ you: WATCHER, room: away, status: 'reconnecting' })
+    expect(screen.queryByRole('button', { name: /^Rejoin as/ })).toBeNull()
+  })
+
   it('rings the dice while a person has the clock; not while paused', () => {
     renderOnline({ clock: { deadline: Date.now() + 30_000 } })
     expect(screen.getByRole('img', { name: '30 seconds left' })).toBeInTheDocument()
@@ -179,6 +210,15 @@ describe('OnlineGame', () => {
       expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Ama1st', 'Kofi2nd'])
       await userEvent.click(screen.getByRole('button', { name: 'Rematch' }))
       expect(send).toHaveBeenCalledWith({ t: 'rematch' })
+    })
+
+    it('are gone when reconnecting lands in a new game', async () => {
+      const { rerender } = renderOnline({ room: { phase: 'finished' }, game: finished() })
+      await act(async () => {})
+      expect(screen.getByRole('button', { name: 'Rematch' })).toBeInTheDocument()
+      rerender({ room: { phase: 'playing' } })
+      expect(screen.queryByRole('button', { name: 'Rematch' })).toBeNull()
+      expect(dice()).toBeInTheDocument()
     })
 
     it('wait for the host after the finish has played out', () => {

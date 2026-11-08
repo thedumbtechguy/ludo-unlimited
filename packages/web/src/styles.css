@@ -352,7 +352,7 @@ p.row { margin: 0; }
 
 /* The online game. */
 /* Notices sit under the top bar as a plain line, with their button on the right. */
-.notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; flex: none; font-weight: 700; font-size: 15px; line-height: 1.3; }
+.notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; flex: none; font-weight: 700; font-size: 15px; line-height: 1.3; }
 .notice.quiet { min-height: 0; color: var(--muted); font-weight: 600; font-size: 14px; }
 .notice button { flex: none; min-height: 40px; padding: 0 14px; font-size: 15px; }
 /* The turn clock: a thin ring just clear of the dice's corners. */

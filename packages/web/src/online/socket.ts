@@ -14,6 +14,9 @@ export type Connection = { send(msg: ClientMessage): boolean; close(): void }
 
 const FIRST_WAIT = 500
 const LONGEST_WAIT = 8000
+/** A socket can die without closing (a phone changing networks); a ping that gets no pong finds it. */
+const PING_EVERY = 20_000
+const PONG_WITHIN = 10_000
 /** Close codes the room uses when coming back won't help: no such room, old version, replaced by another tab. */
 const FINAL_CODES = [4000, 4001]
 
@@ -32,6 +35,35 @@ export function openConnection(o: {
   let wait = FIRST_WAIT
   let closed = false
   let timer: ReturnType<typeof setTimeout> | undefined
+  let pinging: ReturnType<typeof setInterval> | undefined
+  let pong: ReturnType<typeof setTimeout> | undefined
+
+  function stopPinging() {
+    clearInterval(pinging)
+    clearTimeout(pong)
+    pinging = pong = undefined
+  }
+
+  function ping() {
+    const socket = current
+    if (socket?.readyState !== 1 || pong !== undefined) return
+    socket.send('ping')
+    pong = setTimeout(() => dead(socket), PONG_WITHIN)
+  }
+
+  /** Give up on a socket that stopped answering: its close may never come, so don't wait for it. */
+  function dead(socket: SocketLike) {
+    socket.onclose = socket.onmessage = null
+    stopPinging()
+    socket.close()
+    retry()
+  }
+
+  function retry() {
+    o.onStatus('reconnecting')
+    timer = setTimeout(open, wait)
+    wait = Math.min(wait * 2, LONGEST_WAIT)
+  }
 
   function open() {
     if (closed) return
@@ -40,20 +72,33 @@ export function openConnection(o: {
     socket.onopen = () => {
       wait = FIRST_WAIT
       o.onStatus('open')
+      pinging = setInterval(ping, PING_EVERY)
     }
-    socket.onmessage = (e) => o.onMessage(JSON.parse(e.data) as ServerMessage)
+    socket.onmessage = (e) => {
+      if (e.data === 'pong') {
+        clearTimeout(pong)
+        pong = undefined
+        return
+      }
+      o.onMessage(JSON.parse(e.data) as ServerMessage)
+    }
     socket.onclose = (e) => {
+      stopPinging()
       if (closed) return
       if (FINAL_CODES.includes(e.code)) {
         closed = true
         o.onStatus('closed')
         return
       }
-      o.onStatus('reconnecting')
-      timer = setTimeout(open, wait)
-      wait = Math.min(wait * 2, LONGEST_WAIT)
+      retry()
     }
   }
+
+  // Back from another app: check the socket at once rather than at the next ping.
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') ping()
+  }
+  document.addEventListener('visibilitychange', onVisible)
 
   o.onStatus('connecting')
   // On the next microtask, so a connection closed straight away (React's dev double effects) never reaches the room.
@@ -67,6 +112,8 @@ export function openConnection(o: {
     close() {
       closed = true
       clearTimeout(timer)
+      stopPinging()
+      document.removeEventListener('visibilitychange', onVisible)
       current?.close()
       o.onStatus('closed')
     },

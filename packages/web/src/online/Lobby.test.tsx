@@ -49,6 +49,25 @@ describe('Lobby', () => {
     expect(send).toHaveBeenCalledWith({ t: 'sit', color: 'yellow' })
   })
 
+  it('a seat whose player is away can be taken, and they are not counted to play', async () => {
+    const { send } = renderLobby(room([ama, { ...kofi, connected: false }, esi]), { id: 3, host: false })
+    expect(seatRows()).toEqual(['Red: Ama (host)', 'Green: Kofi (away)Tap to sit', 'YellowTap to sit', 'BlueTap to sit'])
+    await userEvent.click(screen.getByRole('button', { name: 'Tap to sit as Green' }))
+    expect(send).toHaveBeenCalledWith({ t: 'sit', color: 'green' })
+  })
+
+  it('leaves players who are away out of the count to start with', async () => {
+    renderLobby(room([ama, { ...kofi, connected: false }, { ...esi, seat: 'yellow' }]), { id: 1, seat: 'red', host: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Start' }))
+    const sheet = screen.getByRole('dialog', { name: '2 empty seats' })
+    expect(within(sheet).getByRole('button', { name: 'Play with 2' })).toBeInTheDocument()
+  })
+
+  it('cannot start when the only seated player is away', () => {
+    renderLobby(room([{ ...ama, seat: undefined }, { ...kofi, connected: false }]), { id: 1, host: true })
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled()
+  })
+
   it('lets you stand up from your seat, and not sit in another', async () => {
     const { send } = renderLobby(room([ama, kofi]), { id: 2, seat: 'green', host: false })
     expect(screen.queryByRole('button', { name: /Tap to sit/ })).toBeNull()
