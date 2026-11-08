@@ -6,7 +6,7 @@ import { effectActions, yardCentre, type FxAction } from './actions'
 import { CHAIN_REACH, chainLinks } from './chains'
 import { useFx, type Fx } from './FxLayer'
 import { lightning, shakeFrames } from './geometry'
-import { pop, shard, smoke, spark, sparkle, speedLine } from './makers'
+import { confetti, pop, rocket, shard, shell, smoke, spark, sparkle, speedLine } from './makers'
 import { hex } from './particles'
 import { useEffectStream, type EffectEvent } from './stream'
 
@@ -15,13 +15,13 @@ const WHITE = hex('#ffffff')
 const CELL_UNITS = 40
 
 /** Where the board is on screen right now, and how to put board points there. */
-type Stage = { area: HTMLElement; board: Element; turn: number; toScreen: (p: Point) => Point; u: number }
+type Stage = { area: HTMLElement; board: Element; rect: DOMRect; turn: number; toScreen: (p: Point) => Point; u: number }
 
 function stageOf(area: HTMLElement | null, board: Element | null | undefined, turn: number): Stage | undefined {
   if (!area || !board) return undefined
   const rect = board.getBoundingClientRect()
   if (rect.width === 0) return undefined
-  return { area, board, turn, toScreen: (p) => boardToScreen(p, rect, turn), u: rect.width / BOARD_SIZE }
+  return { area, board, rect, turn, toScreen: (p) => boardToScreen(p, rect, turn), u: rect.width / BOARD_SIZE }
 }
 
 /** How long a fountain keeps spouting. */
@@ -32,11 +32,22 @@ export const SHIMMER_MS = 520
 /** A shimmer sweeping over a block's pieces, at their (turned) board points. */
 type Shimmer = { id: number; points: Point[] }
 
+/** Runs something after a delay, unless the board has gone by then. */
+type Later = (fn: () => void, ms: number) => void
+
 /** Who each Labourer victim works for, as last drawn: the chains' colour, still known once freed. */
 type Owners = GameState['labourers']
 
-function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, stage: Stage, owners: Owners): void {
-  const { toScreen, u } = stage
+/** Where the win's rockets go up from (across the board's width) and when, in seconds. */
+const LAUNCHES = [
+  { x: 0.28, top: 0.22, at: 0 },
+  { x: 0.72, top: 0.3, at: 0.28 },
+  { x: 0.5, top: 0.16, at: 0.52 },
+]
+const PLAYER_COLORS = Object.values(COLOR_HEX)
+
+function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, stage: Stage, owners: Owners, later: Later): void {
+  const { toScreen, u, rect } = stage
   switch (action.type) {
     case 'flash': {
       const { x, y } = toScreen(action.at)
@@ -105,6 +116,21 @@ function run(action: Exclude<FxAction, { type: 'chains' | 'shimmer' }>, fx: Fx, 
       fx.burst(x, y, action.count, pop(COLOR_HEX[action.color], u))
       return
     }
+    case 'fireworks': {
+      // Up from the bottom edge to bursts over the upper board, one after another.
+      LAUNCHES.slice(0, action.rockets).forEach(({ x, top, at }) => {
+        const from = { x: rect.left + rect.width * x, y: rect.bottom }
+        const rise = rect.height * (1 - top)
+        const make = rocket(rise, 0.5, u, shell(COLOR_HEX[action.color], u), action.count)
+        later(() => fx.burst(from.x, from.y, 1, make), at * 1000)
+      })
+      return
+    }
+    case 'confetti': {
+      const make = confetti(PLAYER_COLORS, rect.width, u)
+      later(() => fx.burst(rect.left + rect.width / 2, rect.top, action.count, make), 120)
+      return
+    }
     case 'smoke': {
       const { x, y } = toScreen(action.at)
       fx.burst(x, y, action.count, smoke(u))
@@ -127,11 +153,14 @@ export function BoardFx({ effects, state, turn, area }: { effects: EffectEvent[]
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   const owners = useRef<Owners>(state.labourers)
+  const later: Later = (fn, ms) => {
+    timers.current.push(setTimeout(fn, ms))
+  }
 
   useEffectStream(effects, (effect) => {
     if (!fx.enabled) return
     const stage = stageOf(area.current, svg.current?.parentElement, turn)
-    for (const action of effectActions(effect, fx.level)) {
+    for (const action of effectActions(effect, fx.level, state)) {
       if (action.type === 'chains') {
         setSlammed((s) => ({ ...s, [action.victim]: action.id }))
       } else if (action.type === 'shimmer') {
@@ -142,9 +171,9 @@ export function BoardFx({ effects, state, turn, area }: { effects: EffectEvent[]
           .map((p) => turnPoint(p.point, turn))
         const { id } = action
         setShimmers((s) => [...s, { id, points }])
-        timers.current.push(setTimeout(() => setShimmers((s) => s.filter((x) => x.id !== id)), SHIMMER_MS + 80))
+        later(() => setShimmers((s) => s.filter((x) => x.id !== id)), SHIMMER_MS + 80)
       } else if (stage) {
-        run(action, fx, stage, owners.current)
+        run(action, fx, stage, owners.current, later)
       }
     }
   })

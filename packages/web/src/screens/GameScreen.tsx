@@ -1,6 +1,7 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Board } from '../components/Board'
+import { resultsDelay } from '../fx/actions'
 import { BoardFx } from '../fx/BoardFx'
 import { FxLayer } from '../fx/FxLayer'
 import { DiceFire, OnFire, StreakLabel, useSixStreak } from '../fx/SixStreak'
@@ -47,7 +48,12 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   useEffect(() => setPreview(undefined), [game])
 
   useEffect(() => {
-    if (game.status === 'finished' && !g.moving) onFinish(game)
+    if (game.status !== 'finished' || g.moving) return
+    // The win plays out on the board (fireworks, confetti) before the results take over.
+    const delay = resultsDelay(options.timing.step > 0, effectsLevel)
+    if (delay === 0) return onFinish(game)
+    const id = setTimeout(() => onFinish(game), delay)
+    return () => clearTimeout(id)
   }, [game, g.moving])
 
   const mover = currentMover(game) ?? game.turn

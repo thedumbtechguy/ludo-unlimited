@@ -1,4 +1,4 @@
-import { forwardPath, track, TRACK, type Color, type PieceId, type Position } from '@ludo/engine'
+import { forwardPath, track, TRACK, type Color, type GameState, type PieceId, type Position } from '@ludo/engine'
 import { positionPoint, yardOrigin, type Point } from '../layout'
 import type { EffectsLevel } from '../types'
 import type { EffectEvent } from './stream'
@@ -23,6 +23,8 @@ export type FxAction =
   | { type: 'shimmer'; at: Position; color: Color; id: number }
   | { type: 'fountain'; at: Point; color: Color; count: number }
   | { type: 'burst'; at: Point; color: Color; count: number }
+  | { type: 'fireworks'; color: Color; rockets: number; count: number }
+  | { type: 'confetti'; count: number }
 
 export const SPARKS = 44
 export const SPEED_LINES = 10
@@ -30,6 +32,10 @@ export const SMOKE = 28
 export const SHARDS = 48
 export const FOUNTAIN = 60
 export const FINISH_BURST = 40
+export const ROCKETS = 3
+/** Sparks in each rocket's burst. */
+export const SHELL = 56
+export const CONFETTI = 120
 const LANE = [1, 2, 3, 4, 5]
 
 /** The middle of a colour's yard. */
@@ -50,7 +56,8 @@ export function cameFrom(kind: 'back' | 'wicked', at: Position, kicker: PieceId)
   return kind === 'back' ? track((at.index + 1) % TRACK.length) : forwardPath(kicker.color, at, 1)?.[0]
 }
 
-export function effectActions(effect: EffectEvent, level: EffectsLevel): FxAction[] {
+/** `state` is the game as it is with the effect applied (whose win it was). */
+export function effectActions(effect: EffectEvent, level: EffectsLevel, state: GameState): FxAction[] {
   const full = level === 'full'
   const shake = (px: number, ms: number): FxAction[] => (full ? [{ type: 'shake', px, ms }] : [])
   switch (effect.type) {
@@ -91,7 +98,24 @@ export function effectActions(effect: EffectEvent, level: EffectsLevel): FxActio
       return [{ type: 'fountain', at: positionPoint({ kind: 'home' }, effect.piece), color: effect.piece.color, count: FOUNTAIN }]
     case 'playerFinished':
       return [{ type: 'burst', at: yardCentre(effect.color), color: effect.color, count: FINISH_BURST }]
-    default:
+    case 'gameOver': {
+      const winner = state.players.find((p) => p.finishedPlace === 1)?.color ?? state.turn
+      return [
+        { type: 'fireworks', color: winner, rockets: ROCKETS, count: SHELL },
+        { type: 'confetti', count: CONFETTI },
+      ]
+    }
+    case 'sixStreak':
+    case 'streakEnded':
       return []
   }
+}
+
+/**
+ * How long the finished board stays up before the results screen, so the win can play out: the
+ * fireworks and confetti on full effects, their short reduced form otherwise, none with effects off.
+ */
+export function resultsDelay(enabled: boolean, level: EffectsLevel): number {
+  if (!enabled) return 0
+  return level === 'full' ? 1600 : 800
 }

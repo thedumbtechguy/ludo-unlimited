@@ -172,3 +172,75 @@ export const pop =
       drag: 3,
     }
   }
+
+/**
+ * A firework rocket rising `rise` px from where it's launched over `life` seconds against gravity,
+ * then bursting into `count` of `burst` (see `pop` on a particle).
+ */
+export function rocket(rise: number, life: number, u: number, burst: Make, count: number): Make {
+  const gravity = 260 * u
+  const vy = (-rise - 0.5 * gravity * life * life) / life
+  return (rand) => ({
+    x: 0,
+    y: 0,
+    vx: (rand() - 0.5) * 30 * u,
+    vy,
+    life,
+    size: 2.6 * u,
+    endSize: 2 * u,
+    colors: [WHITE],
+    hold: 8,
+    gravity,
+    shape: 'streak',
+    stretch: 0.05,
+    pop: { count, make: burst },
+  })
+}
+
+/** A firework's burst: a round shell of sparks in the winner's colour and white, drooping as it fades. */
+export const shell =
+  (color: string, u: number): Make =>
+  (rand) => {
+    const rgb = hex(color)
+    const angle = rand() * Math.PI * 2
+    // Most sparks near full speed, so the shell reads as a ring rather than a blob.
+    const speed = (230 + (1 - rand() ** 3) * 170) * u
+    return {
+      x: 0,
+      y: 0,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.7 + rand() * 0.3,
+      size: (3 + rand() * 1.6) * u,
+      endSize: 0.8 * u,
+      colors: rand() < 0.4 ? [WHITE, WHITE, rgb] : [rgb, rgb, deepen(rgb, 0.7)],
+      hold: 2.5,
+      gravity: 170 * u,
+      drag: 2.2,
+      shape: rand() < 0.4 ? 'streak' : 'dot',
+      stretch: 0.03,
+    }
+  }
+
+/**
+ * Confetti across the top of a board `width` px wide: flat strips in the four player colours,
+ * fluttering down and spinning, all gone in under 1.5s.
+ */
+export const confetti =
+  (colors: readonly string[], width: number, u: number): Make =>
+  (rand) => ({
+    x: (rand() - 0.5) * width,
+    y: -rand() * 40 * u,
+    vx: (rand() - 0.5) * 120 * u,
+    vy: (160 + rand() * 180) * u,
+    life: 1.1 + rand() * 0.35,
+    size: (4 + rand() * 2) * u,
+    colors: [hex(colors[Math.floor(rand() * colors.length)])],
+    hold: 6,
+    gravity: 420 * u,
+    drag: 1.6,
+    shape: 'rect',
+    aspect: 0.45,
+    angle: rand() * Math.PI,
+    spin: (rand() - 0.5) * 18,
+  })
