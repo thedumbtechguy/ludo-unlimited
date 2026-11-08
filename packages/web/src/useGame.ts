@@ -22,6 +22,7 @@ import {
   type Settings,
 } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
+import { realChoices } from './choices'
 import type { Dice } from './dice'
 import { playSound, type SoundEvent } from './fx/sound'
 import type { EffectEvent } from './fx/stream'
@@ -208,8 +209,8 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
       const id = setTimeout(() => play(chooseMove(game, random)!), timing.botMove)
       return () => clearTimeout(id)
     }
-    // A human with a single legal move has nothing to choose: play it after a short beat.
-    const only = legalMoves(game)
+    // A human with a single real choice has nothing to choose: play it after a short beat.
+    const only = realChoices(legalMoves(game))
     if (only.length === 1) {
       const id = setTimeout(() => play(only[0]), timing.botMove)
       return () => clearTimeout(id)
