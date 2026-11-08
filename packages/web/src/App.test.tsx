@@ -52,6 +52,18 @@ describe('App', () => {
     expect(screen.getByText('Tap the dice to roll')).toBeInTheDocument()
   })
 
+  it('keeps the playing hand picked on the setup screen', async () => {
+    const user = userEvent.setup()
+    render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
+    await user.click(screen.getByRole('button', { name: 'New game' }))
+    await user.click(screen.getByRole('button', { name: /Playing hand/ }))
+    await user.click(screen.getByRole('radio', { name: 'Left' }))
+    await user.click(screen.getByRole('button', { name: 'Start game' }))
+    const red = screen.getAllByTestId('yard').find((el) => el.getAttribute('data-color') === 'red')!
+    expect([red.getAttribute('x'), red.getAttribute('y')]).toEqual(['4', '364'])
+    expect(localStorage.getItem('ludo-unlimited:hand')).toBe('left')
+  })
+
   it('re-orients the board when the playing hand changes mid-game, and remembers it', async () => {
     const user = userEvent.setup()
     render(<App dice={fixedDice([3])} timing={FAST_TIMING} />)
@@ -93,7 +105,7 @@ describe('App', () => {
     vi.useFakeTimers()
     render(<App dice={seededDice(5)} timing={FAST_TIMING} />)
     fireEvent.click(screen.getByRole('button', { name: 'New game' }))
-    fireEvent.change(screen.getByLabelText('Red player'), { target: { value: 'computer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Red player: You' }))
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }))
     for (let i = 0; i < 50_000; i++) {
       await act(async () => {

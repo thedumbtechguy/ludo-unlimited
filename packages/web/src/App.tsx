@@ -41,7 +41,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
         />
       )
     case 'setup':
-      return <Setup onBack={goHome} onStart={(settings, seats) => startGame(settings, seats)} />
+      return <Setup onBack={goHome} onStart={(settings, seats) => startGame(settings, seats)} hand={hand} onHand={changeHand} />
     case 'game':
       return (
         <GameScreen
