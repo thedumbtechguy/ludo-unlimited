@@ -30,13 +30,24 @@ export type Prefs = { sound: boolean; music: boolean }
 const LOOP_RAMP = 0.3
 const LOOP_FADE = 0.6
 
+/** The music's file, level, and how it ducks under big moments: down fast, held, then back up. */
+const MUSIC = 'music'
+export const MUSIC_VOLUME = 0.25
+export const DUCKED_VOLUME = 0.1
+const DUCK_DOWN = 0.08
+const DUCK_HOLD = 1.5
+const DUCK_UP = 0.8
+const MUSIC_FADE_IN = 1.5
+const MUSIC_FADE_OUT = 0.5
+
 /** How a sound is played: its volume, and how far its pitch may wander (0.05 is ±5%). */
 export type Sound = { volume: number; vary?: number }
 
 /**
  * The game's audio. Silent until `start()` (never called in tests or `?fast`), and silent with no
  * Web Audio at all. Sound effects play from clips loaded ahead by `preload`; one not loaded yet
- * is skipped rather than played late.
+ * is skipped rather than played late. Music loads only when a game asks for it (`setMusic`), and
+ * everything pauses while the page is hidden.
  */
 export class AudioEngine {
   private backend: AudioBackend | null | undefined
@@ -48,6 +59,9 @@ export class AudioEngine {
   private cleanup: (() => void)[] = []
   private wantedLoop = { name: '', volume: 0 }
   private loopVoice?: Voice
+  private wantMusic = false
+  /** The music playing (or loading): each track fades on its own gain, so a restart crossfades. */
+  private track?: { voice?: Voice }
 
   constructor(
     private make: () => AudioBackend | undefined,
@@ -73,11 +87,18 @@ export class AudioEngine {
       target.removeEventListener('pointerdown', unlock, true)
       target.removeEventListener('keydown', unlock, true)
     }
+    const visibility = () => {
+      if (!this.backend) return
+      if (target.document.hidden) this.backend.suspend()
+      else if (this.unlocked) this.backend.resume()
+    }
     target.addEventListener('pointerdown', unlock, true)
     target.addEventListener('keydown', unlock, true)
+    target.document.addEventListener('visibilitychange', visibility)
     this.cleanup.push(() => {
       target.removeEventListener('pointerdown', unlock, true)
       target.removeEventListener('keydown', unlock, true)
+      target.document.removeEventListener('visibilitychange', visibility)
     })
   }
 
@@ -90,6 +111,49 @@ export class AudioEngine {
   setPrefs(prefs: Prefs): void {
     this.prefs = prefs
     this.applyLoop()
+    this.applyMusic()
+  }
+
+  /** A game is on screen and would like music: it plays while Music is on. */
+  setMusic(wanted: boolean): void {
+    this.wantMusic = wanted
+    this.applyMusic()
+  }
+
+  private applyMusic(): void {
+    const audio = this.audio
+    if (!audio) return
+    const on = this.wantMusic && this.prefs.music
+    if (on && !this.track) {
+      const track: { voice?: Voice } = {}
+      this.track = track
+      this.load(MUSIC)!.then((clip) => {
+        if (this.track !== track) return
+        audio.bus('music').ramp([{ value: MUSIC_VOLUME, at: audio.now() }])
+        track.voice = audio.play(clip, { bus: 'music', volume: 0, loop: true })
+        track.voice.gain.ramp([{ value: 1, at: audio.now() + MUSIC_FADE_IN }])
+      }, () => {
+        // Couldn't load (offline before it was ever cached): try again next game.
+        if (this.track === track) this.track = undefined
+      })
+    } else if (!on && this.track) {
+      const end = audio.now() + MUSIC_FADE_OUT
+      this.track.voice?.gain.ramp([{ value: 0, at: end }])
+      this.track.voice?.stop(end)
+      this.track = undefined
+    }
+  }
+
+  /** Dip the music under a big moment, then bring it back up. */
+  duck(): void {
+    const audio = this.audio
+    if (!audio || !this.track?.voice) return
+    const now = audio.now()
+    audio.bus('music').ramp([
+      { value: DUCKED_VOLUME, at: now + DUCK_DOWN },
+      { value: DUCKED_VOLUME, at: now + DUCK_HOLD },
+      { value: MUSIC_VOLUME, at: now + DUCK_HOLD + DUCK_UP },
+    ])
   }
 
   /** Start loading clips; ones already loading or loaded are left alone. */

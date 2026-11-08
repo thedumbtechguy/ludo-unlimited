@@ -86,9 +86,15 @@ export function crackleVolume(count: number): number {
   return Math.min(0.5, 0.15 + 0.08 * (count - 2))
 }
 
+/** The big moments the music dips under: kicks, "On fire" and the end of the game. */
+export function ducksMusic(event: SoundEvent): boolean {
+  return event.type === 'kick' || event.type === 'gameOver' || (event.type === 'sixStreak' && event.count === ON_FIRE)
+}
+
 /** Called once for every effect as it plays, and for the screen's own moments. */
 export function playSound(event: SoundEvent): void {
   for (const id of soundsFor(event)) audio.play(id, SOUNDS[id])
+  if (ducksMusic(event)) audio.duck()
 }
 
 /** Buttons that tap: the big ones and menu rows, not the board (pieces and targets have their move sounds). */

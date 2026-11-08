@@ -27,3 +27,12 @@ from the original. Volumes are set in `src/fx/sound.ts`.
 | `chains` | `chain_01.ogg` | rubberduck, [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) (OpenGameArt) | CC0 |
 | `on-fire` | `spell_fire_06.ogg` | rubberduck, [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) (OpenGameArt) | CC0 |
 | `fire-crackle` | `fire.wav`, 7 s from 0:10, its last second crossfaded into its first so it loops | PagDev, [Fireplace Sound loop](https://opengameart.org/content/fireplace-sound-loop) (OpenGameArt) | CC0 |
+
+## Music
+
+| File | Original | Source | Licence |
+|---|---|---|---|
+| `music` | `chilllofir-loop.ogg`, re-encoded (stereo, 97 s, loops seamlessly) | qubodup, [Chill lofi inspired \[loop edit\]](https://opengameart.org/content/chill-lofi-inspired-loop-edit) (OpenGameArt), a loop edit of omfgdude's [Chill lofi inspired](https://opengameart.org/content/chill-lofi-inspired) | CC0 (both the edit and the original) |
+
+The music isn't precached by the service worker (it's about 1.4 MB): it loads when a game first
+starts and is cached from then on. Swap the file to change the track.

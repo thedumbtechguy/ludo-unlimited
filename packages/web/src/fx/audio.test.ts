@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AudioEngine, createWebBackend, type AudioBackend, type Bus, type PlayOptions, type Ramp } from './audio'
+import { AudioEngine, createWebBackend, DUCKED_VOLUME, MUSIC_VOLUME, type AudioBackend, type Bus, type PlayOptions, type Ramp } from './audio'
 
 type Played = PlayOptions & { clip: unknown; ramps: Ramp[][]; stoppedAt?: number }
 
@@ -139,6 +139,119 @@ describe('AudioEngine', () => {
       expect(started.fake.played).toHaveLength(1)
       engine.setPrefs({ sound: false, music: true })
       expect(started.fake.played[0].stoppedAt).toBeDefined()
+    })
+  })
+
+  describe('music', () => {
+    const music = (fake: ReturnType<typeof fakeBackend>) => fake.played.filter((p) => p.bus === 'music')
+
+    it('loads only once a game asks for it, then loops, fading in at a low volume', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      await flush()
+      expect(started.fake.loads).toEqual([])
+      engine.setMusic(true)
+      await flush()
+      expect(started.fake.loads).toEqual(['music'])
+      const [track] = music(started.fake)
+      expect(track).toMatchObject({ clip: 'clip:music', loop: true, volume: 0 })
+      expect(track.ramps).toEqual([[{ value: 1, at: 1.5 }]])
+      expect(started.fake.buses.music).toEqual([[{ value: MUSIC_VOLUME, at: 0 }]])
+    })
+
+    it('never loads or plays while Music is off, and starts when it is switched on', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setPrefs({ sound: true, music: false })
+      engine.setMusic(true)
+      await flush()
+      expect(started.fake.loads).toEqual([])
+      expect(music(started.fake)).toEqual([])
+      engine.setPrefs({ sound: true, music: true })
+      await flush()
+      expect(music(started.fake)).toHaveLength(1)
+    })
+
+    it('fades out and stops when Music is switched off or the game leaves', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setMusic(true)
+      await flush()
+      started.fake.time = 10
+      engine.setPrefs({ sound: true, music: false })
+      const [track] = music(started.fake)
+      expect(track.ramps.at(-1)).toEqual([{ value: 0, at: 10.5 }])
+      expect(track.stoppedAt).toBe(10.5)
+      engine.setPrefs({ sound: true, music: true })
+      await flush()
+      started.fake.time = 20
+      engine.setMusic(false)
+      expect(music(started.fake)[1].stoppedAt).toBe(20.5)
+    })
+
+    it('crossfades rather than doubling up when a game restarts', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setMusic(true)
+      await flush()
+      engine.setMusic(false)
+      engine.setMusic(true)
+      await flush()
+      const [old, fresh] = music(started.fake)
+      expect(old.stoppedAt).toBeDefined()
+      expect(fresh.stoppedAt).toBeUndefined()
+      expect(started.fake.loads).toEqual(['music'])
+    })
+
+    it('ducks under a big moment for about 1.5s, then comes back up', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setMusic(true)
+      await flush()
+      started.fake.time = 30
+      engine.duck()
+      expect(started.fake.buses.music.at(-1)).toEqual([
+        { value: DUCKED_VOLUME, at: 30.08 },
+        { value: DUCKED_VOLUME, at: 31.5 },
+        { value: MUSIC_VOLUME, at: 32.3 },
+      ])
+    })
+
+    it('does not duck when no music plays', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.duck()
+      engine.setPrefs({ sound: true, music: false })
+      engine.setMusic(true)
+      await flush()
+      engine.duck()
+      expect(started.fake.buses.music).toEqual([])
+    })
+
+    it('pauses while the page is hidden and resumes after', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setMusic(true)
+      window.dispatchEvent(new Event('pointerdown'))
+      await flush()
+      expect(started.fake.state).toBe('running')
+      const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+      document.dispatchEvent(new Event('visibilitychange'))
+      expect(started.fake.state).toBe('suspended')
+      hidden.mockReturnValue(false)
+      document.dispatchEvent(new Event('visibilitychange'))
+      expect(started.fake.state).toBe('running')
+      hidden.mockRestore()
+    })
+
+    it('does not start audio on coming back before the first tap', async () => {
+      const started = startedEngine()
+      engine = started.engine
+      engine.setMusic(true)
+      await flush()
+      const resume = vi.spyOn(started.fake.backend, 'resume')
+      document.dispatchEvent(new Event('visibilitychange'))
+      expect(resume).not.toHaveBeenCalled()
     })
   })
 

@@ -2,7 +2,7 @@ import { HOME, track, type GameEffect, type KickKind } from '@ludo/engine'
 import { fireEvent } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { audio } from './audio'
-import { crackleVolume, listenForTaps, playSound, SFX, SOUNDS, soundsFor } from './sound'
+import { crackleVolume, ducksMusic, listenForTaps, playSound, SFX, SOUNDS, soundsFor } from './sound'
 
 const red0 = { color: 'red', index: 0 } as const
 const yellow0 = { color: 'yellow', index: 0 } as const
@@ -59,6 +59,18 @@ describe('soundsFor', () => {
   })
 })
 
+describe('ducksMusic', () => {
+  it('dips the music for kicks, "On fire" and the end of the game only', () => {
+    expect(ducksMusic(kick('front'))).toBe(true)
+    expect(ducksMusic(kick('wicked'))).toBe(true)
+    expect(ducksMusic({ type: 'gameOver' })).toBe(true)
+    expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 4 })).toBe(true)
+    expect(ducksMusic({ type: 'sixStreak', color: 'red', count: 5 })).toBe(false)
+    expect(ducksMusic({ type: 'pieceHome', piece: red0 })).toBe(false)
+    expect(ducksMusic({ type: 'pieceStep', entered: false, last: true })).toBe(false)
+  })
+})
+
 describe('crackleVolume', () => {
   it('is silent for a single 6 and grows with the streak, to a cap', () => {
     const volumes = [0, 1, 2, 3, 4, 5, 6, 20].map(crackleVolume)
@@ -72,14 +84,18 @@ describe('crackleVolume', () => {
 describe('playSound', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('plays each of the moment’s sounds at its own volume', () => {
+  it('plays each of the moment’s sounds at its own volume, ducking the music for big ones', () => {
     const play = vi.spyOn(audio, 'play')
+    const duck = vi.spyOn(audio, 'duck')
     playSound(kick('line'))
     expect(play.mock.calls).toEqual([
       ['kick', SOUNDS.kick],
       ['zap', SOUNDS.zap],
       ['whoosh', SOUNDS.whoosh],
     ])
+    expect(duck).toHaveBeenCalledTimes(1)
+    playSound({ type: 'pieceHome', piece: red0 })
+    expect(duck).toHaveBeenCalledTimes(1)
   })
 
   it('taps for buttons but not for the board', () => {

@@ -8,6 +8,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
+      workbox: {
+        // The sound effects are small and precached so they work offline. The music is too big to
+        // precache: it's fetched when a game first starts and cached from then on.
+        globPatterns: ['**/*.{js,wasm,css,html}', 'audio/*.{webm,m4a}'],
+        globIgnores: ['audio/music.*'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/audio/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'audio', expiration: { maxEntries: 40 } },
+          },
+        ],
+      },
       manifest: {
         name: 'Ludo Unlimited',
         short_name: 'Ludo Unlimited',
