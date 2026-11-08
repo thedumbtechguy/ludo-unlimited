@@ -190,6 +190,9 @@ button.row { cursor: pointer; }
 .sheet-exits .sheet-row { justify-content: flex-start; }
 .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; font-weight: 700; font-size: 17px; cursor: pointer; }
 .sheet-row:last-child { border-bottom: 0; }
+/* A label with a line under it saying what the option does. */
+.sheet-row .row-text { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; }
+.sheet-row .row-text .row-note { line-height: 1.35; }
 @keyframes sheet-up { from { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) {
   .sheet { animation: none; }

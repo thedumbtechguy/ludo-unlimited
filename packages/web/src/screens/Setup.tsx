@@ -18,13 +18,13 @@ const PLAYERS = [
   [4, '4 players'],
 ] as const
 const AFTER_KICK = [
-  ['normal', 'Carry on'],
-  ['endsTurn', 'Turn ends'],
-  ['bonusRoll', 'Bonus roll'],
+  ['normal', 'Carry on', 'Your other pieces play the rolls you have left. The piece that kicked waits for your next turn.'],
+  ['endsTurn', 'Turn ends', 'A kick ends your turn, even on a 6. Every roll is played straight away, one at a time.'],
+  ['bonusRoll', 'Bonus roll', 'A kick earns you one more roll once your rolls are used.'],
 ] as const
 const END = [
-  ['firstWins', 'When one player wins'],
-  ['playForPlaces', 'When places are set'],
+  ['firstWins', 'When one player wins', 'The first to get all four pieces home wins, and the game ends.'],
+  ['playForPlaces', 'When places are set', 'Play goes on after the winner, for 2nd, 3rd and so on, until one player is left.'],
 ] as const
 const HANDS = [
   ['right', 'Right'],
@@ -37,7 +37,7 @@ const THEMES = [
   ['dark', 'Dark'],
 ] as const
 
-const labelOf = <T,>(options: readonly (readonly [T, string])[], value: T) => options.find(([v]) => v === value)![1]
+const labelOf = <T,>(options: readonly (readonly [T, string, ...string[]])[], value: T) => options.find(([v]) => v === value)![1]
 
 type Open = 'players' | 'afterKick' | 'end' | 'rules' | 'hand' | 'theme'
 type Props = {

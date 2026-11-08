@@ -107,11 +107,13 @@ describe('Setup', () => {
       expect(screen.getByRole('button', { name: /After a kick/ })).toHaveTextContent('Carry on')
       await userEvent.click(screen.getByRole('button', { name: /After a kick/ }))
       const picker = screen.getByRole('dialog', { name: 'After a kick' })
-      expect(within(picker).getAllByRole('radio').map((r) => [r.textContent, r.getAttribute('aria-checked')])).toEqual([
-        ['Carry on', 'true'],
-        ['Turn ends', 'false'],
-        ['Bonus roll', 'false'],
-      ])
+      const options = within(picker).getAllByRole('radio')
+      expect(options.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
+      expect(options[0]).toHaveAccessibleName('Carry on')
+      expect(options[1]).toHaveAccessibleName('Turn ends')
+      expect(options[2]).toHaveAccessibleName('Bonus roll')
+      // Each says what it does, under its name.
+      expect(options[1]).toHaveAccessibleDescription('A kick ends your turn, even on a 6. Every roll is played straight away, one at a time.')
       await userEvent.click(within(picker).getByRole('radio', { name: 'Bonus roll' }))
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(screen.getByRole('button', { name: /After a kick/ })).toHaveTextContent('Bonus roll')
