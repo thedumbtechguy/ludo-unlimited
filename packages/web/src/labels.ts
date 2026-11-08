@@ -1,4 +1,4 @@
-import { MODES, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
+import { MODES, positionOf, type Color, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules } from '@ludo/engine'
 import type { Seats } from './types'
 
 export const COLOR_NAME: Record<Color, string> = { red: 'Red', green: 'Green', yellow: 'Yellow', blue: 'Blue' }
@@ -101,4 +101,26 @@ const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classi
 export const rulesName = (rules: Rules): string => {
   const mode = modeOf(rules)
   return mode ? MODE_RULES_NAME[mode] : 'Custom rules'
+}
+
+const KICK_TITLE: Record<Move['kind'], string> = {
+  enter: 'Kick!',
+  forward: 'Kick!',
+  back: 'Back kick!',
+  line: 'Line kick!',
+  homeKick: 'Home kick!',
+}
+
+/**
+ * The big callout for a kick, worked out from the state before the move: a back kick by a piece
+ * that started in its own home lane is the wicked move.
+ */
+export function kickCallout(move: Move, before: GameState): { title: string; line: string } | undefined {
+  if (!move.kick) return undefined
+  const from = positionOf(before, move.piece)
+  const wicked = move.kind === 'back' && from.kind === 'lane' && from.owner === move.piece.color
+  return {
+    title: wicked ? 'Wicked!' : KICK_TITLE[move.kind],
+    line: `${COLOR_NAME[move.piece.color]} sent ${COLOR_NAME[move.kick.color]} back to base`,
+  }
 }

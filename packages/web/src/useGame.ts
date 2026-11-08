@@ -18,7 +18,7 @@ import {
 } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
-import { kickMessage } from './labels'
+import { kickCallout, kickMessage } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
@@ -39,6 +39,9 @@ export type GameOptions = {
 
 type Animation = { piece: PieceId; path: Position[]; step: number; next: GameState }
 
+/** A kick to call out over the board; `id` tells one kick from the next. */
+export type Callout = { id: number; title: string; line: string; color: Color }
+
 const samePiece = (a: PieceId, b: PieceId) => a.color === b.color && a.index === b.index
 
 export function useGame({ settings, seats, dice, timing, log, initial, random = Math.random, onChange }: GameOptions) {
@@ -47,6 +50,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const [selected, setSelected] = useState<PieceId>()
   const [lastRoll, setLastRoll] = useState<number>()
   const [message, setMessage] = useState<string>()
+  const [callout, setCallout] = useState<Callout>()
   const [rollingTo, setRollingTo] = useState<number>()
   const rolling = rollingTo !== undefined
   const rollTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -89,6 +93,8 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     const next = applyMove(game, move)
     setSelected(undefined)
     setMessage(kickMessage(move))
+    const kick = kickCallout(move, game)
+    setCallout((last) => (kick ? { id: (last?.id ?? 0) + 1, color: move.piece.color, ...kick } : undefined))
     if (timing.step === 0) {
       setGame(next)
     } else {
@@ -175,6 +181,7 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     rolling,
     rollingTo,
     message,
+    callout,
     humanToRoll,
     humanToMove,
     roll,

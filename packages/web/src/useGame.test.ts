@@ -80,6 +80,20 @@ describe('useGame', () => {
     act(() => result.current.play(result.current.targets.find((m) => m.kind === 'back')!))
     expect(result.current.game.players[1].pieces[0]).toEqual({ kind: 'base' })
     expect(result.current.message).toBe('Red Back Kicked Yellow!')
+    expect(result.current.callout).toMatchObject({ title: 'Back kick!', line: 'Red sent Yellow back to base', color: 'red' })
+  })
+
+  it('has no callout for a move without a kick, and a fresh one for every kick', () => {
+    const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+    initial.players[0].pieces[0] = track(10)
+    initial.players[1].pieces[0] = track(7)
+    const { result } = renderHook(() =>
+      useGame({ settings: initial.settings, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING, initial }),
+    )
+    act(() => result.current.roll())
+    expect(result.current.callout).toBeUndefined()
+    act(() => result.current.play(result.current.targets.find((m) => m.kind === 'forward')!))
+    expect(result.current.callout).toBeUndefined()
   })
 
   it('a wasted roll says so and passes the turn', () => {

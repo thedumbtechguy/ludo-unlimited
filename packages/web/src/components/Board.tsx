@@ -1,5 +1,5 @@
 import { COLORS, posKey, positionOf, type Color, type GameState, type Move, type PieceId } from '@ludo/engine'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BOARD_SIZE, CELL, TILES, placements, positionPoint, turnPoint, yardOrigin, type Moving, type Point } from '../layout'
 import {
   COLOR_NAME,
@@ -35,6 +35,8 @@ export type BoardProps = {
   you?: Color
   /** Whose yard is tagged and outlined as taking the turn. */
   active?: Color
+  /** Drawn over everything, in board units (e.g. the kick callout). */
+  children?: ReactNode
 }
 
 /** Every target move landing on one square. */
@@ -97,6 +99,7 @@ export function Board({
   names,
   you,
   active,
+  children,
 }: BoardProps) {
   const pieces = placements(state, moving).map((p) => ({ ...p, point: turnPoint(p.point, turn) }))
   const pointOf = (piece: PieceId) => pieces.find((p) => samePiece(p.piece, piece))!.point
@@ -371,6 +374,7 @@ export function Board({
           </div>
         )
       })}
+      {children}
     </div>
   )
 }

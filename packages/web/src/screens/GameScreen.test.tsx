@@ -109,6 +109,20 @@ describe('GameScreen', () => {
     })
   })
 
+  describe('kicks', () => {
+    it('calls out a kick over the board', async () => {
+      const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+      initial.players[0].pieces[0] = track(10)
+      initial.players[1].pieces[0] = track(7)
+      renderGame({ settings: initial.settings, initial })
+      await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
+      await userEvent.click(screen.getByRole('button', { name: 'Kick Yellow on square 8' }))
+      expect(screen.getByText('Back kick!')).toBeInTheDocument()
+      expect(screen.getByText('Red sent Yellow back to base')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('Red Back Kicked Yellow!')
+    })
+  })
+
   describe('board', () => {
     const seats = { red: 'computer', yellow: 'human' } as const
     const slowBot = { seats, timing: { ...FAST_TIMING, botRoll: 60_000 } }

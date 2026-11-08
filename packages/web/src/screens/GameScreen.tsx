@@ -2,6 +2,7 @@ import { currentMover, type GameState, type Move } from '@ludo/engine'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Board } from '../components/Board'
 import { DiceButton } from '../components/DiceButton'
+import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
 import { firstHuman, rulesName, seatNames } from '../labels'
@@ -77,7 +78,9 @@ export function GameScreen({ options, hand, onHand, onFinish, onQuit, onRestart 
           names={seatNames(options.seats, colors)}
           you={firstHuman(options.seats, colors)}
           active={game.status === 'playing' ? mover : undefined}
-        />
+        >
+          <KickCallout callout={g.callout} />
+        </Board>
         {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
         <section className="controls" aria-label="Dice">
           <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
