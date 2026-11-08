@@ -1,8 +1,7 @@
 import { legalMoves, outcomeKey } from './legalMoves'
-import { hasPiecesInPlay } from './occupancy'
-import { BASE } from './position'
+import { place } from './place'
 import { cloneState, createGame, getPlayer } from './state'
-import type { Color, GameEvent, GameState, Move, PieceId, Position, Settings } from './types'
+import type { Color, GameEvent, GameState, Move, Settings } from './types'
 
 /**
  * Outside `endsTurn` mode a 6 keeps the player rolling; the first non-6 starts playing the rolls in order.
@@ -43,15 +42,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   // A combined kick also uses up the queued rolls it added to the pending one.
   const used = next.queuedRolls.splice(0, (legal.rolls ?? 1) - 1)
   const rolled = used.at(-1) ?? state.pendingRoll
-  setPosition(next, legal.piece, legal.to)
-  if (legal.kick) {
-    setPosition(next, legal.kick, BASE)
-    if (next.settings.rules.labourer && !hasPiecesInPlay(next, legal.kick.color)) {
-      next.labourers[legal.kick.color] = legal.piece.color
-    }
-  }
-  if (legal.kick && legal.piece.color === next.turn) next.kickedThisTurn = true
-  if (getPlayer(next, legal.piece.color).pieces.every((p) => p.kind === 'home')) finish(next, legal.piece.color)
+  place(next, legal)
   if (next.status !== 'playing' || getPlayer(next, next.turn).finishedPlace !== undefined) next.queuedRolls = []
   advance(next, rolled, legal.kick && legal.piece.color)
   return next
@@ -81,6 +72,7 @@ export function pass(state: GameState): GameState {
   next.pendingRoll = undefined
   next.queuedRolls = []
   next.kickedThisTurn = false
+  next.kickers = []
   next.turn = nextActive(next, next.turn)
   return next
 }
@@ -98,10 +90,6 @@ export function replay(settings: Settings, log: GameEvent[]): GameState {
         return stopRolling(state)
     }
   }, createGame(settings))
-}
-
-function setPosition(state: GameState, piece: PieceId, pos: Position): void {
-  getPlayer(state, piece.color).pieces[piece.index] = pos
 }
 
 function nextActive(state: GameState, after: Color): Color {
@@ -135,27 +123,11 @@ function advance(state: GameState, last: number | undefined, kicker?: Color): vo
 function endTurn(state: GameState, last: number | undefined, kicker?: Color): void {
   const again = getPlayer(state, state.turn).finishedPlace === undefined && rollsAgain(state, last, kicker)
   state.kickedThisTurn = false
+  state.kickers = []
   if (!again) state.turn = nextActive(state, state.turn)
 }
 
 function rollsAgain(state: GameState, last: number | undefined, kicker?: Color): boolean {
   if (state.settings.afterKick === 'endsTurn') return !kicker && last === 6
   return state.settings.afterKick === 'bonusRoll' && state.kickedThisTurn
-}
-
-function finish(state: GameState, color: Color): void {
-  const placed = state.players.filter((p) => p.finishedPlace !== undefined).length
-  getPlayer(state, color).finishedPlace = placed + 1
-  for (const [victim, owner] of Object.entries(state.labourers) as [Color, Color][]) {
-    if (owner === color) delete state.labourers[victim]
-  }
-  if (state.settings.endCondition === 'firstWins') {
-    state.status = 'finished'
-    return
-  }
-  const remaining = state.players.filter((p) => p.finishedPlace === undefined)
-  if (remaining.length === 1) {
-    remaining[0].finishedPlace = placed + 2
-    state.status = 'finished'
-  }
 }

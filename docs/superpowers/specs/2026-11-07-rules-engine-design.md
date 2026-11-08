@@ -35,6 +35,9 @@ Guiding principles:
   - `endsTurn`: any kick ends the turn, even on a 6. Kicks other than a Front Kick are optional, so a player can skip one to keep their extra roll.
   - `normal` (**the default**): a kick changes nothing, so a 6 still rolls again. For example, you roll a 6 to bring a piece out, kick someone sitting on your start square, and roll again.
   - `bonusRoll`: a kick always earns another roll. This only applies when the kicker is the player whose turn it is, not a Labourer owner playing someone else's roll.
+- **A piece that kicks sits out the rest of the turn:** it stays on the square it kicked from until the turn ends (a `bonusRoll` bonus roll starts afresh, so it can move then).
+  - So a kick is only allowed if every roll left after it can still be played by other pieces. This holds even when every other choice would also waste a roll.
+  - Example: one piece, rolled 6 then 1. The 6 can't kick, because the 1 would have nothing to move. A combined 7 that kicks is fine, because it uses both rolls.
 - Reaching home needs an exact roll.
 - There are no safe squares. That includes start squares and, when Home Kick is on, home lanes.
 - **Blocks:** two pieces of the same colour on one square form a block.

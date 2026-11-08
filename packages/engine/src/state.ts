@@ -14,6 +14,7 @@ export function createGame(settings: Settings): GameState {
     turn: SEATS[settings.players][0],
     queuedRolls: [],
     kickedThisTurn: false,
+    kickers: [],
     labourers: {},
     log: [],
     status: 'playing',

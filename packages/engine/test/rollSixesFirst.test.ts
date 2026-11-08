@@ -124,7 +124,8 @@ describe('endsTurn mode: one roll at a time', () => {
 
 describe('bonusRoll with a batch', () => {
   const kickThenPlay = (afterKick: 'normal' | 'bonusRoll') => {
-    const s = rollAll(setup({ afterKick, pieces: { red: lone(5), yellow: [11] } }), [6, 3])
+    // Red's piece on 30 plays the 3 after the kick.
+    const s = rollAll(setup({ afterKick, pieces: { red: [5, 30, HOME, HOME], yellow: [11] } }), [6, 3])
     const kicked = applyMove(s, legalMoves(s).find((m) => m.kick)!)
     expect(kicked.pendingRoll).toBe(3)
     expect(kicked.turn).toBe('red')
@@ -143,17 +144,6 @@ describe('bonusRoll with a batch', () => {
 
   it('normal: the same kick earns nothing extra', () => {
     expect(kickThenPlay('normal').turn).toBe('green')
-  })
-
-  it('a kick with a wasted batch roll still earns the bonus', () => {
-    // After the kick, red sits on 11: green's block on 14 stops the second 6, so it's skipped.
-    const s = rollAll(setup({ afterKick: 'bonusRoll', pieces: { red: lone(5), yellow: [11], green: [14, 14] } }), [6, 6, 1])
-    const kicked = applyMove(s, legalMoves(s).find((m) => m.kick)!)
-    expect(getPlayer(kicked, 'yellow').pieces[0]).toEqual({ kind: 'base' })
-    expect(kicked.pendingRoll).toBe(1)
-    const next = playFirst(kicked)
-    expect(next.turn).toBe('red')
-    expect(next.pendingRoll).toBeUndefined()
   })
 })
 

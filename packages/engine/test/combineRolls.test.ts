@@ -87,7 +87,7 @@ describe('combining rolls', () => {
   })
 
   it('a two-roll prefix leaves the rest of the queue to play', () => {
-    const s = rollAll(setup({ pieces: { red: lone(5), yellow: [17] } }), [6, 6, 3])
+    const s = rollAll(setup({ pieces: { red: [5, 30, HOME, HOME], yellow: [17] } }), [6, 6, 3])
     const next = applyMove(s, combined(s)[0])
     expect(getPlayer(next, 'red').pieces[0]).toEqual(track(17))
     expect(next.pendingRoll).toBe(3)
@@ -145,8 +145,9 @@ describe('entering and using the next rolls in one move', () => {
   })
 
   it('an enter that kicks on the start square does not combine further', () => {
-    const s = rollAll(setup({ rules: { lineKick: true }, pieces: { blue: [0, 45] } }), [6, 3])
-    expect(combined(s)).toEqual([])
-    expect(legalMoves(s)).toContainEqual({ kind: 'enter', piece: piece('red'), to: track(0), kick: piece('blue') })
+    // Red's piece on 20 is there to play the 3 after the kick.
+    const s = rollAll(setup({ rules: { lineKick: true }, pieces: { red: [20], blue: [0, 45] } }), [6, 3])
+    expect(combined(s).filter((m) => m.piece.index === 1)).toEqual([])
+    expect(legalMoves(s)).toContainEqual({ kind: 'enter', piece: piece('red', 1), to: track(0), kick: piece('blue') })
   })
 })

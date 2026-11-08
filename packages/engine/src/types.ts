@@ -60,6 +60,8 @@ export type GameState = {
   queuedRolls: number[]
   /** The turn player kicked during this turn; feeds `afterKick: 'bonusRoll'`. */
   kickedThisTurn: boolean
+  /** Pieces that kicked this turn. They can't move again until the turn ends. */
+  kickers: PieceId[]
   labourers: Partial<Record<Color, Color>> // victim → owner
   log: GameEvent[]
   status: 'playing' | 'finished'

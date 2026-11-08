@@ -5,6 +5,7 @@ import { forwardMoves } from './moves/forward'
 import { homeKickMoves } from './moves/homeKick'
 import { lineMoves } from './moves/line'
 import { isOpponentBlock, loneOpponent } from './occupancy'
+import { isKicker, place } from './place'
 import { posKey, track } from './position'
 import { cloneState, getPlayer, positionOf } from './state'
 import type { Color, GameState, Move, PieceId } from './types'
@@ -35,21 +36,38 @@ export function currentMover(state: GameState): Color | undefined {
 /**
  * The single-roll moves, then the moves that combine the pending roll with the next queued rolls.
  * Single-roll moves come first, so a combined move with the same outcome is dropped.
+ * A piece that kicked this turn can't move, so a kick is only allowed if the rolls left after it
+ * can all still be played.
  */
 export function legalMoves(state: GameState): Move[] {
   const roll = state.pendingRoll
   if (state.status !== 'playing' || roll === undefined) return []
   const mover = moverFor(state, roll)
-  const pieces = getPlayer(state, mover).pieces.map((_, index): PieceId => ({ color: mover, index }))
+  const pieces = getPlayer(state, mover)
+    .pieces.map((_, index): PieceId => ({ color: mover, index }))
+    .filter((piece) => !isKicker(state, piece))
   const single = pieces.flatMap((piece) => GENERATORS.flatMap((generate) => generate(state, piece, roll)))
   const seen = new Set<string>()
   const combined = [...combinedKicks(state, pieces, mover), ...enterThenKicks(state, pieces, mover)]
-  return [...single, ...combined].filter((move) => {
-    const key = outcomeKey(state, move)
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  return [...single, ...combined]
+    .filter((move) => !move.kick || playsOut(state, move))
+    .filter((move) => {
+      const key = outcomeKey(state, move)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
+/** Whether, after this move, the rest of the turn's rolls can all be played. */
+function playsOut(state: GameState, move: Move): boolean {
+  const after = cloneState({ ...state, log: [] })
+  const rest = after.queuedRolls.slice((move.rolls ?? 1) - 1)
+  place(after, move)
+  if (rest.length === 0 || after.status !== 'playing' || getPlayer(after, after.turn).finishedPlace !== undefined) return true
+  after.pendingRoll = rest[0]
+  after.queuedRolls = rest.slice(1)
+  return legalMoves(after).some((next) => playsOut(after, next))
 }
 
 /** Rolls add up for any forward move; anything else (back, line, home kick) only when it kicks. */

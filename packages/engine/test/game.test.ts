@@ -94,7 +94,7 @@ describe('turn flow', () => {
   })
 
   it('an enter that kicks sends the opponent to base', () => {
-    const s = roll(roll(setup({ pieces: { yellow: [0] } }), 6), 3)
+    const s = roll(roll(setup({ pieces: { red: [BASE, 20], yellow: [0] } }), 6), 3)
     const next = applyMove(s, legalMoves(s).find((m) => m.kind === 'enter')!)
     expect(getPlayer(next, 'red').pieces[0]).toEqual(track(0))
     expect(getPlayer(next, 'yellow').pieces[0]).toEqual(BASE)
@@ -118,9 +118,12 @@ describe('turn flow', () => {
 
 
 describe('after a kick', () => {
-  /** Red on 5 kicks yellow on 5 + value; outside endsTurn mode a 6 is followed by a 1, played after the kick. */
+  /**
+   * Red on 5 kicks yellow on 5 + value; outside endsTurn mode a 6 is followed by a 1, which red's
+   * other piece on 30 plays after the kick.
+   */
   const kickOn = (afterKick: 'endsTurn' | 'normal' | 'bonusRoll', value: number) => {
-    let s = roll(setup({ afterKick, pieces: { red: [5, HOME, HOME, HOME], yellow: [5 + value] } }), value)
+    let s = roll(setup({ afterKick, pieces: { red: [5, 30, HOME, HOME], yellow: [5 + value] } }), value)
     if (value === 6 && afterKick !== 'endsTurn') s = roll(s, 1)
     s = applyMove(s, legalMoves(s).find((m) => m.kick)!)
     while (s.pendingRoll !== undefined) s = applyMove(s, legalMoves(s)[0])
@@ -138,7 +141,7 @@ describe('after a kick', () => {
   })
 
   it('normal: a kick on a 6 still lets the rolls after it be played', () => {
-    const s = roll(roll(setup({ pieces: { red: [5, HOME, HOME, HOME], yellow: [11] } }), 6), 1)
+    const s = roll(roll(setup({ pieces: { red: [5, 30, HOME, HOME], yellow: [11] } }), 6), 1)
     const next = applyMove(s, legalMoves(s).find((m) => m.kick)!)
     expect(next.turn).toBe('red')
     expect(next.pendingRoll).toBe(1)
