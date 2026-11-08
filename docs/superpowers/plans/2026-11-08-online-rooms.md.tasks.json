@@ -46,7 +46,7 @@
     {
       "id": 5,
       "subject": "Task 6: Durable Object, Worker routes and config",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Rooms run on Cloudflare: HTTP to create and look up rooms, WebSockets to play, storage and alarms. The Worker also keeps serving the app.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/server/src/RoomObject.ts\", \"packages/server/src/index.ts\", \"packages/server/wrangler.jsonc\", \"packages/server/vitest.config.ts\", \"packages/server/test/api.test.ts\", \"packages/server/test/globalSetup.ts\", \"packages/web/vite.config.ts\", \"packages/web/wrangler.jsonc\"], \"verifyCommand\": \"npm test -w @ludo/server && cd packages/server && npx wrangler deploy --dry-run\", \"acceptanceCriteria\": [\"create/info/socket routes work\", \"version and not_found checks\", \"newest socket wins\", \"storage, alarm and sends wired through reduce\", \"assets served for non-/api paths\", \"dev proxy\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         4
@@ -55,7 +55,7 @@
     {
       "id": 6,
       "subject": "Task 7: Web: split `useGame` into a view and a source",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** A `useGameView` hook that applies game events and animates them, fed by any source. `useGame` becomes the local source (dice and computer seats). Nothing changes for the player.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/useGameView.ts\", \"packages/web/src/useGame.ts\", \"packages/web/src/useGameView.test.ts\"], \"verifyCommand\": \"npm test -w @ludo/web && npm run e2e -w @ludo/web\", \"acceptanceCriteria\": [\"useGameView queues and animates events in order\", \"actions become intents via act\", \"reset works\", \"all existing web tests and e2e pass\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         5
@@ -64,7 +64,7 @@
     {
       "id": 7,
       "subject": "Task 8: Web: `GameView` takes a controller",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The game screen's body renders from a controller `g` and plain props, so the local and online games share it.\n\nSee docs/superpowers/plans/2026-11-08-online-rooms.md for files, steps and code.\n\n```json:metadata\n{\"files\": [\"packages/web/src/screens/GameView.tsx\", \"packages/web/src/screens/GameScreen.tsx\"], \"verifyCommand\": \"npm test -w @ludo/web\", \"acceptanceCriteria\": [\"GameView takes g and props, no useGame\", \"GameScreen keeps its props\", \"existing tests pass\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         6
@@ -107,5 +107,5 @@
       ]
     }
   ],
-  "lastUpdated": "2026-11-08T13:50:54.425313+00:00"
+  "lastUpdated": "2026-11-08T14:04:22.447132+00:00"
 }
