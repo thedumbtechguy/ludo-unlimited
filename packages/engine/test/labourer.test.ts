@@ -28,6 +28,12 @@ describe('labourer', () => {
     expect(s.labourers).toEqual({ yellow: 'red' })
   })
 
+  it('an owner who becomes a labourer frees their own labourers', () => {
+    // Blue works for yellow; red kicks yellow's last piece, so yellow works for red and blue goes free.
+    const s = playFirst(setup({ rules, pieces: { red: [5], yellow: [8] }, labourers: { blue: 'yellow' } }), 3)
+    expect(s.labourers).toEqual({ yellow: 'red' })
+  })
+
   it('is off by default', () => {
     expect(playFirst(setup({ pieces: { red: [5], yellow: [8] } }), 3).labourers).toEqual({})
   })
@@ -64,12 +70,12 @@ describe('labourer', () => {
     expect(s.labourers).toEqual({ yellow: 'red', green: 'red' })
   })
 
-  it('an owner can be labourered while still owning someone', () => {
+  it('an owner who is labourered no longer holds anyone', () => {
     const s = playFirst(
       setup({ rules, turn: 'green', labourers: { yellow: 'red' }, pieces: { red: [10], green: [7] } }),
       3,
     )
-    expect(s.labourers).toEqual({ yellow: 'red', red: 'green' })
+    expect(s.labourers).toEqual({ red: 'green' })
   })
 
   it('finishing releases the owner’s labourers', () => {

@@ -100,7 +100,8 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
   - After that, play passes to the next player after the victim.
 - **End:** the victim rolls a 6. The Labourer ends immediately, the victim plays that 6 themselves, and they roll again as usual.
 - A victim has at most one owner at a time.
-- An owner can hold several Labourers, and can be someone else's Labourer at the same time.
+- An owner can hold several Labourers.
+- When an owner becomes someone's Labourer, their own Labourers are released: with no pieces in play, they no longer hold anyone.
 - When an owner finishes the game, their Labourers are released.
 
 ## Architecture
