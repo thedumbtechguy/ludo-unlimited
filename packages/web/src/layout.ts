@@ -75,8 +75,9 @@ export function placements(state: GameState, moving?: Moving): Placement[] {
     const key = at.kind === 'base' ? `base-${piece.color}-${piece.index}` : at.kind === 'home' ? `home-${piece.color}` : posKey(at)
     groups.set(key, [...(groups.get(key) ?? []), entry])
   }
+  // Draw the lowest-index piece last (on top): it is the one the engine lets move out of a stack.
   return [...groups.values()].flatMap((group) =>
-    group.map(({ piece, at }, i) => {
+    [...group].reverse().map(({ piece, at }, i) => {
       const base = positionPoint(at, piece)
       const offset = (i - (group.length - 1) / 2) * 6
       return { piece, point: { x: base.x + offset, y: base.y + offset }, stack: group.length, top: i === group.length - 1 }

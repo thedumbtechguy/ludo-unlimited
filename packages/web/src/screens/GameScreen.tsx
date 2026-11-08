@@ -30,6 +30,7 @@ export function GameScreen({ options, onFinish, onQuit }: { options: GameOptions
         targets={g.targets}
         onSelectPiece={g.select}
         onPickTarget={g.play}
+        onDeselect={g.deselect}
       />
       <aside className="panel">
         <p className="banner" style={{ background: COLOR_HEX[mover], color: ON_COLOR[mover] }}>

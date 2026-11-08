@@ -47,4 +47,35 @@ describe('Board', () => {
     const piece = screen.getAllByTestId('piece').find((el) => el.getAttribute('data-piece') === 'red-0')!
     expect(piece.style.transform).toBe('translate(60px, 260px)')
   })
+
+  it('draws target markers after the pieces so they are not covered', () => {
+    const move: Move = { kind: 'forward', piece: red0, to: track(8), kick: { color: 'yellow', index: 0 } }
+    render(<Board state={game()} selected={red0} targets={[move]} />)
+    const marker = screen.getByTestId('target-marker')
+    const pieces = screen.getAllByTestId('piece')
+    expect(pieces.every((el) => el.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+    expect(marker).toHaveAttribute('pointer-events', 'none')
+    expect(marker).toHaveAttribute('r', '22')
+  })
+
+  it('deselects when the background is clicked but not when a target is', async () => {
+    const onDeselect = vi.fn()
+    const move: Move = { kind: 'forward', piece: red0, to: track(8) }
+    const { container } = render(<Board state={game()} selected={red0} targets={[move]} onDeselect={onDeselect} />)
+    await userEvent.click(screen.getByRole('button', { name: /square 9/ }))
+    expect(onDeselect).not.toHaveBeenCalled()
+    await userEvent.click(container.querySelector('.board')!)
+    expect(onDeselect).toHaveBeenCalledTimes(1)
+  })
+
+  it('only renders the selected piece’s button while a piece is selected', () => {
+    const red1 = { color: 'red', index: 1 } as const
+    const move: Move = { kind: 'forward', piece: red0, to: track(8) }
+    const { rerender } = render(<Board state={game()} movable={[red0, red1]} />)
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+    rerender(<Board state={game()} movable={[red0, red1]} selected={red0} targets={[move]} />)
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /Red piece 2/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Red piece 1/ })).toBeInTheDocument()
+  })
 })

@@ -66,14 +66,24 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
     const next = applyMove(game, move)
     setSelected(undefined)
     setMessage(kickMessage(move))
-    if (timing.step === 0) return setGame(next)
-    setAnimation({ piece: move.piece, path: movePath(game, move), step: 0, next })
+    if (timing.step === 0) {
+      setGame(next)
+    } else {
+      setAnimation({ piece: move.piece, path: movePath(game, move), step: 0, next })
+    }
   }
 
   function select(piece: PieceId) {
     const own = moves.filter((m) => samePiece(m.piece, piece))
-    if (own.length === 1) return play(own[0])
-    setSelected(piece)
+    if (own.length === 1) {
+      play(own[0])
+    } else {
+      setSelected(piece)
+    }
+  }
+
+  function deselect() {
+    setSelected(undefined)
   }
 
   useEffect(() => {
@@ -84,9 +94,12 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   useEffect(() => {
     if (!animation) return
     const id = setTimeout(() => {
-      if (animation.step + 1 < animation.path.length) return setAnimation({ ...animation, step: animation.step + 1 })
-      setAnimation(undefined)
-      setGame(animation.next)
+      if (animation.step + 1 < animation.path.length) {
+        setAnimation({ ...animation, step: animation.step + 1 })
+      } else {
+        setAnimation(undefined)
+        setGame(animation.next)
+      }
     }, timing.step)
     return () => clearTimeout(id)
   }, [animation])
@@ -109,5 +122,5 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const targets = humanToMove && selected ? moves.filter((m) => samePiece(m.piece, selected)) : []
   const moving: Moving | undefined = animation && { piece: animation.piece, at: animation.path[animation.step] }
 
-  return { game, moving, movable, selected, targets, lastRoll, message, humanToRoll, humanToMove, roll, select, play }
+  return { game, moving, movable, selected, targets, lastRoll, message, humanToRoll, humanToMove, roll, select, deselect, play }
 }

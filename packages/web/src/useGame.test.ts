@@ -85,4 +85,59 @@ describe('useGame', () => {
     expect(onChange).toHaveBeenLastCalledWith(result.current.game)
     expect(result.current.game.log).toHaveLength(1)
   })
+
+  it('deselect clears the selection and targets', () => {
+    const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
+    initial.players[0].pieces[0] = track(10)
+    initial.players[1].pieces[0] = track(7)
+    const { result } = renderHook(() =>
+      useGame({ settings: initial.settings, seats: humans, dice: fixedDice([3]), timing: FAST_TIMING, initial }),
+    )
+    act(() => result.current.roll())
+    act(() => result.current.select(red0))
+    expect(result.current.selected).toEqual(red0)
+    expect(result.current.targets.length).toBeGreaterThan(0)
+    act(() => result.current.deselect())
+    expect(result.current.selected).toBeUndefined()
+    expect(result.current.targets).toEqual([])
+  })
+
+  describe('labourer turns', () => {
+    const ghana2 = settingsFor('ghana', 2, 'firstWins')
+    const labourerGame = () => {
+      const initial = createGame(ghana2)
+      initial.players[0].pieces[0] = track(5)
+      initial.labourers = { yellow: 'red' }
+      initial.turn = 'yellow'
+      return initial
+    }
+
+    it('a computer owner moves automatically for a human victim', async () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() =>
+        useGame({ settings: ghana2, seats: { yellow: 'human', red: 'computer' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
+      )
+      act(() => result.current.roll())
+      await act(async () => {
+        vi.runOnlyPendingTimers()
+      })
+      await act(async () => {
+        vi.runOnlyPendingTimers()
+      })
+      expect(result.current.game.players[0].pieces[0]).toEqual(track(8))
+      expect(result.current.game.turn).toBe('red')
+    })
+
+    it('a human owner moves for a computer victim', async () => {
+      vi.useFakeTimers()
+      const { result } = renderHook(() =>
+        useGame({ settings: ghana2, seats: { yellow: 'computer', red: 'human' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
+      )
+      await act(async () => {
+        vi.runOnlyPendingTimers()
+      })
+      expect(result.current.humanToMove).toBe(true)
+      expect(result.current.movable).toEqual([red0])
+    })
+  })
 })

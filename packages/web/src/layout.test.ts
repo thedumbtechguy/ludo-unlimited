@@ -30,6 +30,15 @@ describe('layout', () => {
     expect(stacked[0].point).not.toEqual(stacked[1].point)
   })
 
+  it('puts the lowest-index piece of a stack on top', () => {
+    const state = createGame(settingsFor('classic', 4, 'firstWins'))
+    state.players[0].pieces[0] = track(5)
+    state.players[0].pieces[1] = track(5)
+    const stacked = placements(state).filter((p) => p.piece.color === 'red' && p.piece.index < 2)
+    expect(stacked.find((p) => p.top)?.piece.index).toBe(0)
+    expect(stacked[stacked.length - 1].piece.index).toBe(0)
+  })
+
   it('draws a moving piece where the animation says', () => {
     const state = createGame(settingsFor('classic', 2, 'firstWins'))
     const moved = placements(state, { piece: red0, at: track(0) }).find((p) => p.piece.color === 'red' && p.piece.index === 0)

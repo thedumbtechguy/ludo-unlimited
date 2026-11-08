@@ -11,6 +11,7 @@ export type BoardProps = {
   targets?: Move[]
   onSelectPiece?: (piece: PieceId) => void
   onPickTarget?: (move: Move) => void
+  onDeselect?: () => void
 }
 
 const samePiece = (a: PieceId, b?: PieceId) => b !== undefined && a.color === b.color && a.index === b.index
@@ -23,12 +24,12 @@ const CENTER: [Color, string][] = [
   ['red', '240,240 240,360 300,300'],
 ]
 
-export function Board({ state, moving, movable = [], selected, targets = [], onSelectPiece, onPickTarget }: BoardProps) {
+export function Board({ state, moving, movable = [], selected, targets = [], onSelectPiece, onPickTarget, onDeselect }: BoardProps) {
   const pieces = placements(state, moving)
   const pointOf = (piece: PieceId) => pieces.find((p) => samePiece(p.piece, piece))!.point
 
   return (
-    <div className="board">
+    <div className="board" onClick={onDeselect}>
       <svg viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`} aria-hidden="true">
         <defs>
           <filter id="piece-shadow" x="-50%" y="-50%" width="200%" height="200%">
@@ -60,22 +61,6 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
         {CENTER.map(([color, points]) => (
           <polygon key={color} points={points} fill={COLOR_HEX[color]} />
         ))}
-        {targets.map((move, i) => {
-          const p = positionPoint(move.to, move.piece)
-          return (
-            <circle
-              key={i}
-              data-testid="target-marker"
-              cx={p.x}
-              cy={p.y}
-              r="16"
-              fill="none"
-              stroke={move.kick ? KICK_MARK : MOVE_MARK}
-              strokeWidth="4"
-              strokeDasharray="6 4"
-            />
-          )
-        })}
         {pieces.map(({ piece, point, stack, top }) => {
           const isMovable = movable.some((m) => samePiece(m, piece))
           return (
@@ -99,9 +84,26 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
             </g>
           )
         })}
+        {targets.map((move, i) => {
+          const p = positionPoint(move.to, move.piece)
+          return (
+            <circle
+              key={i}
+              data-testid="target-marker"
+              pointerEvents="none"
+              cx={p.x}
+              cy={p.y}
+              r="22"
+              fill="none"
+              stroke={move.kick ? KICK_MARK : MOVE_MARK}
+              strokeWidth="4"
+              strokeDasharray="6 4"
+            />
+          )
+        })}
       </svg>
 
-      {movable.map((piece) => {
+      {(selected ? [selected] : movable).map((piece) => {
         const p = pointOf(piece)
         return (
           <button
@@ -111,7 +113,10 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
             style={{ left: pct(p.x), top: pct(p.y) }}
             aria-label={pieceLabel(piece, positionOf(state, piece))}
             aria-pressed={samePiece(piece, selected)}
-            onClick={() => onSelectPiece?.(piece)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelectPiece?.(piece)
+            }}
           />
         )
       })}
@@ -124,7 +129,10 @@ export function Board({ state, moving, movable = [], selected, targets = [], onS
             className="hit"
             style={{ left: pct(p.x), top: pct(p.y) }}
             aria-label={targetLabel(move)}
-            onClick={() => onPickTarget?.(move)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onPickTarget?.(move)
+            }}
           />
         )
       })}
