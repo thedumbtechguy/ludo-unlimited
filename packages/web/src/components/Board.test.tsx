@@ -172,25 +172,43 @@ describe('Board', () => {
     })
   })
 
-  it('a destination on another movable piece leaves that square to the piece', async () => {
-    const state = game()
-    state.players[0].pieces[2] = track(6)
-    state.players[0].pieces[3] = track(0)
-    const red2 = { color: 'red', index: 2 } as const
-    const red3 = { color: 'red', index: 3 } as const
-    const onSelectPiece = vi.fn()
-    const onPickTarget = vi.fn()
-    const targets: Move[] = [
-      { kind: 'forward', piece: red2, to: track(12) },
-      { kind: 'forward', piece: red3, to: track(6) },
-    ]
-    render(<Board state={state} movable={[red2, red3]} targets={targets} onSelectPiece={onSelectPiece} onPickTarget={onPickTarget} />)
-    // The marker still shows, but only the piece's own button sits on that square, so a tap selects it.
-    expect(screen.getAllByTestId('target-marker')).toHaveLength(2)
-    expect(screen.queryByRole('button', { name: 'Piece 2: Move on square 7' })).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: 'Piece 1: Red, on square 7' }))
-    expect(onSelectPiece).toHaveBeenCalledWith(red2)
-    expect(onPickTarget).not.toHaveBeenCalled()
+  describe('a square that is both a destination and holds another movable piece', () => {
+    const setupShared = () => {
+      const state = game()
+      state.players[0].pieces[2] = track(6)
+      state.players[0].pieces[3] = track(0)
+      const red2 = { color: 'red', index: 2 } as const
+      const red3 = { color: 'red', index: 3 } as const
+      const onSelectPiece = vi.fn()
+      const onPickTarget = vi.fn()
+      const onto: Move = { kind: 'forward', piece: red3, to: track(6) }
+      const targets: Move[] = [{ kind: 'forward', piece: red2, to: track(12) }, onto]
+      render(<Board state={state} movable={[red2, red3]} targets={targets} onSelectPiece={onSelectPiece} onPickTarget={onPickTarget} />)
+      return { red2, onto, onSelectPiece, onPickTarget }
+    }
+
+    it('asks which one you mean instead of guessing', async () => {
+      const { onSelectPiece, onPickTarget } = setupShared()
+      await userEvent.click(screen.getByRole('button', { name: 'Piece 1 is on square 7, and piece 2 can move there: choose one' }))
+      expect(onSelectPiece).not.toHaveBeenCalled()
+      expect(onPickTarget).not.toHaveBeenCalled()
+      const chooser = screen.getByRole('group', { name: 'Choose a piece for square 7' })
+      expect(within(chooser).getAllByRole('button').map((el) => el.textContent)).toEqual(['Piece 2Move here', 'Piece 1Move this piece'])
+    })
+
+    it('can bring the other piece onto the square', async () => {
+      const { onto, onPickTarget } = setupShared()
+      await userEvent.click(screen.getByRole('button', { name: /Piece 1 is on square 7/ }))
+      await userEvent.click(within(screen.getByRole('group')).getByText('Move here'))
+      expect(onPickTarget).toHaveBeenCalledWith(onto)
+    })
+
+    it('can move the piece standing there', async () => {
+      const { red2, onSelectPiece } = setupShared()
+      await userEvent.click(screen.getByRole('button', { name: /Piece 1 is on square 7/ }))
+      await userEvent.click(within(screen.getByRole('group')).getByText('Move this piece'))
+      expect(onSelectPiece).toHaveBeenCalledWith(red2)
+    })
   })
 
   describe('orientation', () => {

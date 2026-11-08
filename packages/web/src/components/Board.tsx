@@ -158,12 +158,14 @@ export function Board({
   const numbered = !selected && movable.length > 1
   const numberOf = (piece: PieceId) => movable.findIndex((m) => samePiece(m, piece)) + 1
   const spots = destinations(targets, turn)
-  const movableSquares = new Set(movable.map((piece) => posKey(positionOf(state, piece))))
 
   // The open chooser for a square several moves share; closed whenever the game moves on.
   const [choosing, setChoosing] = useState<string>()
   useEffect(() => setChoosing(undefined), [state])
-  const chooser = spots.find((d) => d.key === choosing && d.moves.length > 1)
+  // Movable pieces of your own standing on a destination square: a tap there could mean either.
+  const standingOn = (key: string) => (selected ? [] : movable.filter((piece) => posKey(positionOf(state, piece)) === key))
+  const ambiguous = (d: Destination) => d.moves.length > 1 || standingOn(d.key).length > 0
+  const chooser = spots.find((d) => d.key === choosing && ambiguous(d))
 
   const pick = (move: Move) => {
     setChoosing(undefined)
@@ -327,12 +329,13 @@ export function Board({
         )
       })}
       {/*
-        After the pieces, so a destination wins where it overlaps a nearby piece. A destination on a
-        square holding another movable piece gets no button: a tap there means that piece. Selecting
-        the moving piece first shows its destinations alone, and they are tappable.
+        After the pieces, so a destination wins where it overlaps a nearby piece. A destination that is
+        shared, or that holds another movable piece of yours, asks which one you mean.
       */}
-      {spots.filter(({ key }) => selected || !movableSquares.has(key)).map(({ key, point, moves }) => {
-        const shared = moves.length > 1
+      {spots.map((spot) => {
+        const { key, point, moves } = spot
+        const shared = ambiguous(spot)
+        const standing = standingOn(key)
         return (
           <button
             key={`target-${key}`}
@@ -340,9 +343,11 @@ export function Board({
             className="hit"
             style={{ left: pct(point.x), top: pct(point.y) }}
             aria-label={
-              shared
-                ? `Pieces ${listNumbers(moves.map((m) => numberOf(m.piece)))} can reach ${placeName(moves[0].to)}: choose one`
-                : labelFor(moves[0])
+              standing.length > 0
+                ? `Piece ${listNumbers(standing.map(numberOf))} is on ${placeName(moves[0].to)}, and piece ${listNumbers(moves.map((m) => numberOf(m.piece)))} can move there: choose one`
+                : shared
+                  ? `Pieces ${listNumbers(moves.map((m) => numberOf(m.piece)))} can reach ${placeName(moves[0].to)}: choose one`
+                  : labelFor(moves[0])
             }
             aria-expanded={shared ? choosing === key : undefined}
             {...previewProps(widest(moves))}
@@ -376,12 +381,27 @@ export function Board({
               >
                 <strong>Piece {numberOf(move.piece)}</strong>
                 <span>
-                  {targetAction(move)}
+                  {move.kick ? targetAction(move) : 'Move here'}
                   {rolls && ` · ${rolls}`}
                 </span>
               </button>
             )
           })}
+          {standingOn(chooser.key).map((piece) => (
+            <button
+              key={`standing-${piece.index}`}
+              type="button"
+              className="choice"
+              aria-label={`Piece ${numberOf(piece)}: move this piece`}
+              onClick={() => {
+                setChoosing(undefined)
+                onSelectPiece?.(piece)
+              }}
+            >
+              <strong>Piece {numberOf(piece)}</strong>
+              <span>Move this piece</span>
+            </button>
+          ))}
         </div>
       )}
       {names &&
