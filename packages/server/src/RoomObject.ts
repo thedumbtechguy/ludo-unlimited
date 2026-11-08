@@ -29,7 +29,7 @@ export class RoomObject extends DurableObject<Env> {
   async info(): Promise<RoomInfo | undefined> {
     const room = await this.load()
     if (!room) return undefined
-    const taken = room.members.filter((m) => m.seat).length
+    const taken = room.members.filter((m) => m.seat && m.connected).length
     return { phase: room.phase, players: room.settings.players, seatsFree: room.phase === 'lobby' ? SEATS[room.settings.players].length - taken : 0 }
   }
 

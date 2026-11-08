@@ -36,7 +36,12 @@ describe('api', () => {
     const { code } = (await res.json()) as { code: string }
     expect(code).toMatch(/^[A-Z]{4}$/)
     const info = await exports.default.fetch(`${BASE}/api/rooms/${code.toLowerCase()}`)
-    expect(await info.json()).toEqual({ phase: 'lobby', players: 4, seatsFree: 3 }) // the creator sits on red
+    // The creator's seat counts as taken once they're connected.
+    expect(await info.json()).toEqual({ phase: 'lobby', players: 4, seatsFree: 4 })
+    await open(code, 'host')
+    await settle()
+    const after = await exports.default.fetch(`${BASE}/api/rooms/${code}`)
+    expect(await after.json()).toEqual({ phase: 'lobby', players: 4, seatsFree: 3 })
   })
 
   it('refuses a bad body and an unknown code', async () => {

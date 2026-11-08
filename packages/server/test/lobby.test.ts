@@ -16,6 +16,20 @@ describe('lobby', () => {
     expect(sentTo(step, 'kofi').find((m) => m.t === 'room')).toMatchObject({ you: { host: false } })
   })
 
+  it('a creator who never connects does not hold the first seat', () => {
+    let step = run(lobby(4), [join('kofi', 'Kofi'), say('kofi', { t: 'sit', color: 'red' })])
+    expect([seatOf(step.room, 'host'), seatOf(step.room, 'kofi')]).toEqual([undefined, 'red'])
+    step = run(lobby(4), [join('kofi', 'Kofi'), say('kofi', { t: 'sit', color: 'green' }), say('kofi', { t: 'start', empty: 'computers' })])
+    expect(step.room.computers).toEqual(['red', 'yellow', 'blue'])
+    expect(seatOf(step.room, 'host')).toBeUndefined()
+  })
+
+  it('start with drop leaves out a seated member who is not connected', () => {
+    const step = run(lobby(4), [join('kofi'), join('esi'), say('kofi', { t: 'sit', color: 'green' }), say('esi', { t: 'sit', color: 'blue' }), say('kofi', { t: 'start', empty: 'drop' })])
+    expect(step.room.settings.players).toBe(2)
+    expect([seatOf(step.room, 'host'), seatOf(step.room, 'kofi'), seatOf(step.room, 'esi')]).toEqual([undefined, 'red', 'yellow'])
+  })
+
   it('the room view never carries device IDs', () => {
     const { room } = run(lobby(), [join('host')])
     expect(JSON.stringify(viewOf(room, room.lastActive))).not.toContain('"device"')

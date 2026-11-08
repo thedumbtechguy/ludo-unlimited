@@ -221,9 +221,13 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
   const host = room.host === device
   switch (msg.t) {
     case 'sit': {
-      const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !room.members.some((o) => o.seat === msg.color)
+      // A seat held by someone not connected (a creator who never came) is free too.
+      const holder = room.members.find((o) => o.seat === msg.color)
+      const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !holder?.connected
       if (!free) return refuse(ctx, device, 'illegal')
+      if (holder) holder.seat = undefined
       m.seat = msg.color
+      prune(room)
       return broadcastRoom(ctx)
     }
     case 'stand':
@@ -272,6 +276,9 @@ function rejoin(ctx: Ctx, m: Member, color: Color): void {
 
 function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   const { room } = ctx
+  // Nobody plays for a seat whose holder isn't here.
+  for (const o of room.members) if (!o.connected) o.seat = undefined
+  prune(room)
   const people = seated(room)
   if (empty === 'drop') {
     if (people.length < 2) return false

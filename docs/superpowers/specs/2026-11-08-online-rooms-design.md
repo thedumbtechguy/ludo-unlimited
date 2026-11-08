@@ -147,7 +147,7 @@ type Room = {
 ## Room rules
 
 **Lobby**
-- **Joining:** every visitor joins as a watcher. Tapping a free colour sits them, and `stand` frees the seat.
+- **Joining:** the room's creator starts in the first seat (red); everyone else joins as a watcher. Tapping a free colour sits them, and `stand` frees the seat. A seat whose holder isn't connected counts as free, and Start leaves out anyone not connected.
 - **Seat colours:** the lobby offers the seats for the host's player count, in the engine's seat order (`SEATS`). 2 players use red and yellow; 3 use red, green and yellow.
   - If the host lowers the count, anyone on a seat that no longer exists goes back to watching.
   - With `drop`, players are moved onto the seats of the smaller count (`SEATS[n]`), keeping each one's colour where possible, so the board matches the local game.
