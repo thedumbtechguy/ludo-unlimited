@@ -1,31 +1,39 @@
 :root {
-  --bg: #eef2f7;
-  --ink: #0f172a;
-  --muted: #475569;
-  --line: #cbd5e1;
-  --accent: #3e63dd;
-  --kick: #e5484d;
+  --table: #1F5B57;
+  --text: #F3E9D2;
+  --muted: #A9CBC5;
+  --line: rgba(243, 233, 210, 0.16);
+  --ink: #1d1d1f;
+  /* The main button's colour: the current player's, set inline where it differs from red. */
+  --main: #e5484d;
+  --on-main: #ffffff;
   font-family: Inter, system-ui, sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--table);
+  -webkit-font-smoothing: antialiased;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: var(--bg); }
-h1, h2 { font-family: 'Space Grotesk', Inter, sans-serif; letter-spacing: -0.5px; margin: 0; }
-button { font: inherit; color: var(--ink); }
+body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--table); }
+h1, h2 { margin: 0; }
+h1 { font-weight: 900; letter-spacing: -0.5px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
 
 .screen { max-width: 1200px; margin: 0 auto; padding: 16px; }
 .home, .setup, .results { max-width: 560px; display: flex; flex-direction: column; gap: 16px; }
 .home p, .setup p { margin: 0; color: var(--muted); }
 
-.primary { background: var(--accent); color: #ffffff; border: 0; border-radius: 12px; padding: 14px 20px; font-weight: 600; min-height: 48px; cursor: pointer; }
-.secondary { background: #ffffff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; min-height: 44px; cursor: pointer; }
+/* Flat buttons. The main one is painted in the current player's colour. */
+.primary, .secondary { min-height: 52px; padding: 0 20px; border-radius: 12px; font-weight: 800; font-size: 17px; cursor: pointer; }
+.primary { background: var(--main); color: var(--on-main); border: 0; }
+.secondary { background: transparent; color: var(--text); border: 2px solid rgba(243, 233, 210, 0.55); font-weight: 700; }
 
-fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 4px 20px; background: #ffffff; margin: 0; }
+fieldset { border: 0; border-bottom: 1px solid var(--line); padding: 12px 0; display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; }
 legend { font-weight: 600; padding: 0 4px; }
 label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
-select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #ffffff; }
-details { background: #ffffff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--table); color: var(--text); }
+details { border-bottom: 1px solid var(--line); padding: 12px 0; }
 summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .seat { display: inline-flex; align-items: center; gap: 8px; }
 .actions { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
@@ -92,10 +100,10 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 /* Roll tray: this turn's rolls as small dice. Holds its height so the panel doesn't jump. */
 .roll-tray { list-style: none; margin: -8px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 46px; }
 .chip { position: relative; width: 32px; height: 32px; padding: 5px; border-radius: 7px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
-.chip.now { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-.chip.now::after { content: 'now'; position: absolute; left: 50%; top: 100%; margin-top: 3px; transform: translateX(-50%); font-size: 10px; font-weight: 700; line-height: 1; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-.chip.using { border-color: var(--kick); box-shadow: 0 0 0 2px var(--kick); background: #fff1f1; }
-.chip.now.using::after { color: var(--kick); }
+.chip.now { border-color: var(--main); box-shadow: 0 0 0 2px var(--main); }
+.chip.now::after { content: 'now'; position: absolute; left: 50%; top: 100%; margin-top: 3px; transform: translateX(-50%); font-size: 10px; font-weight: 700; line-height: 1; color: var(--main); text-transform: uppercase; letter-spacing: 0.5px; }
+.chip.using { border-color: var(--main); box-shadow: 0 0 0 2px var(--main); background: #fff1f1; }
+.chip.now.using::after { color: var(--main); }
 .chip-pips { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; }
 .chip-pip { place-self: center; width: 5px; height: 5px; border-radius: 50%; }
 .chip-pip.on { background: var(--ink); }
@@ -113,5 +121,5 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .message { line-height: 24px; height: 24px; margin: 0; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .results ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.results li { display: flex; align-items: center; gap: 12px; background: #ffffff; border-radius: 12px; padding: 12px 16px; font-weight: 600; }
+.results li { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid var(--line); font-weight: 700; }
 .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; }
