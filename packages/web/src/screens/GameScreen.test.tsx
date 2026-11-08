@@ -94,11 +94,11 @@ describe('GameScreen', () => {
       expect(screen.queryByRole('button', { name: 'Roll again' })).toBeNull()
     })
 
-    it('paints Roll again in the current player’s colour', async () => {
+    it('makes Roll again the main button, in the fixed button colour rather than a player’s', async () => {
       renderGame({ dice: fixedDice([6]) })
       await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
-      expect(screen.getByRole('main').style.getPropertyValue('--player')).toBe('#e5484d')
       expect(screen.getByRole('button', { name: 'Roll again' })).toHaveClass('primary')
+      expect(screen.getByRole('main').getAttribute('style')).toBeNull()
     })
 
     it('says when a roll has no moves', async () => {

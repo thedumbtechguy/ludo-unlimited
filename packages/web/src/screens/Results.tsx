@@ -1,14 +1,11 @@
 import type { GameState } from '@ludo/engine'
-import type { CSSProperties } from 'react'
 import { COLOR_NAME, ORDINAL } from '../labels'
-import { COLOR_HEX, ON_COLOR } from '../theme'
+import { COLOR_HEX } from '../theme'
 
 export function Results({ game, onPlayAgain, onHome }: { game: GameState; onPlayAgain: () => void; onHome: () => void }) {
   const ranked = [...game.players].sort((a, b) => (a.finishedPlace ?? 99) - (b.finishedPlace ?? 99))
-  const winner = ranked[0].color
-  const paint = { '--player': COLOR_HEX[winner], '--on-player': ON_COLOR[winner] } as CSSProperties
   return (
-    <main className="screen results" style={paint}>
+    <main className="screen results">
       <h1>Game over</h1>
       <ol>
         {ranked.map((p) => (

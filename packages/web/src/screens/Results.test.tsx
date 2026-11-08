@@ -32,13 +32,13 @@ describe('Results', () => {
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Yellow1st', 'Red'])
   })
 
-  it('offers Play again as the main button, in the winner’s colour, and Home', async () => {
+  it('offers Play again as the main button, and Home', async () => {
     const onPlayAgain = vi.fn()
     const onHome = vi.fn()
     render(<Results game={finished()} onPlayAgain={onPlayAgain} onHome={onHome} />)
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Play again', 'Home'])
     expect(screen.getByRole('button', { name: 'Play again' })).toHaveClass('primary')
-    expect(screen.getByRole('main').style.getPropertyValue('--player')).toBe('#30a46c')
+    expect(screen.getByRole('main').getAttribute('style')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Play again' }))
     await userEvent.click(screen.getByRole('button', { name: 'Home' }))
     expect(onPlayAgain).toHaveBeenCalled()

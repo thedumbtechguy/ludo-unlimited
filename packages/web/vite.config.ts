@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Ludo Unlimited',
         short_name: 'Ludo Unlimited',
         description: 'Ludo with Ghanaian kicks',
-        theme_color: '#1F5B57',
-        background_color: '#1F5B57',
+        theme_color: '#FFFFFF',
+        background_color: '#FFFFFF',
         display: 'standalone',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },

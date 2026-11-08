@@ -1,5 +1,5 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { Board } from '../components/Board'
 import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
@@ -7,7 +7,6 @@ import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
 import { firstHuman, rulesName, seatNames } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
-import { COLOR_HEX, ON_COLOR } from '../theme'
 import type { Hand } from '../types'
 import { useGame, type GameOptions } from '../useGame'
 
@@ -47,11 +46,9 @@ export function GameScreen({ options, hand, onHand, onFinish, onQuit, onRestart 
       : ''
   const noMoves = g.message === 'No moves'
   const shownHint = noMoves ? (hint ? `No moves. ${hint}` : 'No moves') : hint
-  // The main button takes the colour of whoever is playing.
-  const paint = { '--player': COLOR_HEX[mover], '--on-player': ON_COLOR[mover] } as CSSProperties
 
   return (
-    <main className="game" style={paint}>
+    <main className="game">
       <header className="topbar">
         <span className="title">Ludo Unlimited</span>
         <span className="rules-name">{rulesName(options.settings.rules)}</span>
