@@ -78,4 +78,29 @@ describe('line kick', () => {
     const s = setup({ rules: { lineKick: true, backKick: true }, roll: 3, pieces: { red: [11], yellow: [14] } })
     expect(legalMoves(s)).toEqual([{ kind: 'forward', piece: piece('red'), to: track(14), kick: piece('yellow') }])
   })
+  it('after entering, the start square is the via', () => {
+    const s = setup({ rules, roll: 6, pieces: { yellow: [48] } })
+    expect(lines(s)).toEqual([
+      { kind: 'line', piece: piece('red'), via: track(0), to: track(48), kick: piece('yellow') },
+    ])
+  })
+
+  it('after entering onto your own piece', () => {
+    const s = setup({ rules, roll: 6, pieces: { red: [0, BASE], yellow: [48] } })
+    expect(lines(s)).toContainEqual({
+      kind: 'line',
+      piece: piece('red', 1),
+      via: track(0),
+      to: track(48),
+      kick: piece('yellow'),
+    })
+  })
+
+  it('not after entering onto a lone opponent (that is an enter kick)', () => {
+    expect(lines(setup({ rules, roll: 6, pieces: { green: [0], yellow: [48] } }))).toEqual([])
+  })
+
+  it('not on entering without a 6', () => {
+    expect(lines(setup({ rules, roll: 5, pieces: { yellow: [48] } }))).toEqual([])
+  })
 })
