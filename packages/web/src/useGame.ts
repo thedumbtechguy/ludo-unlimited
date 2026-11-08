@@ -15,15 +15,15 @@ import {
   type Position,
   type Settings,
 } from '@ludo/engine'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
 import { kickMessage } from './labels'
 import type { Moving } from './layout'
 import type { Seats } from './types'
 
-export type Timing = { botRoll: number; botMove: number; step: number }
-export const NORMAL_TIMING: Timing = { botRoll: 600, botMove: 400, step: 120 }
-export const FAST_TIMING: Timing = { botRoll: 0, botMove: 0, step: 0 }
+export type Timing = { botRoll: number; botMove: number; step: number; roll: number }
+export const NORMAL_TIMING: Timing = { botRoll: 600, botMove: 400, step: 120, roll: 650 }
+export const FAST_TIMING: Timing = { botRoll: 0, botMove: 0, step: 0, roll: 0 }
 
 export type GameOptions = {
   settings: Settings
@@ -46,20 +46,34 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   const [selected, setSelected] = useState<PieceId>()
   const [lastRoll, setLastRoll] = useState<number>()
   const [message, setMessage] = useState<string>()
+  const [rollingTo, setRollingTo] = useState<number>()
+  const rolling = rollingTo !== undefined
+  const rollTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => () => clearTimeout(rollTimer.current), [])
 
   const seatOf = (color: Color) => seats[color] ?? 'computer'
-  const busy = animation !== undefined
+  const busy = animation !== undefined || rolling
   const mover = currentMover(game)
   const moves = busy ? [] : legalMoves(game)
   const humanToRoll = !busy && game.status === 'playing' && game.pendingRoll === undefined && seatOf(game.turn) === 'human'
   const humanToMove = !busy && mover !== undefined && seatOf(mover) === 'human'
 
-  function roll() {
-    const value = dice()
+  function applyRoll(value: number) {
     const next = rollDice(game, value)
     setLastRoll(value)
     setMessage(next.pendingRoll === undefined ? 'No moves' : undefined)
     setGame(next)
+  }
+
+  function roll() {
+    const value = dice()
+    if (timing.roll === 0) return applyRoll(value)
+    setRollingTo(value)
+    rollTimer.current = setTimeout(() => {
+      setRollingTo(undefined)
+      applyRoll(value)
+    }, timing.roll)
   }
 
   function play(move: Move) {
@@ -116,11 +130,17 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
       const id = setTimeout(() => play(chooseMove(game, random)!), timing.botMove)
       return () => clearTimeout(id)
     }
+    // A human with a single legal move has nothing to choose: play it after a short beat.
+    const only = legalMoves(game)
+    if (only.length === 1) {
+      const id = setTimeout(() => play(only[0]), timing.botMove)
+      return () => clearTimeout(id)
+    }
   }, [game, busy])
 
   const movable = humanToMove ? moves.map((m) => m.piece).filter((p, i, all) => all.findIndex((q) => samePiece(p, q)) === i) : []
   const targets = humanToMove && selected ? moves.filter((m) => samePiece(m.piece, selected)) : []
   const moving: Moving | undefined = animation && { piece: animation.piece, at: animation.path[animation.step] }
 
-  return { game, moving, movable, selected, targets, lastRoll, message, humanToRoll, humanToMove, roll, select, deselect, play }
+  return { game, moving, movable, selected, targets, lastRoll, rolling, rollingTo, message, humanToRoll, humanToMove, roll, select, deselect, play }
 }

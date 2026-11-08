@@ -1,5 +1,5 @@
 import { createGame, settingsFor, track } from '@ludo/engine'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixedDice, seededDice } from './dice'
 import { FAST_TIMING, useGame } from './useGame'
@@ -11,14 +11,35 @@ const red0 = { color: 'red', index: 0 } as const
 describe('useGame', () => {
   afterEach(() => vi.useRealTimers())
 
-  it('a human rolls; a piece with one move plays when selected; a 6 rolls again', () => {
+  it('a human with exactly one legal move has it played automatically', async () => {
     const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING }))
     expect(result.current.humanToRoll).toBe(true)
     act(() => result.current.roll())
-    expect(result.current.movable).toEqual([red0])
-    act(() => result.current.select(red0))
-    expect(result.current.game.players[0].pieces[0]).toEqual(track(0))
+    await waitFor(() => expect(result.current.game.players[0].pieces[0]).toEqual(track(0)))
     expect(result.current.humanToRoll).toBe(true)
+  })
+
+  it('auto-plays the single move after timing.botMove', () => {
+    vi.useFakeTimers()
+    const timing = { botRoll: 0, botMove: 400, step: 0, roll: 0 }
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing }))
+    act(() => result.current.roll())
+    expect(result.current.game.pendingRoll).toBeDefined()
+    act(() => vi.advanceTimersByTime(399))
+    expect(result.current.game.players[0].pieces[0]).toEqual({ kind: 'base' })
+    act(() => vi.advanceTimersByTime(1))
+    expect(result.current.game.players[0].pieces[0]).toEqual(track(0))
+  })
+
+  it('with several legal moves the human still chooses', () => {
+    const initial = createGame(classic2)
+    initial.players[0].pieces[0] = track(5)
+    const { result } = renderHook(() =>
+      useGame({ settings: classic2, seats: humans, dice: fixedDice([6]), timing: FAST_TIMING, initial }),
+    )
+    act(() => result.current.roll())
+    expect(result.current.movable).toHaveLength(2)
+    expect(result.current.game.pendingRoll).toBeDefined()
   })
 
   it('a piece with several moves shows its targets; picking one plays it', () => {
@@ -47,7 +68,7 @@ describe('useGame', () => {
     vi.useFakeTimers()
     const initial = createGame(classic2)
     initial.players[0].pieces[0] = track(5)
-    const timing = { botRoll: 0, botMove: 0, step: 100 }
+    const timing = { botRoll: 0, botMove: 0, step: 100, roll: 0 }
     const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3]), timing, initial }))
     act(() => result.current.roll())
     act(() => result.current.select(red0))
@@ -139,5 +160,37 @@ describe('useGame', () => {
       expect(result.current.humanToMove).toBe(true)
       expect(result.current.movable).toEqual([red0])
     })
+  })
+
+  it('tumbles before applying a roll when timing.roll is set', () => {
+    vi.useFakeTimers()
+    const timing = { botRoll: 0, botMove: 0, step: 0, roll: 650 }
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: humans, dice: fixedDice([3]), timing }))
+    expect(result.current.humanToRoll).toBe(true)
+    act(() => result.current.roll())
+    expect(result.current.rolling).toBe(true)
+    expect(result.current.humanToRoll).toBe(false)
+    expect(result.current.game.pendingRoll).toBeUndefined()
+    expect(result.current.lastRoll).toBeUndefined()
+    act(() => vi.advanceTimersByTime(649))
+    expect(result.current.rolling).toBe(true)
+    act(() => vi.advanceTimersByTime(1))
+    expect(result.current.rolling).toBe(false)
+    expect(result.current.lastRoll).toBe(3)
+    expect(result.current.message).toBe('No moves')
+    expect(result.current.game.turn).toBe('yellow')
+  })
+
+  it('does not let a bot roll again while a roll is tumbling', () => {
+    vi.useFakeTimers()
+    const timing = { botRoll: 0, botMove: 0, step: 0, roll: 650 }
+    const dice = vi.fn(() => 3)
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: { red: 'computer', yellow: 'human' }, dice, timing }))
+    act(() => vi.advanceTimersByTime(300))
+    expect(result.current.rolling).toBe(true)
+    expect(dice).toHaveBeenCalledTimes(1)
+    act(() => vi.advanceTimersByTime(350))
+    expect(result.current.rolling).toBe(false)
+    expect(dice).toHaveBeenCalledTimes(1)
   })
 })

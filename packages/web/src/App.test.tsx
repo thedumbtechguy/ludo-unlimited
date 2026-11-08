@@ -25,6 +25,9 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'New game' }))
     await user.click(screen.getByRole('button', { name: 'Start game' }))
     await user.click(screen.getByRole('button', { name: /Roll dice/ }))
+    await screen.findByText('Red to roll') // the lone enter move auto-played
+    await user.click(screen.getByRole('button', { name: /Roll dice/ })) // now enter or advance: a real choice
+    await screen.findByText('Red to move')
     await user.click(screen.getByRole('button', { name: 'Quit to menu' }))
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(screen.getByText('Red to move')).toBeInTheDocument()

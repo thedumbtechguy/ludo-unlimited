@@ -55,20 +55,24 @@ export function Setup({ onStart, onBack }: { onStart: (settings: Settings, seats
 
       <details>
         <summary>Customise rules</summary>
-        {RULE_NAME.map(([key, name]) => (
-          <label key={key}>
-            <input type="checkbox" checked={rules[key]} onChange={(e) => setRules({ ...rules, [key]: e.target.checked })} />
-            {name}
-          </label>
-        ))}
-        <label htmlFor="after-kick">After a kick</label>
-        <select id="after-kick" value={afterKick} onChange={(e) => setAfterKick(e.target.value as AfterKick)}>
+        <div className="rule-checks">
+          {RULE_NAME.map(([key, name]) => (
+            <label key={key}>
+              <input type="checkbox" checked={rules[key]} onChange={(e) => setRules({ ...rules, [key]: e.target.checked })} />
+              {name}
+            </label>
+          ))}
+        </div>
+        <div className="rule-after-kick">
+          <label htmlFor="after-kick">After a kick</label>
+          <select id="after-kick" value={afterKick} onChange={(e) => setAfterKick(e.target.value as AfterKick)}>
             {AFTER_KICK.map(([value, name]) => (
               <option key={value} value={value}>
                 {name}
               </option>
             ))}
-        </select>
+          </select>
+        </div>
       </details>
 
       <fieldset>

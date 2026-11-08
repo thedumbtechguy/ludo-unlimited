@@ -36,7 +36,7 @@ export function GameScreen({ options, onFinish, onQuit }: { options: GameOptions
         <p className="banner" style={{ background: COLOR_HEX[mover], color: ON_COLOR[mover] }}>
           {banner}
         </p>
-        <DiceButton value={g.lastRoll} disabled={!g.humanToRoll} onRoll={g.roll} />
+        <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
         <p className="hint">{g.humanToRoll ? 'Tap the dice to roll' : g.humanToMove ? 'Tap a glowing piece' : ''}</p>
         <p className="message" role="status">
           {g.message ?? ''}
