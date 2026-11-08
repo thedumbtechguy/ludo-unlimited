@@ -9,17 +9,17 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 }
 
-// Rotation [x, y] in degrees that brings each face to the viewer (faces are placed in styles.css).
+// Rotation [x, y] in degrees that brings each face to the TOP, like a die resting on a table (faces are placed in styles.css).
 // Always expressed as the same two functions so CSS interpolates function-by-function; a different
 // function list between rolls makes the browser fall back to matrix interpolation, which drops the
 // extra full turns and the spin never shows.
 const FACE_UP: Record<number, [number, number]> = {
-  1: [0, 0],
-  6: [0, 180],
-  2: [0, -90],
-  5: [0, 90],
-  3: [-90, 0],
-  4: [90, 0],
+  3: [0, 0],
+  4: [180, 0],
+  1: [90, 0],
+  6: [-90, 0],
+  2: [90, -90],
+  5: [90, 90],
 }
 
 // Where each face sits in the cube's own space (unit normal).
@@ -34,7 +34,7 @@ const NORMAL: Record<number, [number, number, number]> = {
 
 type Shade = 'front' | 'top' | 'side' | 'back'
 
-// Light comes from the front-top-left: which role does each face play once `facing` is toward the viewer?
+// Light comes from above: which role does each face play once `facing` is on top?
 function shadeOf(face: number, facing: number): Shade {
   const [ax, ay] = FACE_UP[facing].map((d) => (d * Math.PI) / 180)
   const [x, y, z] = NORMAL[face]
@@ -43,8 +43,8 @@ function shadeOf(face: number, facing: number): Shade {
   const z1 = -x * Math.sin(ay) + z * Math.cos(ay)
   const y2 = y * Math.cos(ax) - z1 * Math.sin(ax)
   const z2 = y * Math.sin(ax) + z1 * Math.cos(ax)
-  if (z2 > 0.5) return 'front'
   if (y2 < -0.5) return 'top'
+  if (z2 > 0.5) return 'front'
   if (x1 < -0.5) return 'side'
   return 'back'
 }

@@ -56,7 +56,7 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .dice:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 24px; }
 .dice::before { content: ''; position: absolute; left: 50%; bottom: 14px; width: 84px; height: 20px; margin-left: -42px; border-radius: 50%; background: radial-gradient(closest-side, rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.16) 60%, rgba(15, 23, 42, 0)); opacity: 0.9; }
 .dice.rolling::before { animation: floor-shadow 650ms ease-out; }
-.dice-view { display: block; width: 88px; height: 88px; transform-style: preserve-3d; transform: rotateX(-28deg) rotateY(32deg); }
+.dice-view { display: block; width: 88px; height: 88px; transform-style: preserve-3d; transform: rotateX(-55deg) rotateY(32deg); }
 .dice.rolling .dice-view { animation: bounce 650ms ease-out; }
 .cube { position: relative; display: block; width: 88px; height: 88px; transform-style: preserve-3d; transition: transform 650ms ease-out; }
 .core { position: absolute; left: 1px; top: 1px; width: 86px; height: 86px; background: #cbd5e1; }
@@ -64,8 +64,9 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .core-c { transform: rotateX(90deg); }
 .face { position: absolute; inset: 0; box-sizing: border-box; display: grid; padding: 13px; background: linear-gradient(145deg, #ffffff, #eef2f7); border: 1px solid #e2e8f0; border-radius: 6px; backface-visibility: hidden; }
 .face::before { content: ''; position: absolute; inset: 0; border-radius: 5px; background: rgba(15, 23, 42, 0); transition: background-color 650ms ease-out; pointer-events: none; }
-.face.shade-top::before { background: linear-gradient(rgba(255, 237, 190, 0.35), rgba(255, 237, 190, 0.1)); }
-.face.shade-side::before { background: linear-gradient(rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.22)); }
+.face.shade-top::before { background: linear-gradient(rgba(255, 243, 214, 0.3), rgba(255, 243, 214, 0.08)); }
+.face.shade-front::before { background: linear-gradient(rgba(15, 23, 42, 0.14), rgba(15, 23, 42, 0.26)); }
+.face.shade-side::before { background: linear-gradient(rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.34)); }
 .face.shade-back::before { background: rgba(15, 23, 42, 0.18); }
 .face-1 { transform: translateZ(44px); }
 .face-6 { transform: rotateY(180deg) translateZ(44px); }
