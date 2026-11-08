@@ -1,7 +1,8 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Board } from '../components/Board'
 import { FxLayer } from '../fx/FxLayer'
+import { DiceFire, OnFire, StreakLabel, useSixStreak } from '../fx/SixStreak'
 import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
@@ -31,6 +32,8 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
   // The destination being hovered or focused, so the tray can light up the rolls it would use.
   const [preview, setPreview] = useState<Move>()
   const [menuOpen, setMenuOpen] = useState(false)
+  const dice = useRef<HTMLDivElement>(null)
+  const streak = useSixStreak(g.effects, game.turn)
   useEffect(() => setPreview(undefined), [game])
 
   useEffect(() => {
@@ -67,6 +70,10 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
         </header>
 
         <div className="play">
+          {/* Phones: the empty table above the board, where "On fire" goes. */}
+          <div className="fire-slot" data-hand={hand}>
+            <OnFire count={streak.count} place="phone" />
+          </div>
           <Board
             state={game}
             moving={g.moving}
@@ -87,7 +94,12 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
           {/* Fixed heights throughout, so nothing jumps as the turn moves on. */}
           {/* On phones the dice sits under the playing hand's thumb. */}
           <section className="controls" aria-label="Dice" data-hand={hand}>
-            <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
+            <div className="dice-slot" ref={dice}>
+              <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
+              <OnFire count={streak.count} place="desk" />
+              <StreakLabel count={streak.count} />
+            </div>
+            <DiceFire dice={dice} streak={streak} />
             <div className="controls-side">
               <RollTray rolls={g.turnRolls} current={g.currentIndex} using={preview?.rolls} />
               <div className="action-slot">

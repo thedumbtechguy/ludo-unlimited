@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fixedDice, randomDice, seededDice } from './dice'
+import { fixedDice, randomDice, scriptedDice, seededDice } from './dice'
 
 describe('dice', () => {
   it('random dice roll 1 to 6', () => {
@@ -11,6 +11,11 @@ describe('dice', () => {
   it('fixed dice cycle through their values', () => {
     const dice = fixedDice([6, 2])
     expect([dice(), dice(), dice()]).toEqual([6, 2, 6])
+  })
+
+  it('scripted dice roll their values in order, then hand over', () => {
+    const dice = scriptedDice([6, 6, 3], () => 1)
+    expect([dice(), dice(), dice(), dice(), dice()]).toEqual([6, 6, 3, 1, 1])
   })
 
   it('seeded dice repeat for the same seed', () => {

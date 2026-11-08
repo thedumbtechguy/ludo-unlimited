@@ -3,6 +3,8 @@
 export type Rgb = readonly [number, number, number]
 export type Point = { x: number; y: number }
 export type Blend = 'source-over' | 'lighter'
+/** A crisp dot, or a soft glowing puff (flames, smoke). */
+export type Shape = 'dot' | 'soft'
 
 export type ParticleInit = {
   x: number
@@ -19,11 +21,14 @@ export type ParticleInit = {
   colors: readonly Rgb[]
   /** Opacity at birth; it fades to 0 by the end of the life. */
   alpha?: number
+  /** How long the opacity holds before fading: 1 fades evenly, 2 (the default) holds then drops. */
+  hold?: number
   /** px per second², positive falls, negative rises. */
   gravity?: number
   /** Fraction of the velocity lost per second. */
   drag?: number
   blend?: Blend
+  shape?: Shape
 }
 
 export type Particle = Required<ParticleInit> & { age: number }
@@ -57,9 +62,11 @@ export function spawn(world: World, init: ParticleInit): boolean {
   world.particles.push({
     endSize: init.size,
     alpha: 1,
+    hold: 2,
     gravity: 0,
     drag: 0,
     blend: 'source-over',
+    shape: 'dot',
     ...init,
     age: 0,
   })
@@ -127,7 +134,7 @@ export function colorAt(colors: readonly Rgb[], t: number): Rgb {
 /** What to paint for a particle right now. */
 export function look(p: Particle): { radius: number; rgb: Rgb; alpha: number } {
   const t = progress(p)
-  return { radius: p.size + (p.endSize - p.size) * t, rgb: colorAt(p.colors, t), alpha: p.alpha * (1 - t) }
+  return { radius: p.size + (p.endSize - p.size) * t, rgb: colorAt(p.colors, t), alpha: p.alpha * (1 - t ** p.hold) }
 }
 
 export const hex = (value: string): Rgb => {

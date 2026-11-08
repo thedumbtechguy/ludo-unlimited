@@ -226,3 +226,24 @@ button.row { cursor: pointer; }
 
 /* Effects: one canvas over the whole screen that never takes a tap. Under the sheets. */
 .fx-layer { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; pointer-events: none; }
+
+/* Six streak. The fire itself is drawn on the effects canvas; the dice sits above that canvas so the
+   flames burn behind and around it. */
+.dice-slot { position: relative; z-index: 6; flex: none; display: grid; place-items: center; }
+.streak-label { position: absolute; top: 4px; right: -6px; font-weight: 900; font-size: 15px; color: #C2410C; white-space: nowrap; pointer-events: none; }
+.controls[data-hand="right"] .streak-label { right: auto; left: -6px; }
+.fire-slot { position: relative; flex: 1; min-height: 0; margin-bottom: -18px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.on-fire { position: relative; z-index: 6; margin: 0; font-weight: 900; color: #F76B15; letter-spacing: -1.5px; line-height: 1; white-space: nowrap; paint-order: stroke fill; -webkit-text-stroke: 9px #ffffff; text-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); pointer-events: none; animation: on-fire-in 380ms cubic-bezier(.2, .9, .3, 1.25) both; }
+.on-fire.leaving { animation: on-fire-out 600ms ease-in forwards; }
+.on-fire-phone { font-size: min(58px, 14.5vw); -webkit-text-stroke-width: min(9px, 2.25vw); }
+.on-fire-desk { display: none; }
+@keyframes on-fire-in { from { opacity: 0; transform: scale(1.7) rotate(-4deg); } 60% { opacity: 1; } }
+@keyframes on-fire-out { to { opacity: 0; transform: translateY(-10px) scale(0.96); } }
+@media (min-width: 900px) and (orientation: landscape) {
+  .fire-slot { display: none; }
+  .on-fire-desk { display: block; position: absolute; bottom: calc(100% + 36px); left: 50%; translate: -50% 0; font-size: 44px; -webkit-text-stroke: 8px #ffffff; }
+  .streak-label, .controls[data-hand="right"] .streak-label { left: auto; right: -10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .on-fire, .on-fire.leaving { animation: none; }
+}

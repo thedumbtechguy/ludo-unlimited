@@ -10,5 +10,7 @@ vi.stubGlobal('matchMedia', (query: string) => ({
   removeEventListener: () => {},
 }))
 Element.prototype.animate = () => ({ cancel: () => {} }) as unknown as Animation
+// No 2D canvas either: the effects layer simply draws nothing.
+HTMLCanvasElement.prototype.getContext = () => null
 
 afterEach(() => cleanup())

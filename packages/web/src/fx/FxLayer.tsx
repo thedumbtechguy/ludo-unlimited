@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { EffectsLevel } from '../types'
-import { burst, createWorld, FULL_CAP, isIdle, look, REDUCED_CAP, step, type Emitter, type Make, type Particle, type Point } from './particles'
+import { burst, createWorld, FULL_CAP, isIdle, look, REDUCED_CAP, step, type Emitter, type Make, type Particle, type Point, type Rgb } from './particles'
 
 export type EmitterOptions = {
   /** Particles per second (a tenth of it with reduced effects). */
@@ -18,6 +18,8 @@ export type EmitterHandle = {
 }
 
 export type Fx = {
+  /** False when effects are skipped altogether (instant timing): draw no effect, not even static ones. */
+  enabled: boolean
   level: EffectsLevel
   /** `count` particles around a screen point (a tenth of them with reduced effects). */
   burst: (x: number, y: number, count: number, make: Make) => void
@@ -25,7 +27,7 @@ export type Fx = {
 }
 
 const noop = () => {}
-const NO_FX: Fx = { level: 'reduced', burst: noop, emitter: () => ({ set: noop, fade: noop, stop: noop }) }
+const NO_FX: Fx = { enabled: false, level: 'reduced', burst: noop, emitter: () => ({ set: noop, fade: noop, stop: noop }) }
 const FxContext = createContext<Fx>(NO_FX)
 
 export const useFx = (): Fx => useContext(FxContext)
@@ -68,6 +70,7 @@ export function FxLayer({ level, enabled = true, children }: { level: EffectsLev
     }
     if (!enabled) return { fx: { ...NO_FX, level }, wake }
     const fx: Fx = {
+      enabled: true,
       level,
       burst: (x, y, count, make) => {
         burst(world.current, x, y, Math.ceil(count * scale), make, Math.random)
@@ -142,9 +145,40 @@ function draw(el: HTMLCanvasElement, particles: Particle[]) {
     const { radius, rgb, alpha } = look(p)
     if (radius <= 0 || alpha <= 0) continue
     ctx.globalCompositeOperation = p.blend
-    ctx.fillStyle = `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${alpha})`
-    ctx.beginPath()
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-    ctx.fill()
+    if (p.shape === 'soft') {
+      // The puff fades out well inside its box, so draw it larger than the radius.
+      const size = radius * 2.6
+      ctx.globalAlpha = alpha
+      ctx.drawImage(puff(rgb), p.x - size / 2, p.y - size / 2, size, size)
+      ctx.globalAlpha = 1
+    } else {
+      ctx.fillStyle = `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${alpha})`
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
+}
+
+const PUFF_SIZE = 64
+const puffs = new Map<string, HTMLCanvasElement>()
+
+/** A soft round sprite in one colour, made once per (rounded) colour and kept. */
+function puff(rgb: Rgb): HTMLCanvasElement {
+  const [r, g, b] = rgb.map((c) => Math.round(c / 8) * 8)
+  const key = `${r},${g},${b}`
+  let sprite = puffs.get(key)
+  if (sprite) return sprite
+  sprite = document.createElement('canvas')
+  sprite.width = sprite.height = PUFF_SIZE
+  const ctx = sprite.getContext('2d')!
+  const half = PUFF_SIZE / 2
+  const gradient = ctx.createRadialGradient(half, half, 0, half, half, half)
+  gradient.addColorStop(0, `rgba(${r},${g},${b},1)`)
+  gradient.addColorStop(0.5, `rgba(${r},${g},${b},0.8)`)
+  gradient.addColorStop(1, `rgba(${r},${g},${b},0)`)
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, PUFF_SIZE, PUFF_SIZE)
+  puffs.set(key, sprite)
+  return sprite
 }

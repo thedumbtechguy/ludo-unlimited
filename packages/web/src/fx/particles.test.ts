@@ -16,7 +16,7 @@ describe('particles', () => {
   it('spawns with defaults and moves by its velocity', () => {
     const world = createWorld()
     spawn(world, dot({ x: 10, y: 20, vx: 100, vy: -50 }))
-    expect(world.particles[0]).toMatchObject({ age: 0, endSize: 2, alpha: 1, gravity: 0, blend: 'source-over' })
+    expect(world.particles[0]).toMatchObject({ age: 0, endSize: 2, alpha: 1, hold: 2, gravity: 0, blend: 'source-over', shape: 'dot' })
     step(world, 0.1, rand)
     expect(world.particles[0].x).toBeCloseTo(20)
     expect(world.particles[0].y).toBeCloseTo(15)
@@ -109,7 +109,7 @@ describe('particles', () => {
     const now = look(world.particles[0])
     expect(now.radius).toBeCloseTo(5)
     expect(now.rgb).toEqual([255, 127.5, 0])
-    expect(now.alpha).toBeCloseTo(0.5)
+    expect(now.alpha).toBeCloseTo(0.75)
     expect(colorAt([[0, 0, 0], [100, 100, 100], [200, 0, 0]], 1)).toEqual([200, 0, 0])
   })
 })

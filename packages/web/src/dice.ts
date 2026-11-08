@@ -17,3 +17,9 @@ export function seededDice(seed: number): Dice {
     return 1 + Math.floor((((t ^ (t >>> 14)) >>> 0) / 4294967296) * 6)
   }
 }
+
+/** The given rolls in order, then `after` (dev-only `?dice=6,6,3` URLs). */
+export function scriptedDice(values: number[], after: Dice): Dice {
+  let i = 0
+  return () => (i < values.length ? values[i++] : after())
+}
