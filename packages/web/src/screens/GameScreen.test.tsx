@@ -50,10 +50,11 @@ describe('GameScreen', () => {
       expect(screen.getByText('Custom rules')).toBeInTheDocument()
     })
 
-    it('has no turn banner: the yard tag says whose turn it is', () => {
+    it('has no turn banner: whose turn it is shows above the dice', () => {
       renderGame()
       expect(document.querySelector('.banner')).toBeNull()
-      expect(screen.getByTestId('yard-label-red')).toHaveTextContent('YouYour turn')
+      expect(within(screen.getByRole('region', { name: 'Dice' })).getByText('Your turn')).toBeInTheDocument()
+      expect(screen.getByTestId('yard-label-red')).toHaveTextContent('You0 home')
     })
   })
 
@@ -173,6 +174,17 @@ describe('GameScreen', () => {
     })
   })
 
+  describe('whose turn', () => {
+    it('names the current player above the dice', async () => {
+      renderGame({ dice: fixedDice([3]) })
+      const dice = screen.getByRole('region', { name: 'Dice' })
+      expect(within(dice).getByText('Your turn')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /Roll dice/ }))
+      // Red's 3 had no move, so it is Yellow's turn now.
+      expect(within(dice).getByText("Yellow's turn")).toBeInTheDocument()
+    })
+  })
+
   describe('kicks', () => {
     it('calls out a kick over the board', async () => {
       const initial = createGame(settingsFor('ghana', 2, 'firstWins'))
@@ -206,17 +218,19 @@ describe('GameScreen', () => {
       expect(corner('red')).toEqual(['4', '364'])
     })
 
-    it('paints the players on their yards and tags whose turn it is', () => {
+    it('paints the players on their yards, and names whose turn it is above the dice', () => {
       renderGame(slowBot)
       expect(screen.getByTestId('yard-label-yellow')).toHaveTextContent('You0 home')
-      expect(screen.getByTestId('yard-label-red')).toHaveTextContent("ComputerRed's turn")
+      expect(screen.getByTestId('yard-label-red')).toHaveTextContent('Computer0 home')
+      expect(within(screen.getByRole('region', { name: 'Dice' })).getByText("Red's turn")).toBeInTheDocument()
     })
 
-    it('a Labourer owner moves with the victim’s roll: the owner is tagged, the victim’s yard says Labourer', () => {
+    it('a Labourer owner moves with the victim’s roll: the owner’s turn shows, the victim’s yard says Labourer', () => {
       const initial = { ...createGame(settings), turn: 'yellow' as const, labourers: { yellow: 'red' as const }, pendingRoll: 3 }
       initial.players[0].pieces = [track(5), track(20), initial.players[0].pieces[2], initial.players[0].pieces[3]]
       renderGame({ initial })
-      expect(screen.getByTestId('yard-label-red')).toHaveTextContent('YouYour turn')
+      expect(within(screen.getByRole('region', { name: 'Dice' })).getByText('Your turn')).toBeInTheDocument()
+      expect(screen.getByTestId('active-yard')).toHaveAttribute('data-color', 'red')
       expect(screen.getByTestId('yard-label-yellow')).toHaveTextContent('Player 20 home')
       expect(screen.getByTestId('labourer-yellow')).toHaveTextContent('Labourer to Red')
     })

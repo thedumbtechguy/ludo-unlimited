@@ -345,12 +345,9 @@ export function Board({
               style={{ left: pct(o.x + 4), top: pct(o.y + 4), color: ON_COLOR[color] }}
             >
               <span className="yard-name">{names[color]}</span>
+              {/* Whose turn it is shows above the dice; the active yard is only outlined. */}
               {finishedPlace ? (
                 <span className="yard-place">{ORDINAL[finishedPlace - 1]}</span>
-              ) : color === active ? (
-                <span className="yard-tag" style={{ color: TAG_TEXT[color] }}>
-                  {turnTag(color, you)}
-                </span>
               ) : (
                 <span className="yard-home">{home} home</span>
               )}

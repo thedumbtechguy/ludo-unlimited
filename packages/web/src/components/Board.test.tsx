@@ -250,16 +250,17 @@ describe('Board', () => {
       expect(label('yellow')).toHaveTextContent('Player 20 home')
     })
 
-    it('tags the active yard instead of its home count, and outlines it', () => {
+    it('outlines the active yard, which keeps its home count', () => {
       render(<Board state={game()} names={names} you="red" active="red" />)
-      expect(label('red')).toHaveTextContent('YouYour turn')
+      expect(label('red')).toHaveTextContent('You0 home')
       expect(screen.getAllByTestId('active-yard')).toHaveLength(1)
       expect(screen.getByTestId('active-yard')).toHaveAttribute('data-color', 'red')
     })
 
-    it('names another player’s turn by colour', () => {
+    it('outlines another player’s yard on their turn, with no text tag', () => {
       render(<Board state={game()} names={names} you="red" active="green" />)
-      expect(label('green')).toHaveTextContent("ComputerGreen's turn")
+      expect(label('green')).toHaveTextContent('Computer0 home')
+      expect(screen.getByTestId('active-yard')).toHaveAttribute('data-color', 'green')
       expect(label('red')).toHaveTextContent('You0 home')
     })
 

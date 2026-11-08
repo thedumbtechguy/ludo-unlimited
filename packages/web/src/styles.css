@@ -79,7 +79,7 @@ button.row { cursor: pointer; }
 .menu-button span { display: none; }
 .play { display: flex; flex-direction: column; justify-content: flex-end; gap: 18px; flex: 1; }
 .play .board { flex: none; }
-.controls { display: flex; align-items: center; gap: 18px; height: 120px; margin-top: 4px; }
+.controls { display: flex; align-items: center; gap: 18px; height: 148px; margin-top: 4px; }
 .controls .dice { width: 120px; height: 120px; }
 .controls .dice-view { scale: 0.8; }
 .controls .dice::before { bottom: 10px; scale: 0.8; }
@@ -232,6 +232,9 @@ button.row { cursor: pointer; }
 /* Six streak. The fire itself is drawn on the effects canvas; the dice sits above that canvas so the
    flames burn behind and around it. */
 .dice-slot { position: relative; z-index: 6; flex: none; display: grid; place-items: center; }
+/* Whose turn it is, just above the dice. */
+.turn-label { display: flex; align-items: center; gap: 6px; height: 20px; margin: 0; font-weight: 800; font-size: 14px; white-space: nowrap; }
+.turn-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--turn-color); }
 .streak-label { position: absolute; top: 4px; right: -6px; font-weight: 900; font-size: 15px; color: #C2410C; white-space: nowrap; pointer-events: none; }
 .controls[data-hand="right"] .streak-label { right: auto; left: -6px; }
 .fire-slot { position: relative; flex: 1; min-height: 0; margin-bottom: -18px; display: flex; align-items: center; justify-content: center; pointer-events: none; }

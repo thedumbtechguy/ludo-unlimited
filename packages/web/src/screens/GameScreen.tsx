@@ -1,5 +1,5 @@
 import { currentMover, type GameState, type Move } from '@ludo/engine'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Board } from '../components/Board'
 import { BoardFx } from '../fx/BoardFx'
 import { FxLayer } from '../fx/FxLayer'
@@ -9,9 +9,10 @@ import { DiceButton } from '../components/DiceButton'
 import { KickCallout } from '../components/KickCallout'
 import { RollTray } from '../components/RollTray'
 import { Sheet } from '../components/Sheet'
-import { firstHuman, rulesName, seatNames, wastedText } from '../labels'
+import { firstHuman, rulesName, seatNames, turnTag, wastedText } from '../labels'
 import { quarterTurns, viewerOf } from '../layout'
 import type { EffectsLevel, Hand } from '../types'
+import { COLOR_HEX } from '../theme'
 import { useGame, type GameOptions } from '../useGame'
 
 type Props = {
@@ -105,6 +106,10 @@ export function GameScreen({ options, hand, onHand, effectsLevel, onEffectsLevel
           {/* On phones the dice sits under the playing hand's thumb. */}
           <section className="controls" aria-label="Dice" data-hand={hand}>
             <div className="dice-slot" ref={dice}>
+              <p className="turn-label" style={{ '--turn-color': COLOR_HEX[mover] } as CSSProperties}>
+                <span className="turn-dot" aria-hidden="true" />
+                {turnTag(mover, you)}
+              </p>
               <DiceButton value={g.lastRoll} rolling={g.rolling} target={g.rollingTo} disabled={!g.humanToRoll} onRoll={g.roll} />
               <OnFire count={streak.count} place="desk" />
               <StreakLabel count={streak.count} />

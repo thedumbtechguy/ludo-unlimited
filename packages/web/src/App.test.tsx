@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
@@ -16,7 +16,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'New game' }))
     await user.click(screen.getByRole('button', { name: 'Start game' }))
     expect(screen.getByRole('button', { name: /Roll dice/ })).toBeEnabled()
-    expect(screen.getByTestId('yard-label-red')).toHaveTextContent('YouYour turn')
+    expect(within(screen.getByRole('region', { name: 'Dice' })).getByText('Your turn')).toBeInTheDocument()
   })
 
   it('offers Continue after quitting, and resumes the same game', async () => {
@@ -36,7 +36,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(screen.getByText('Tap a marked square')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Rolls this turn' }).children).toHaveLength(3)
-    expect(screen.getByTestId('yard-label-red')).toHaveTextContent('YouYour turn')
+    expect(within(screen.getByRole('region', { name: 'Dice' })).getByText('Your turn')).toBeInTheDocument()
   })
 
   it('restarts the game from the menu', async () => {
