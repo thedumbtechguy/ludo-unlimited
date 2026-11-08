@@ -175,6 +175,8 @@ button.row { cursor: pointer; }
 .yard-tag { font-weight: 800; font-size: calc(13 * var(--u)); background: #ffffff; padding: calc(4 * var(--u)) calc(9 * var(--u)); border-radius: 999px; }
 .yard-labourer { justify-content: center; gap: calc(6 * var(--u)); font-weight: 700; font-size: calc(14 * var(--u)); }
 .yard-labourer svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); }
+/* The owner's name painted in the owner's colour, so it reads at a glance on any yard. */
+.labourer-owner { padding: calc(2 * var(--u)) calc(8 * var(--u)); border-radius: 999px; box-shadow: 0 0 0 calc(2 * var(--u)) #ffffff; font-weight: 800; }
 
 /* Dice: a CSS 3D cube. Faces sit 44px out from the centre of an 88px cube.
    .dice-view holds the fixed three-quarter view tilt and the bounce, so neither fights the spin on .cube. */

@@ -420,7 +420,10 @@ export function Board({
               <rect x="6" y="2" width="4" height="8" rx="2" />
               <rect x="9.2" y="3.5" width="6" height="5" rx="2.5" />
             </svg>
-            Labourer to {COLOR_NAME[owner]}
+            Labourer to{' '}
+            <span className="labourer-owner" style={{ background: COLOR_HEX[owner], color: ON_COLOR[owner] }}>
+              {COLOR_NAME[owner]}
+            </span>
           </div>
         )
       })}
