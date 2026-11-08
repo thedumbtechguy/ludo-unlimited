@@ -18,10 +18,13 @@ export type Rules = {
 
 export type EndCondition = 'firstWins' | 'playForPlaces'
 
+export type AfterKick = 'endsTurn' | 'normal' | 'bonusRoll'
+
 export type Settings = {
   players: 2 | 3 | 4
   rules: Rules
   endCondition: EndCondition
+  afterKick: AfterKick
 }
 
 export type Move =

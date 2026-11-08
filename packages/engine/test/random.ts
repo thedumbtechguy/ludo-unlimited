@@ -19,6 +19,7 @@ export function randomSettings(next: () => number): Settings {
     players: ([2, 3, 4] as const)[Math.floor(next() * 3)],
     rules: { backKick: next() < 0.5, lineKick: next() < 0.5, homeKick: next() < 0.5, labourer: next() < 0.5 },
     endCondition: next() < 0.5 ? 'firstWins' : 'playForPlaces',
+    afterKick: (['endsTurn', 'normal', 'bonusRoll'] as const)[Math.floor(next() * 3)],
   }
 }
 

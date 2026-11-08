@@ -8,6 +8,7 @@ export type SetupOptions = {
   players?: Settings['players']
   rules?: Partial<Rules>
   endCondition?: Settings['endCondition']
+  afterKick?: Settings['afterKick']
   turn?: Color
   /** Sets pendingRoll directly, skipping roll(). */
   roll?: number
@@ -21,6 +22,7 @@ export function setup(opts: SetupOptions = {}): GameState {
     players: opts.players ?? 4,
     rules: { backKick: false, lineKick: false, homeKick: false, labourer: false, ...opts.rules },
     endCondition: opts.endCondition ?? 'firstWins',
+    afterKick: opts.afterKick ?? 'normal',
   })
   for (const [color, spots] of Object.entries(opts.pieces ?? {}) as [Color, Spot[]][]) {
     const player = state.players.find((p) => p.color === color)

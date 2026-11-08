@@ -32,7 +32,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     }
   }
   if (getPlayer(next, legal.piece.color).pieces.every((p) => p.kind === 'home')) finish(next, legal.piece.color)
-  endTurn(next, rolled)
+  endTurn(next, rolled, legal.kick && legal.piece.color)
   return next
 }
 
@@ -73,11 +73,19 @@ function nextActive(state: GameState, after: Color): Color {
   return after
 }
 
-function endTurn(state: GameState, rolled: number | undefined): void {
+/** `kicker` is the colour that kicked on this move, if any. */
+function endTurn(state: GameState, rolled: number | undefined, kicker?: Color): void {
   state.pendingRoll = undefined
   if (state.status !== 'playing') return
-  if (rolled === 6 && getPlayer(state, state.turn).finishedPlace === undefined) return
+  if (getPlayer(state, state.turn).finishedPlace === undefined && rollsAgain(state, rolled, kicker)) return
   state.turn = nextActive(state, state.turn)
+}
+
+function rollsAgain(state: GameState, rolled: number | undefined, kicker?: Color): boolean {
+  const { afterKick } = state.settings
+  if (kicker && afterKick === 'endsTurn') return false
+  if (kicker === state.turn && afterKick === 'bonusRoll') return true
+  return rolled === 6
 }
 
 function finish(state: GameState, color: Color): void {

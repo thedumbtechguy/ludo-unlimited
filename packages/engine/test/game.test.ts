@@ -104,3 +104,43 @@ describe('turn flow', () => {
   })
 })
 
+
+describe('after a kick', () => {
+  const kickOn = (afterKick: 'endsTurn' | 'normal' | 'bonusRoll', value: number) => {
+    // Red on 5 kicks yellow on 5 + value.
+    const s = roll(setup({ afterKick, pieces: { red: [5], yellow: [5 + value] } }), value)
+    const move = legalMoves(s).find((m) => m.kick)!
+    return applyMove(s, move).turn
+  }
+
+  it('endsTurn: a kick passes play on, even on a 6', () => {
+    expect(kickOn('endsTurn', 6)).toBe('green')
+    expect(kickOn('endsTurn', 3)).toBe('green')
+  })
+
+  it('normal: a kick changes nothing', () => {
+    expect(kickOn('normal', 6)).toBe('red')
+    expect(kickOn('normal', 3)).toBe('green')
+  })
+
+  it('bonusRoll: a kick earns another roll', () => {
+    expect(kickOn('bonusRoll', 6)).toBe('red')
+    expect(kickOn('bonusRoll', 3)).toBe('red')
+  })
+
+  it('bonusRoll: a labourer owner kicking with the victim’s roll earns nothing', () => {
+    const s = roll(
+      setup({
+        afterKick: 'bonusRoll',
+        rules: { labourer: true },
+        turn: 'yellow',
+        labourers: { yellow: 'red' },
+        pieces: { red: [5], green: [8] },
+      }),
+      3,
+    )
+    const move = legalMoves(s).find((m) => m.kick)!
+    expect(move.piece).toEqual(piece('red'))
+    expect(applyMove(s, move).turn).toBe('blue')
+  })
+})
