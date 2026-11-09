@@ -159,7 +159,7 @@ export function Lobby({ room, you, status, send, onSettings, onLeave, startAt }:
       </section>
 
       {quick ? (
-        <p className="lobby-waiting" role="status">
+        <p className="lobby-waiting" aria-live="off">
           {seconds === undefined ? 'Waiting for players' : `Starting in ${seconds} s, computers fill empty seats`}
         </p>
       ) : you.host ? (

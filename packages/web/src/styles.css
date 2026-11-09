@@ -276,6 +276,7 @@ button.row { cursor: pointer; }
 .home h1 { font-size: 40px; letter-spacing: -1px; line-height: 1.1; }
 .home p { margin: 10px 0 0; font-weight: 600; font-size: 17px; color: var(--muted); }
 .home-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
+.home-local { margin: 14px 0 0; font-size: 13px; font-weight: 800; color: var(--muted); text-align: center; }
 .home-board { width: min(100%, 280px, calc(100vh - 420px)); min-width: 200px; margin: 40px auto 0; }
 
 /* Results: one row per player in place order. */

@@ -9,7 +9,7 @@ test('two people play in a room, and one leaves and comes back', async ({ browse
 
   // Ama makes a 2-player room with the quick timer; she sits on red as its creator.
   await a.goto('/')
-  await a.getByRole('button', { name: 'Play online' }).click()
+  await a.getByRole('button', { name: 'Play with friends' }).click()
   await a.getByLabel('Your name').fill('Ama')
   await a.getByRole('button', { name: 'Next' }).click()
   await a.getByRole('button', { name: 'Create a room' }).click()

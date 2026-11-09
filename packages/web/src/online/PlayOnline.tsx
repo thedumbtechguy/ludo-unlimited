@@ -7,13 +7,14 @@ type Props = {
   code?: string
   onName: (name: string) => void
   onStep: (step: Step) => void
+  onNamed: () => void
   onCreate: () => void
   onJoin: (code: string) => void
   onBack: () => void
 }
 
 /** Play online in steps: your name, then make a room or join one, then its details. A room link skips the choice and goes straight in. */
-export function PlayOnline({ name: savedName, step, code: linked, onName, onStep, onCreate, onJoin, onBack }: Props) {
+export function PlayOnline({ name: savedName, step, code: linked, onName, onStep, onNamed, onCreate, onJoin, onBack }: Props) {
   const [name, setName] = useState(savedName)
   const [code, setCode] = useState('')
   const clean = name.trim()
@@ -24,7 +25,7 @@ export function PlayOnline({ name: savedName, step, code: linked, onName, onStep
           <path d="M12 4l-6 6 6 6" />
         </svg>
       </button>
-      <h1>{step === 'code' ? 'Join a room' : 'Play online'}</h1>
+      <h1>{step === 'code' ? 'Join a room' : step === 'choice' ? 'Play with friends' : 'Play online'}</h1>
     </header>
   )
 
@@ -38,7 +39,7 @@ export function PlayOnline({ name: savedName, step, code: linked, onName, onStep
             if (!clean) return
             onName(clean)
             if (linked) onJoin(linked)
-            else onStep('choice')
+            else onNamed()
           }}
         >
           <label className="field">

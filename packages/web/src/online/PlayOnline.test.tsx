@@ -9,7 +9,7 @@ type Calls = { onName: () => void; onCreate: () => void; onJoin: () => void; onB
 // The app holds the step; here it just follows `onStep`.
 function Steps({ name, code, calls }: { name: string; code?: string; calls: Calls }) {
   const [step, setStep] = useState<Step>(name && !code ? 'choice' : 'name')
-  return <PlayOnline name={name} step={step} code={code} onStep={setStep} {...calls} />
+  return <PlayOnline name={name} step={step} code={code} onStep={setStep} onNamed={() => setStep('choice')} {...calls} />
 }
 
 const renderPlay = (props: { name?: string; code?: string } = {}) => {
@@ -35,6 +35,7 @@ describe('PlayOnline', () => {
     await userEvent.type(nameField(), ' Kofi ')
     await userEvent.click(button('Next'))
     expect(onName).toHaveBeenCalledWith('Kofi')
+    expect(screen.getByRole('heading', { name: 'Play with friends' })).toBeInTheDocument()
     expect(screen.getByText(/Playing as Kofi/)).toBeInTheDocument()
   })
 

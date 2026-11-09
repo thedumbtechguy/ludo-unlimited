@@ -286,7 +286,7 @@ describe('App online', () => {
   it('joins a room by its code, and leaving goes home', async () => {
     const user = userEvent.setup()
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(screen.getByRole('button', { name: 'Join a room' }))
@@ -304,11 +304,29 @@ describe('App online', () => {
     expect(setPlaying).toHaveBeenLastCalledWith(false)
   })
 
+  it('asks for a name before going online, then goes where you were going', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByRole('heading', { name: 'Play with friends' })).toBeInTheDocument()
+  })
+
+  it('Quick match and Find a game also ask for a name first', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('Coming soon')).toBeInTheDocument()
+  })
+
   it('creates a room and opens it', async () => {
     vi.mocked(createRoom).mockResolvedValue('WXYZ')
     const user = userEvent.setup()
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
@@ -323,7 +341,7 @@ describe('App online', () => {
     const user = userEvent.setup()
     localStorage.setItem('ludo-unlimited:name', 'Ama')
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
     await user.click(screen.getByRole('button', { name: 'Create room' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many new rooms. Try again in a minute.')
@@ -354,7 +372,7 @@ describe('App online', () => {
     const user = userEvent.setup()
     localStorage.setItem('ludo-unlimited:name', 'Ama')
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     expect(screen.getByText(/Playing as Ama/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Change' }))
     expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveValue('Ama')
@@ -366,7 +384,7 @@ describe('App online', () => {
     const user = userEvent.setup()
     localStorage.setItem('ludo-unlimited:name', 'Ama')
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
     await user.click(screen.getByRole('button', { name: 'Create room' }))
     expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled()
@@ -380,7 +398,7 @@ describe('App online', () => {
     const user = userEvent.setup()
     localStorage.setItem('ludo-unlimited:name', 'Ama')
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Play online' }))
+    await user.click(screen.getByRole('button', { name: 'Play with friends' }))
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
     await user.click(screen.getByRole('button', { name: 'Create room' }))
     await user.click(screen.getByRole('button', { name: 'Back' }))
@@ -394,7 +412,7 @@ describe('App online', () => {
 
   describe('back', () => {
     const toChoice = async (user: ReturnType<typeof userEvent.setup>) => {
-      await user.click(screen.getByRole('button', { name: 'Play online' }))
+      await user.click(screen.getByRole('button', { name: 'Play with friends' }))
       await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
       await user.click(screen.getByRole('button', { name: 'Next' }))
     }
@@ -428,7 +446,7 @@ describe('App online', () => {
       const user = userEvent.setup()
       localStorage.setItem('ludo-unlimited:name', 'Ama')
       renderApp()
-      await user.click(screen.getByRole('button', { name: 'Play online' }))
+      await user.click(screen.getByRole('button', { name: 'Play with friends' }))
       await user.click(screen.getByRole('button', { name: 'Join a room' }))
       await pressBack()
       expect(await screen.findByText(/Playing as Ama/)).toBeInTheDocument()

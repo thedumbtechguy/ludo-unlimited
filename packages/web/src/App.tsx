@@ -16,13 +16,17 @@ import { setPlaying } from './update'
 import { useTheme } from './useTheme'
 import type { Timing } from './useGame'
 
+type Dest = 'quick' | 'find' | 'choice'
+
 type Screen =
   | { name: 'home' }
   | { name: 'setup' }
   | { name: 'game'; settings: Settings; seats: Seats; log?: GameEvent[]; key: number }
   | { name: 'results'; game: GameState; settings: Settings; seats: Seats }
-  /** `code`: the room a link opened, joined once there's a name. */
-  | { name: 'online'; step: Step; code?: string }
+  /** `code`: the room a link opened, joined once there's a name. `then`: where to go once there is one. */
+  | { name: 'online'; step: Step; code?: string; then?: Dest }
+  | { name: 'quick'; error?: string; request?: number }
+  | { name: 'find' }
   /** `request`: the room being made, while it is. */
   | { name: 'create'; error?: string; request?: number }
   | { name: 'room'; code: string }
@@ -37,7 +41,7 @@ function firstScreen(): Screen {
 // What a history entry keeps of a screen: a game or the results can't be come back to, a room being made starts over.
 type Route = Screen | { name: 'game' | 'results' }
 const routeOf = (screen: Screen): Route =>
-  screen.name === 'game' || screen.name === 'results' ? { name: screen.name } : screen.name === 'create' ? { name: 'create' } : screen
+  screen.name === 'game' || screen.name === 'results' ? { name: screen.name } : screen.name === 'create' || screen.name === 'quick' ? { name: screen.name } : screen
 // A room's link stays in the address bar, also on the name screen it opened, so a refresh keeps it.
 const urlOf = (screen: Screen) => (screen.name === 'room' || screen.name === 'online') && screen.code ? `/r/${screen.code}` : '/'
 
@@ -94,6 +98,9 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
   }
   // The on-screen back buttons do what the back gesture does.
   const goBack = () => (depth() ? back() : goHome())
+  const goTo = (dest: Dest) => go(dest === 'quick' ? { name: 'quick' } : dest === 'find' ? { name: 'find' } : { name: 'online', step: 'choice' })
+  // Online play needs a name first.
+  const online = (dest: Dest) => (name.trim() ? goTo(dest) : go({ name: 'online', step: 'name', then: dest }))
   const startGame = (settings: Settings, seats: Seats, log?: GameEvent[]) => go({ name: 'game', settings, seats, log, key: Date.now() })
 
   useEffect(() => {
@@ -141,7 +148,9 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
           canContinue={saved !== undefined}
           hand={hand}
           onNew={() => go({ name: 'setup' })}
-          onOnline={() => go({ name: 'online', step: name.trim() ? 'choice' : 'name' })}
+          onQuick={() => online('quick')}
+          onFind={() => online('find')}
+          onFriends={() => online('choice')}
           onContinue={() => startGame(saved!.settings, saved!.seats, saved!.log)}
         />
       )
@@ -188,10 +197,18 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
           code={screen.code}
           onName={changeName}
           onStep={(step) => go({ name: 'online', step, code: screen.code })}
+          onNamed={() => goTo(screen.then ?? 'choice')}
           onCreate={() => go({ name: 'create' })}
           onJoin={(code) => go({ name: 'room', code })}
           onBack={goBack}
         />
+      )
+    case 'quick':
+    case 'find':
+      return (
+        <main className="screen message">
+          <p>Coming soon</p>
+        </main>
       )
     case 'create':
       return <Setup onBack={goBack} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error, busy: screen.request !== undefined }} />
