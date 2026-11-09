@@ -35,7 +35,7 @@ describe('Setup', () => {
     await start()
     expect(onStart).toHaveBeenCalledWith(
       { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' },
-      { red: 'human', green: 'computer', yellow: 'computer', blue: 'computer' },
+      { red: 'human', green: 'normal', yellow: 'normal', blue: 'normal' },
     )
   })
 
@@ -57,7 +57,7 @@ describe('Setup', () => {
         rules: { ...MODES.classic.rules, backKick: true },
         afterKick: 'endsTurn',
       },
-      { red: 'human', green: 'human', yellow: 'computer' },
+      { red: 'human', green: 'human', yellow: 'normal' },
     )
   })
 
@@ -138,7 +138,7 @@ describe('Setup', () => {
         'Yellow player: Computer',
       ])
       await start()
-      expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ players: 2 }), { red: 'human', yellow: 'computer' })
+      expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ players: 2 }), { red: 'human', yellow: 'normal' })
     })
   })
 
@@ -152,7 +152,22 @@ describe('Setup', () => {
       expect(screen.getByRole('button', { name: 'Green player: You' })).toHaveTextContent('You')
       expect(screen.getByRole('button', { name: 'Blue player: Player 2' })).toHaveTextContent('Player 2')
       await start()
-      expect(onStart.mock.calls[0][1]).toEqual({ red: 'computer', green: 'human', yellow: 'computer', blue: 'human' })
+      expect(onStart.mock.calls[0][1]).toEqual({ red: 'normal', green: 'human', yellow: 'normal', blue: 'human' })
+    })
+
+    it('each computer has a level, normal unless picked; people have none', async () => {
+      const onStart = renderSetup()
+      expect(screen.queryByRole('button', { name: /^Red computer level/ })).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'Green computer level: Normal' }))
+      const sheet = screen.getByRole('dialog', { name: 'Green computer' })
+      expect(sheet).toHaveTextContent('Plans its whole turn')
+      await userEvent.click(screen.getByRole('radio', { name: 'Hard' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'Blue computer level: Normal' }))
+      await userEvent.click(screen.getByRole('radio', { name: 'Easy' }))
+      expect(screen.getByRole('button', { name: 'Green computer level: Hard' })).toHaveTextContent('Hard')
+      await start()
+      expect(onStart.mock.calls[0][1]).toEqual({ red: 'human', green: 'hard', yellow: 'normal', blue: 'easy' })
     })
   })
 

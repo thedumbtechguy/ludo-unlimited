@@ -25,7 +25,7 @@ export type GameOptions = {
 /** A game on this device: its own dice, and the computer playing the computer seats. */
 export function useGame({ settings, seats, dice, timing, log, initial, random = Math.random, onChange }: GameOptions) {
   const [start] = useState(() => initial ?? (log ? replay(settings, log) : createGame(settings)))
-  const seatOf = (color: Color) => seats[color] ?? 'computer'
+  const seatOf = (color: Color) => seats[color] ?? 'normal'
   const toEvent = (intent: Intent): GameEvent =>
     intent.t === 'roll' ? { type: 'roll', value: dice() } : intent.t === 'move' ? { type: 'move', move: intent.move } : { type: 'stop' }
   const view = useGameView({
@@ -42,13 +42,14 @@ export function useGame({ settings, seats, dice, timing, log, initial, random = 
   useEffect(() => {
     if (busy || game.status !== 'playing') return
     if (game.pendingRoll === undefined) {
-      if (seatOf(game.turn) !== 'computer') return
+      if (seatOf(game.turn) === 'human') return
       const id = setTimeout(() => view.enqueue({ type: 'roll', value: dice() }), timing.botRoll)
       return () => clearTimeout(id)
     }
     const mover = currentMover(game)
-    if (mover && seatOf(mover) === 'computer') {
-      const id = setTimeout(() => view.enqueue({ type: 'move', move: chooseMove(game, random)! }), timing.botMove)
+    const level = mover && seatOf(mover)
+    if (level && level !== 'human') {
+      const id = setTimeout(() => view.enqueue({ type: 'move', move: chooseMove(game, random, level)! }), timing.botMove)
       return () => clearTimeout(id)
     }
   }, [game, busy])

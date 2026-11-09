@@ -92,6 +92,10 @@ button.row { cursor: pointer; }
 .seat-button { position: relative; min-width: 104px; height: 36px; padding: 0 12px; border: 2px solid var(--pill-border); border-radius: 999px; background: transparent; font-weight: 700; font-size: 15px; cursor: pointer; }
 .seat-button::before { content: ''; position: absolute; inset: -8px -2px; }
 .seat-button.human { border-color: var(--text); background: var(--text); color: var(--table); }
+/* The computer's level, beside its seat pill: plain text with a chevron, like a row value. */
+.level-button { position: relative; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 0 0 8px; border: 0; background: transparent; color: var(--text); font-weight: 600; font-size: 16px; cursor: pointer; }
+.level-button::before { content: ''; position: absolute; inset: -8px -4px; }
+.level-button .chevron { margin-left: 0; }
 .switch { position: relative; flex: none; width: 50px; height: 30px; border-radius: 999px; background: var(--switch-off); }
 .switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--knob); transition: left 150ms ease-out; }
 .switch.on { background: var(--switch-on); }

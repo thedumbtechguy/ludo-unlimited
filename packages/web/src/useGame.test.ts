@@ -190,7 +190,7 @@ describe('useGame', () => {
     vi.useFakeTimers()
     const dice = seededDice(3)
     const { result } = renderHook(() =>
-      useGame({ settings: classic2, seats: { red: 'computer', yellow: 'computer' }, dice, timing: FAST_TIMING, random: () => 0 }),
+      useGame({ settings: classic2, seats: { red: 'normal', yellow: 'normal' }, dice, timing: FAST_TIMING, random: () => 0 }),
     )
     for (let i = 0; i < 20_000 && result.current.game.status === 'playing'; i++) {
       await act(async () => {
@@ -259,7 +259,7 @@ describe('useGame', () => {
 
     it('a computer never gets canStop', () => {
       const { result } = renderHook(() =>
-        useGame({ settings: classic2, seats: { red: 'human', yellow: 'computer' }, dice: fixedDice([6]), timing: FAST_TIMING, initial: { ...createGame(classic2), turn: 'yellow', queuedRolls: [6] } }),
+        useGame({ settings: classic2, seats: { red: 'human', yellow: 'normal' }, dice: fixedDice([6]), timing: FAST_TIMING, initial: { ...createGame(classic2), turn: 'yellow', queuedRolls: [6] } }),
       )
       expect(result.current.canStop).toBe(false)
     })
@@ -296,7 +296,7 @@ describe('useGame', () => {
     it('a computer owner moves automatically for a human victim', async () => {
       vi.useFakeTimers()
       const { result } = renderHook(() =>
-        useGame({ settings: ghana2, seats: { yellow: 'human', red: 'computer' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
+        useGame({ settings: ghana2, seats: { yellow: 'human', red: 'normal' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
       )
       act(() => result.current.roll())
       await act(async () => {
@@ -312,7 +312,7 @@ describe('useGame', () => {
     it('a human owner moves for a computer victim', async () => {
       vi.useFakeTimers()
       const { result } = renderHook(() =>
-        useGame({ settings: ghana2, seats: { yellow: 'computer', red: 'human' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
+        useGame({ settings: ghana2, seats: { yellow: 'normal', red: 'human' }, dice: fixedDice([3]), timing: FAST_TIMING, initial: labourerGame() }),
       )
       await act(async () => {
         vi.runOnlyPendingTimers()
@@ -345,7 +345,7 @@ describe('useGame', () => {
     vi.useFakeTimers()
     const timing = { botRoll: 0, botMove: 0, step: 0, roll: 650 }
     const dice = vi.fn(() => 3)
-    const { result } = renderHook(() => useGame({ settings: classic2, seats: { red: 'computer', yellow: 'human' }, dice, timing }))
+    const { result } = renderHook(() => useGame({ settings: classic2, seats: { red: 'normal', yellow: 'human' }, dice, timing }))
     // The bot's roll goes through the queue, which shows it on the next render.
     act(() => vi.advanceTimersByTime(0))
     act(() => vi.advanceTimersByTime(300))

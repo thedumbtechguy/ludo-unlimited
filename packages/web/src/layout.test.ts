@@ -76,8 +76,8 @@ describe('layout', () => {
     })
 
     it('the viewer is the first human seat, or red with no humans', () => {
-      expect(viewerOf({ red: 'computer', green: 'human', yellow: 'human' }, ['red', 'green', 'yellow'])).toBe('green')
-      expect(viewerOf({ red: 'computer', yellow: 'computer' }, ['red', 'yellow'])).toBe('red')
+      expect(viewerOf({ red: 'normal', green: 'human', yellow: 'human' }, ['red', 'green', 'yellow'])).toBe('green')
+      expect(viewerOf({ red: 'normal', yellow: 'normal' }, ['red', 'yellow'])).toBe('red')
       expect(viewerOf({}, ['red', 'yellow'])).toBe('red')
     })
   })

@@ -1,4 +1,4 @@
-import { isWicked, MODES, type AfterKick, type Color, type EndCondition, type GameEffect, type GameState, type Listing, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
+import { isWicked, MODES, type AfterKick, type Color, type EndCondition, type GameEffect, type GameState, type Level, type Listing, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
 import { FINISH_CALLOUT_MS, WIN_CALLOUT_MS } from './fx/actions'
 import type { Seats } from './types'
 
@@ -124,9 +124,17 @@ export const TIMERS = [
   ['off', 'No timer', 'Take as long as you like. The computer only steps in if someone leaves.'],
 ] as const satisfies readonly (readonly [TurnTimer, string, string])[]
 
+/** The computer's levels, each with how it plays. */
+export const LEVELS = [
+  ['easy', 'Easy', 'Often misses a kick or moves the wrong piece. Good for learning.'],
+  ['normal', 'Normal', 'Never misses a finish or a kick, but doesn’t look out for danger.'],
+  ['hard', 'Hard', 'Plans its whole turn and keeps its pieces out of reach of a kick.'],
+] as const satisfies readonly (readonly [Level, string, string])[]
+
 const nameIn = <T,>(options: readonly (readonly [T, string, string])[], value: T): string => options.find(([v]) => v === value)![1]
 export const timerName = (timer: TurnTimer): string => nameIn(TIMERS, timer)
 export const afterKickName = (afterKick: AfterKick): string => nameIn(AFTER_KICK, afterKick)
+export const levelName = (level: Level): string => nameIn(LEVELS, level)
 export const endName = (end: EndCondition): string => nameIn(END, end)
 
 /** Who can join, as the room screens say it. */

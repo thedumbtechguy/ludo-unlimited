@@ -20,10 +20,15 @@ export function loadGame(): SavedGame | undefined {
     if (!raw) return undefined
     const saved = JSON.parse(raw) as SavedGame
     replay(saved.settings, saved.log)
-    return saved
+    return { ...saved, seats: upgradeSeats(saved.seats) }
   } catch {
     return undefined
   }
+}
+
+/** Games saved before there were levels have plain 'computer' seats: those played at normal. */
+function upgradeSeats(seats: Record<string, string>): Seats {
+  return Object.fromEntries(Object.entries(seats).map(([color, seat]) => [color, seat === 'computer' ? 'normal' : seat])) as Seats
 }
 
 export function clearGame(): void {
