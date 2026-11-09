@@ -82,7 +82,7 @@
     {
       "id": 9,
       "subject": "Task 10: Web: Find a game, the browser test and docs",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** A list of open rooms to join, a browser test of quick match and the list, and docs brought up to date.\n\n**Acceptance Criteria:**\n- [ ] Find a game lists each open room: mode (Classic, Ghana kicks, Custom), \"Quick\" or \"Kofi's room\", \"Waiting \u00b7 2 of 4\" or \"Playing \u00b7 Green, Blue free\", and the timer. Tapping opens the room.\n- [ ] It refreshes every 5 s while visible, when the tab becomes visible, and with **Refresh**.\n- [ ] Empty: \"No open games right now\" with **Quick match**. Error: \"Couldn't load games\" with **Try again**. Loading: \"Looking for games\u2026\".\n- [ ] `quick.spec.ts`: two browsers quick match Classic into the same room and the game starts; a third finds it in Find a game, opens it, and is seated (not watching).\n- [ ] README documents `/api/open`, `/api/quick` and the Directory; the spec lists the planning refinements.\n\n**Verify:** `npm test && npm run typecheck && npm run e2e -w @ludo/web` \u2192 all pass.\n\nSee docs/superpowers/plans/2026-11-09-open-rooms.md for steps.\n\n```json:metadata\n{\"files\": [\"packages/web/src/online/FindGame.tsx\", \"packages/web/src/online/FindGame.test.tsx\", \"packages/web/e2e/quick.spec.ts\", \"packages/web/src/online/api.ts\", \"packages/web/src/labels.ts\", \"packages/web/src/App.tsx\", \"packages/web/src/styles.css\", \"README.md\", \"docs/superpowers/specs/2026-11-09-open-rooms-design.md\"], \"verifyCommand\": \"`npm test && npm run typecheck && npm run e2e -w @ludo/web` \\u2192 all pass.\", \"acceptanceCriteria\": [\"Find a game lists each open room: mode (Classic, Ghana kicks, Custom), \\\"Quick\\\" or \\\"Kofi's room\\\", \\\"Waiting \\u00b7 2 of 4\\\" or \\\"Playing \\u00b7 Green, Blue free\\\", and the timer. Tapping opens the room.\", \"It refreshes every 5 s while visible, when the tab becomes visible, and with **Refresh**.\", \"Empty: \\\"No open games right now\\\" with **Quick match**. Error: \\\"Couldn't load games\\\" with **Try again**. Loading: \\\"Looking for games\\u2026\\\".\", \"`quick.spec.ts`: two browsers quick match Classic into the same room and the game starts; a third finds it in Find a game, opens it, and is seated (not watching).\", \"README documents `/api/open`, `/api/quick` and the Directory; the spec lists the planning refinements.\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [
         8
@@ -91,12 +91,12 @@
     {
       "id": 10,
       "subject": "Task 11: The user plays it",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** The user confirms quick match and the room list work across real devices.\n\n**Acceptance Criteria:**\n- [ ] The user quick matches on two devices and lands in the same room; the game starts by itself.\n- [ ] The user sees an open room in Find a game and joins it.\n\n**Verify:** the user's answer below.\n\nSee docs/superpowers/plans/2026-11-09-open-rooms.md for steps.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"the user's answer below.\", \"acceptanceCriteria\": [\"The user quick matches on two devices and lands in the same room; the game starts by itself.\", \"The user sees an open room in Find a game and joins it.\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"Did quick match put both devices in the same game, and could you join an open room from Find a game?\"}\n```",
       "blockedBy": [
         9
       ]
     }
   ],
-  "lastUpdated": "2026-11-09T09:19:10.659557"
+  "lastUpdated": "2026-11-09T10:58:13.526764"
 }
