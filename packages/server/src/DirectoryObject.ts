@@ -1,6 +1,6 @@
 import type { Listing, ModeName } from '@ludo/engine'
 import { DurableObject } from 'cloudflare:workers'
-import { browse, pick, staleCodes, type Entry, type Hold, type Listings } from './directory'
+import { browse, pick, staleCodes, unhold, type Entry, type Hold, type Listings } from './directory'
 import { QUICK_TIMER, quickSettings } from './room'
 import type { Env } from './RoomObject'
 import { makeCode } from './validate'
@@ -32,8 +32,9 @@ export class Directory extends DurableObject<Env> {
     return entries
   }
 
-  /** A room's listing, or null to take it off. */
-  async put(code: string, listing: Listing | null): Promise<void> {
+  /** A room's listing, or null to take it off, and the devices seated there (never in the listing: it's public). */
+  async put(code: string, listing: Listing | null, seated: string[]): Promise<void> {
+    this.holds = unhold(this.holds, code, seated)
     const entries = await this.load()
     if (!listing) {
       entries.delete(code)

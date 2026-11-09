@@ -1,7 +1,9 @@
 import { settingsFor } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { DAY, LISTING_REFRESH_MS, QUICK_START_MS } from '../src/room'
-import { alarm, join, lobby, quick, run, say, T0 } from './helpers'
+import { DAY, LISTING_REFRESH_MS, listingOf, QUICK_START_MS } from '../src/room'
+import { alarm, join, lobby, playOut, quick, run, say, T0 } from './helpers'
+
+const leave = (device: string) => ({ type: 'disconnect' as const, device })
 
 describe('listings', () => {
   it('a hosted lobby is listed with its host and free seats', () => {
@@ -53,5 +55,22 @@ describe('listings', () => {
     expect(closed.listing).toBeNull()
     const expired = alarm(listed.room, T0 + DAY)
     expect([expired.remove, expired.listing]).toEqual([true, null])
+  })
+
+  it('a quick room nobody is seated in is taken off; a new one, its creator not yet here, is listed', () => {
+    expect(listingOf(quick())).toMatchObject({ kind: 'quick', humans: 1, seatsFree: 3 })
+    expect(run(quick(), [join('ama'), leave('ama')]).listing).toBeNull()
+    // A rematch with everyone gone frees every seat.
+    let room = alarm(run(quick(), [join('ama')]).room, T0 + QUICK_START_MS).room
+    room = playOut(room, (r) => r.phase === 'finished')
+    room = run(room, [leave('ama')], room.lastActive).room
+    expect(listingOf(alarm(room, room.rematchAt!).room)).toBeNull()
+  })
+
+  it('a game nobody is connected to is taken off until someone is back', () => {
+    const started = alarm(run(quick(), [join('ama')]).room, T0 + QUICK_START_MS)
+    const left = run(started.room, [leave('ama')], T0 + QUICK_START_MS)
+    expect(left.listing).toBeNull()
+    expect(run(left.room, [join('ama')], T0 + QUICK_START_MS + 1000).listing).toMatchObject({ phase: 'playing', computerSeats: ['green', 'yellow', 'blue'] })
   })
 })

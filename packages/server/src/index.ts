@@ -15,8 +15,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const [api, what, rawCode, socket] = new URL(request.url).pathname.split('/').filter(Boolean)
     if (api !== 'api') return notFound()
-    if (what === 'open' && !rawCode && request.method === 'GET') return listOpen(env)
-    if (what === 'quick' && !rawCode && request.method === 'POST') return quick(request, env)
+    const lookup = (what === 'open' && request.method === 'GET') || (what === 'quick' && request.method === 'POST')
+    if (lookup && !rawCode) {
+      if (!(await allowed(env.LOOKUP_LIMIT, request))) return json({ error: 'too_fast' }, 429)
+      return what === 'open' ? listOpen(env) : quick(request, env)
+    }
     if (what !== 'rooms') return notFound()
     if (!rawCode) return request.method === 'POST' ? create(request, env) : notFound()
     const code = rawCode.toUpperCase()
@@ -44,12 +47,11 @@ async function readBody(request: Request): Promise<Record<string, unknown> | nul
   }
 }
 
-/** Making rooms: 3 a minute per address. */
-const allowed = async (request: Request, env: Env) =>
-  (await env.CREATE_LIMIT.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'local' })).success
+/** Per address: making rooms 3 a minute (CREATE_LIMIT), lookups 120 (LOOKUP_LIMIT). */
+const allowed = async (limit: RateLimit, request: Request) => (await limit.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'local' })).success
 
 async function create(request: Request, env: Env): Promise<Response> {
-  if (!(await allowed(request, env))) return json({ error: 'too_fast' }, 429)
+  if (!(await allowed(env.CREATE_LIMIT, request))) return json({ error: 'too_fast' }, 429)
   const body = await readBody(request)
   const name = cleanName(body?.name)
   if (!body || !validDevice(body.device) || !name || !validSettings(body.settings) || !validTimer(body.timer) || (body.open !== undefined && typeof body.open !== 'boolean')) {
@@ -84,7 +86,7 @@ async function quick(request: Request, env: Env): Promise<Response> {
   try {
     const found = await directory(env).quick(o)
     if (found) return json({ code: found })
-    if (!(await allowed(request, env))) return json({ error: 'too_fast' }, 429)
+    if (!(await allowed(env.CREATE_LIMIT, request))) return json({ error: 'too_fast' }, 429)
     const code = await directory(env).make({ ...o, name })
     return code ? json({ code }) : json({ error: 'busy' }, 503)
   } catch (error) {

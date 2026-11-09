@@ -231,6 +231,31 @@ describe('open rooms', () => {
     expect((await openList()).map((l) => l.code)).toContain(c1.code)
   })
 
+  it('four quick matches in a row share one room', async () => {
+    // Start from an empty directory, so earlier tests' rooms don't take them.
+    await runInDurableObject(env.DIRECTORY.get(env.DIRECTORY.idFromName('open')), async (directory, state) => {
+      await state.storage.deleteAll()
+      directory['entries'] = undefined
+      directory['holds'] = []
+    })
+    const codes = []
+    for (const device of ['f1', 'f2', 'f3', 'f4']) {
+      const { code } = await quickMatch(device, 'ghana')
+      codes.push(code)
+      await open(code!, device)
+      await settle()
+    }
+    expect(new Set(codes).size).toBe(1)
+  })
+
+  it('limits lookups to 120 a minute per address', async () => {
+    const lookup = () => exports.default.fetch(`${BASE}/api/open`, { headers: { 'CF-Connecting-IP': '10.9.9.9' } })
+    for (let i = 0; i < 120; i++) expect((await lookup()).status).toBe(200)
+    const res = await lookup()
+    expect([res.status, await res.json()]).toEqual([429, { error: 'too_fast' }])
+    expect((await post('/api/quick', { device: 'd', name: 'D', mode: 'ghana' }, '10.9.9.9')).status).toBe(429)
+  })
+
   it('refuses a bad quick match', async () => {
     expect((await post('/api/quick', { device: 'd', name: 'D', mode: 'custom' })).status).toBe(400)
     expect((await post('/api/quick', { device: '', name: 'D', mode: 'ghana' })).status).toBe(400)

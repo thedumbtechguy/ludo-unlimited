@@ -3,7 +3,7 @@ import { DurableObject } from 'cloudflare:workers'
 import type { Directory } from './DirectoryObject'
 import { createRoom, DAY, recover, reduce, relist, type Input, type Room, type Step } from './room'
 
-export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; DIRECTORY: DurableObjectNamespace<Directory>; CREATE_LIMIT: RateLimit }
+export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; DIRECTORY: DurableObjectNamespace<Directory>; CREATE_LIMIT: RateLimit; LOOKUP_LIMIT: RateLimit }
 
 const MAX_MESSAGE = 2048
 const random = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32
@@ -103,8 +103,9 @@ export class RoomObject extends DurableObject<Env> {
   private publish(listing: Listing | null | undefined): void {
     if (listing === undefined || !this.room) return
     const code = this.room.code
+    const seated = this.room.members.filter((m) => m.seat).map((m) => m.device)
     this.directory ??= this.env.DIRECTORY.get(this.env.DIRECTORY.idFromName('open'))
-    this.ctx.waitUntil(this.directory.put(code, listing).catch((error: unknown) => console.warn(`room ${code}: the directory missed a listing`, error)))
+    this.ctx.waitUntil(this.directory.put(code, listing, seated).catch((error: unknown) => console.warn(`room ${code}: the directory missed a listing`, error)))
   }
 
   /** Sockets we can still send to; closing ones are on their way out. */

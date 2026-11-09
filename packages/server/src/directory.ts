@@ -17,6 +17,10 @@ export const staleCodes = (entries: Listings, now: number): string[] =>
 export const browse = (entries: Listings): Listing[] =>
   [...entries.values()].sort((a, b) => b.at - a.at).slice(0, MAX_LISTED).map((e) => e.listing)
 
+/** Holds on this room for devices now seated there: its listing counts their seats already. */
+export const unhold = (holds: Hold[], code: string, seated: string[]): Hold[] =>
+  holds.filter((h) => h.code !== code || !seated.includes(h.device))
+
 /** Lobbies before games, fuller ones first. */
 const rank = ({ listing }: Entry) => (listing.phase === 'lobby' ? 10 : 0) + listing.humans
 

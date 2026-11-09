@@ -1,4 +1,4 @@
-import type { ClientMessage, Openness } from '@ludo/engine'
+import { eventMs, type ClientMessage, type Openness } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
 import { QUICK_REMATCH_MS, QUICK_START_MS, SEAT_RELEASE_MS } from '../src/room'
 import { alarm, join, lobby, playOut, quick, run, say, seatOf, seeded, sentTo, T0 } from './helpers'
@@ -76,17 +76,21 @@ describe('quick rooms', () => {
     expect(step.room.rematchAt).toBeUndefined()
   })
 
-  it('the clock tells devices when the next game is', () => {
+  it('the clock tells devices when the next game is, counting from when they have shown the last move', () => {
     let room = alarm(run(quick(), [join('ama')]).room, T0 + QUICK_START_MS).room
     let last: ReturnType<typeof alarm> | undefined
+    let before = room
     const random = seeded(7)
     for (let i = 0; i < 5000 && room.phase !== 'finished'; i++) {
+      before = room
       last = alarm(room, Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity), random)
       room = last.room
     }
     expect(room.phase).toBe('finished')
+    const shown = eventMs(before.game!, room.log.at(-1)!)
+    expect(shown).toBeGreaterThan(0)
     const clock = last!.sends.map((s) => s.msg).find((m) => m.t === 'clock')
-    expect(clock).toMatchObject({ t: 'clock', rematchIn: QUICK_REMATCH_MS })
+    expect(clock).toMatchObject({ t: 'clock', rematchIn: shown + QUICK_REMATCH_MS })
   })
 })
 

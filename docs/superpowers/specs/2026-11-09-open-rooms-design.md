@@ -52,7 +52,7 @@ Strangers can find a game. Quick match puts a player into a game in the mode the
 - **Seating:** everyone who connects is seated. In the lobby that's the first free colour of `SEATS[4]`; in a game it's the first computer seat still playing, taken over as with `takeover`. `sit` and `stand` are refused. Only when there's no seat left does a newcomer watch. In the lobby, a player who disconnects gives up their seat at once.
 - **Start:** when all 4 seats are taken by connected players, or 20 s after the first player was seated (`startAt`), whichever comes first. Empty seats become computers, as with `empty: 'computers'`. If nobody is connected when `startAt` comes, the countdown is cleared, and the next person seated starts a fresh 20 s.
 - **No pause:** the self-pause when nobody is connected still applies, since no one is there to see it.
-- **Rematch:** 15 s after the game finishes (`rematchAt`), the room goes back to the lobby. Connected players keep their seats, and everyone else is removed from their seat. `startAt` is set again for 20 s later.
+- **Rematch:** 15 s after devices have finished showing the last move (`rematchAt`: the final event's animation time plus 15 s), the room goes back to the lobby. Connected players keep their seats, and everyone else is removed from their seat. `startAt` is set again for 20 s later.
 - **Expiry:** 24 h after `lastActive`, as now.
 
 ### Left seats in open rooms
@@ -84,7 +84,7 @@ type Listing = {
 }
 ```
 
-- A room has a listing only while it's open and someone could play in it: a lobby with a free seat, or a game with a computer seat. Otherwise it's `null`.
+- A room has a listing only while it's open and someone could play in it: a lobby with a free seat, or a game with a computer seat. Otherwise it's `null`. A quick room nobody is seated in isn't listed (a new one is, its creator already seated), and nor is a game nobody is connected to: a frozen game shouldn't draw people in.
 - The reducer works it out after every input and includes it only when it differs from the last one sent (`room.listed`).
 - `RoomObject` sends it to the directory with `ctx.waitUntil`, without waiting for a reply. While listed, the room's alarm also re-sends it every 10 minutes. A failed send is logged with `console.warn` and retried by the next change or refresh.
 - Deleting a room (expiry) sends `null`.
@@ -94,7 +94,7 @@ type Listing = {
 A new Durable Object class `Directory` (in `packages/server/src/DirectoryObject.ts`, since `Directory.ts` would clash with `directory.ts` on a case-insensitive disk; binding `DIRECTORY`, one instance named `open`, a new migration tag). Its logic is pure (`packages/server/src/directory.ts`), with a thin object around it, like the room.
 
 - **State:** listings by code, each with `updatedAt`, and quick-match holds `{ code, device, until }`. They're saved in its SQLite storage.
-- **`put(listing | null, code)`:** add, replace or remove a listing.
+- **`put(code, listing | null, seated)`:** add, replace or remove a listing. `seated` is the device IDs seated in the room, sent beside the listing (never in it: listings are public). Holds on that room for those devices are dropped, since the listing already counts their seats.
 - **`list()`:** listings updated in the last 30 minutes, most recently updated first, at most 50. Listings older than 30 minutes are deleted.
 - **`quick(device, mode)`:** finds a room for quick match.
   1. It considers only quick listings in that mode, updated in the last 30 minutes, with a free seat after subtracting live holds held by other devices.
@@ -104,6 +104,7 @@ A new Durable Object class `Directory` (in `packages/server/src/DirectoryObject.
 
 ### Endpoints
 
+- `GET /api/open` and `POST /api/quick` are lookups, limited to 120 a minute per IP (`LOOKUP_LIMIT`); over it they reply `429 too_fast`.
 - `GET /api/open` → `{ rooms: Listing[] }`.
 - `POST /api/quick` with `{ device, name, mode }` → `{ code }`.
   - When a new room is needed, it uses the same per-IP `CREATE_LIMIT` as Create, and replies `429 too_fast` when over.
@@ -163,7 +164,7 @@ Any online button asks for the nickname first when there isn't one saved (the ex
 - **Directory down:** the list and quick match show **Try again**. Private rooms, codes and links still work: rooms never wait on the directory.
 - **Stale listings:** opening a room that's gone shows "No room with that code". A full one shows the watcher view. The next refresh drops it.
 - **Race for the last seat:** the 10 s hold covers quick match. Joining from the list goes through the room's normal rules, and the loser watches.
-- **Abuse:** room creation shares one per-IP limit. `/api/open` is read-only and capped at 50 rows. Names are cleaned as now.
+- **Abuse:** room creation shares one per-IP limit, and lookups (`/api/open`, `/api/quick`) another, 120 a minute. `/api/open` is read-only and capped at 50 rows. Names are cleaned as now.
 - **Unexpected errors** in the directory are caught and logged with `console.error`. The endpoint replies `503`, and nothing changes.
 
 ## Testing

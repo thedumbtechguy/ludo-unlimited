@@ -1,6 +1,6 @@
 import type { Listing } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { browse, HOLD_MS, pick, STALE_MS, staleCodes, type Entry } from '../src/directory'
+import { browse, HOLD_MS, pick, STALE_MS, staleCodes, unhold, type Entry } from '../src/directory'
 
 const NOW = 5_000_000
 const listing = (code: string, over: Partial<Listing> = {}): Listing => ({
@@ -52,6 +52,17 @@ describe('directory', () => {
     const later = pick(last, first.holds, { device: 'b', mode: 'ghana', now: NOW + HOLD_MS })
     expect(later.code).toBe('LAST')
     expect(later.holds).toEqual([{ code: 'LAST', device: 'b', until: NOW + 2 * HOLD_MS }])
+  })
+
+  it('drops a hold once its device is seated, so its seat is not counted twice', () => {
+    const held = pick(entries([listing('R', { humans: 1, seatsFree: 2 })]), [], { device: 'D2', mode: 'ghana', now: NOW })
+    // D2 connected: the room's listing already counts its seat.
+    const holds = unhold(held.holds, 'R', ['D1', 'D2'])
+    expect(holds).toEqual([])
+    expect(pick(entries([listing('R', { humans: 2, seatsFree: 1 })]), holds, { device: 'D3', mode: 'ghana', now: NOW + 1 }).code).toBe('R')
+    // Holds for other rooms or other devices stay.
+    const other = [{ code: 'S', device: 'D2', until: NOW + HOLD_MS }, { code: 'R', device: 'D4', until: NOW + HOLD_MS }]
+    expect(unhold(other, 'R', ['D2'])).toEqual(other)
   })
 
   it('never picks a stale listing', () => {

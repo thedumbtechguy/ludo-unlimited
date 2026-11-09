@@ -138,11 +138,15 @@ export function reduce(prev: Room, input: Input, now: number, random: () => numb
   return { room, sends: ctx.sends, alarm: nextAlarm(room), remove: false, listing }
 }
 
-/** What the directory shows of an open room; null while nobody could play in it. */
+/**
+ * What the directory shows of an open room; null while nobody could play in it, and for a quick
+ * room nobody is in or a game nobody is connected to: nobody would be playing there.
+ */
 export function listingOf(room: Room): Listing | null {
   if (!room.open || room.phase === 'finished') return null
-  const players = SEATS[room.settings.players].length
   const humans = room.members.filter((m) => m.seat).length
+  if ((room.open === 'quick' && humans === 0) || (room.phase === 'playing' && !anyoneSeatedConnected(room))) return null
+  const players = SEATS[room.settings.players].length
   const seatsFree = room.phase === 'lobby' ? players - humans : 0
   const computerSeats = room.phase === 'playing' ? takeable(room, gameOf(room)) : []
   if (seatsFree === 0 && computerSeats.length === 0) return null
@@ -549,7 +553,8 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
   if (next.status === 'finished') {
     room.phase = 'finished'
     room.deadline = room.botAt = undefined
-    if (room.open === 'quick') room.rematchAt = ctx.now + QUICK_REMATCH_MS
+    // Counted from when devices have shown the last move.
+    if (room.open === 'quick') room.rematchAt = ctx.now + eventMs(game, recorded) + QUICK_REMATCH_MS
   } else {
     room.readyAt = ctx.now + eventMs(game, recorded)
     schedule(ctx, next, room.readyAt)
