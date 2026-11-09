@@ -12,6 +12,8 @@ const random = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32
 export class RoomObject extends DurableObject<Env> {
   /** null once we know there's no room here. */
   private room?: Room | null
+  /** One stub for every listing, so they reach the directory in the order they were sent. */
+  private directory?: DurableObjectStub<Directory>
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -101,8 +103,8 @@ export class RoomObject extends DurableObject<Env> {
   private publish(listing: Listing | null | undefined): void {
     if (listing === undefined || !this.room) return
     const code = this.room.code
-    const directory = this.env.DIRECTORY.get(this.env.DIRECTORY.idFromName('open'))
-    this.ctx.waitUntil(directory.put(code, listing).catch((error: unknown) => console.warn(`room ${code}: the directory missed a listing`, error)))
+    this.directory ??= this.env.DIRECTORY.get(this.env.DIRECTORY.idFromName('open'))
+    this.ctx.waitUntil(this.directory.put(code, listing).catch((error: unknown) => console.warn(`room ${code}: the directory missed a listing`, error)))
   }
 
   /** Sockets we can still send to; closing ones are on their way out. */

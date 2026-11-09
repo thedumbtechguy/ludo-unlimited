@@ -222,6 +222,15 @@ describe('open rooms', () => {
     expect(lastRoom(q4.got)).toMatchObject({ you: { seat: 'red', host: false }, room: { open: 'quick' } })
   })
 
+  it('two quick matches at once make one room, and it is listed', async () => {
+    // An earlier test's classic room may take them both; either way they share a room.
+    const [c1, c2] = await Promise.all([quickMatch('c1', 'classic', 'YYYY'), quickMatch('c2', 'classic', 'YYYY')])
+    expect(c1.code).toBeDefined()
+    expect(c2.code).toBe(c1.code)
+    await settle()
+    expect((await openList()).map((l) => l.code)).toContain(c1.code)
+  })
+
   it('refuses a bad quick match', async () => {
     expect((await post('/api/quick', { device: 'd', name: 'D', mode: 'custom' })).status).toBe(400)
     expect((await post('/api/quick', { device: '', name: 'D', mode: 'ghana' })).status).toBe(400)

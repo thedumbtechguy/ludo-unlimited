@@ -27,7 +27,8 @@ export class Directory extends DurableObject<Env> {
     const stale = staleCodes(entries, Date.now())
     if (stale.length === 0) return entries
     for (const code of stale) entries.delete(code)
-    await this.ctx.storage.delete(stale.map((code) => KEY + code))
+    // Storage deletes at most 128 keys at a time.
+    for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128).map((code) => KEY + code))
     return entries
   }
 
@@ -70,8 +71,14 @@ export class Directory extends DurableObject<Env> {
       const listing: Listing = { code, kind: 'quick', mode: o.mode, phase: 'lobby', players: 4, humans: 1, seatsFree: 3, computerSeats: [], timer: QUICK_TIMER }
       entries.set(code, { listing, at: Date.now() })
       const room = this.env.ROOMS.get(this.env.ROOMS.idFromName(code))
-      if (await room.create({ code, device: o.device, name: o.name, settings: quickSettings(o.mode), timer: QUICK_TIMER, open: 'quick' })) return code
-      entries.delete(code)
+      let made = false
+      try {
+        made = await room.create({ code, device: o.device, name: o.name, settings: quickSettings(o.mode), timer: QUICK_TIMER, open: 'quick' })
+      } finally {
+        // Not made, so not listed: quick matches mustn't be sent there.
+        if (!made) entries.delete(code)
+      }
+      if (made) return code
     }
     return undefined
   }
