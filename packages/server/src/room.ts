@@ -187,7 +187,6 @@ export function recover(stored: Room, now: number): Room {
   room.seq += 1
   room.phase = game.status === 'finished' ? 'finished' : 'playing'
   room.readyAt = undefined
-  if (room.open === 'quick' && room.phase === 'finished') room.rematchAt = now + QUICK_REMATCH_MS
   schedule({ room, sends: [], now, random: Math.random }, game, now)
   return room
 }
@@ -264,8 +263,8 @@ function claim(room: Room, m: Member): void {
     return
   }
   if (!room.open || room.phase !== 'playing') return
-  const own = COLORS.find((c) => room.leftSeats?.[c] === m.device)
-  const color = own && room.computers.includes(own) ? own : room.open === 'quick' ? takeable(room, gameOf(room))[0] : undefined
+  const own = COLORS.find((c) => room.leftSeats?.[c] === m.device && room.computers.includes(c))
+  const color = own ?? (room.open === 'quick' ? takeable(room, gameOf(room))[0] : undefined)
   if (color) takeSeat(room, m, color)
 }
 
@@ -304,7 +303,9 @@ function disconnect(ctx: Ctx, device: string): void {
   if (room.open === 'quick' && room.phase === 'lobby') m.seat = undefined
   if (room.phase === 'playing') {
     leaveGame(ctx, m)
-    if (room.open && m.seat && !room.computers.includes(m.seat)) m.leftAt = ctx.now
+    // A player who has finished has nothing left to play, so nobody needs their seat.
+    const playingOn = m.seat && !room.computers.includes(m.seat) && getPlayer(gameOf(room), m.seat).finishedPlace === undefined
+    if (room.open && playingOn) m.leftAt = ctx.now
   }
   pickHost(room)
   prune(room)
@@ -528,13 +529,13 @@ function computerAct(ctx: Ctx, game: GameState): boolean {
 function release(ctx: Ctx): void {
   const { room, now } = ctx
   const due = room.members.filter((m) => m.leftAt !== undefined && now >= m.leftAt + SEAT_RELEASE_MS)
-  if (due.length === 0) return
+  for (const m of due) m.leftAt = undefined
+  if (due.length === 0 || room.phase !== 'playing') return
   for (const m of due) {
-    m.leftAt = undefined
-    if (room.phase !== 'playing' || !m.seat || m.connected) continue
-    room.covering = room.covering.filter((c) => c !== m.seat)
-    room.computers.push(m.seat)
-    room.leftSeats = { ...room.leftSeats, [m.seat]: m.device }
+    const seat = m.seat!
+    room.covering = room.covering.filter((c) => c !== seat)
+    room.computers.push(seat)
+    room.leftSeats = { ...room.leftSeats, [seat]: m.device }
     m.seat = undefined
   }
   pickHost(room)

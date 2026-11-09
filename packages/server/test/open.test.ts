@@ -1,6 +1,6 @@
 import type { ClientMessage, Openness } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { QUICK_REMATCH_MS, QUICK_START_MS, recover, SEAT_RELEASE_MS, type Room } from '../src/room'
+import { QUICK_REMATCH_MS, QUICK_START_MS, SEAT_RELEASE_MS } from '../src/room'
 import { alarm, join, lobby, playOut, quick, run, say, seatOf, seeded, sentTo, T0 } from './helpers'
 
 const lastRoom = (step: ReturnType<typeof run>, device: string) => sentTo(step, device).filter((m) => m.t === 'room').at(-1)
@@ -88,16 +88,6 @@ describe('quick rooms', () => {
     const clock = last!.sends.map((s) => s.msg).find((m) => m.t === 'clock')
     expect(clock).toMatchObject({ t: 'clock', rematchIn: QUICK_REMATCH_MS })
   })
-
-  it('a finished game recovered from its log still has its next game coming', () => {
-    let room = alarm(run(quick(), [join('ama')]).room, T0 + QUICK_START_MS).room
-    room = playOut(room, (r) => r.phase === 'finished')
-    // Stored without its game, and with a roll after the end that no longer plays.
-    const stored: Room = { ...room, game: undefined, rematchAt: undefined, log: [...room.log, { type: 'roll', value: 3 }] }
-    const recovered = recover(stored, T0 + 50)
-    expect(recovered.phase).toBe('finished')
-    expect(recovered.rematchAt).toBe(T0 + 50 + QUICK_REMATCH_MS)
-  })
 })
 
 describe('hosted open rooms', () => {
@@ -150,6 +140,31 @@ describe('left seats in open rooms', () => {
     const step = run(taken, [join('kofi', 'Kofi')], T0 + SEAT_RELEASE_MS + 1000)
     expect(seatOf(step.room, 'kofi')).toBeUndefined()
     expect(seatOf(step.room, 'esi')).toBe('yellow')
+  })
+
+  it('back after leaving two seats, they get the one still free', () => {
+    // Ama red, Kofi green, computers on yellow and blue.
+    let room = run(lobby(4, 'hosted'), [join('host', 'Ama'), join('kofi', 'Kofi'), say('kofi', { t: 'sit', color: 'green' }), say('host', { t: 'start', empty: 'computers' })]).room
+    room = alarm(run(room, [{ type: 'disconnect', device: 'kofi' }]).room, T0 + SEAT_RELEASE_MS).room
+    room = run(room, [join('esi'), say('esi', { t: 'takeover', color: 'green' })], T0 + SEAT_RELEASE_MS).room
+    // Kofi comes back to watch, takes yellow from the computer, and leaves again.
+    room = run(room, [join('kofi', 'Kofi'), say('kofi', { t: 'takeover', color: 'yellow' }), { type: 'disconnect', device: 'kofi' }], T0 + SEAT_RELEASE_MS).room
+    room = alarm(room, T0 + 2 * SEAT_RELEASE_MS).room
+    expect(room.leftSeats).toEqual({ green: 'kofi', yellow: 'kofi' })
+    const step = run(room, [join('kofi', 'Kofi')], T0 + 2 * SEAT_RELEASE_MS)
+    expect(seatOf(step.room, 'kofi')).toBe('yellow')
+    expect(seatOf(step.room, 'esi')).toBe('green')
+  })
+
+  it('a player who has finished keeps their seat', () => {
+    const room = playing('hosted')
+    const game = room.game!
+    room.game = { ...game, players: game.players.map((p) => (p.color === 'yellow' ? { ...p, finishedPlace: 1 } : p)) }
+    const left = gone(room).room
+    expect(left.members.find((m) => m.device === 'kofi')?.leftAt).toBeUndefined()
+    const step = alarm(left, T0 + SEAT_RELEASE_MS)
+    expect(step.room.computers).toEqual([])
+    expect(seatOf(step.room, 'kofi')).toBe('yellow')
   })
 
   it('back in time, nothing is given away', () => {
