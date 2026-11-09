@@ -4,6 +4,7 @@ import type { Dice } from './dice'
 import { audio } from './fx/audio'
 import { back, depth, onPop, push, replace, restart } from './navigation'
 import { createRoom, quickMatch } from './online/api'
+import { FindGame } from './online/FindGame'
 import { PlayOnline, type Step } from './online/PlayOnline'
 import { QuickMatch } from './online/QuickMatch'
 import { RoomScreen } from './online/RoomScreen'
@@ -244,11 +245,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
         />
       )
     case 'find':
-      return (
-        <main className="screen message">
-          <p>Coming soon</p>
-        </main>
-      )
+      return <FindGame onOpen={(code) => go({ name: 'room', code })} onQuick={() => go({ name: 'quick' })} onBack={goBack} />
     case 'create':
       return <Setup onBack={goBack} {...prefs} online={{ submitLabel: 'Create room', onCreate: create, error: screen.error, busy: screen.request !== undefined }} />
     case 'room': {

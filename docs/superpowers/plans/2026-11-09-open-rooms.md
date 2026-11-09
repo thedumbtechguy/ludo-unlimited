@@ -35,7 +35,7 @@
 **Server (`packages/server/src`)**
 - `room.ts` (modify): open kinds, quick lobby and rematch, seat release, listings.
 - `directory.ts` (create): pure directory logic: stale, browse, pick.
-- `Directory.ts` (create): the Durable Object around it; makes quick rooms.
+- `DirectoryObject.ts` (create): the Durable Object around it (class `Directory`); makes quick rooms. Not `Directory.ts`, which clashes with `directory.ts` on case-insensitive disks.
 - `RoomObject.ts` (modify): `create` takes `open`; sends listings.
 - `index.ts` (modify): `/api/open`, `/api/quick`, `open` on create.
 - `validate.ts` (modify): `validDevice`, `validMode`.
@@ -963,7 +963,7 @@ git commit -m "feat(server): directory logic: stale listings, the open list, qui
 **Goal:** Listings flow from rooms to one `Directory` object, which serves `GET /api/open` and `POST /api/quick`; `POST /api/rooms` takes `open`.
 
 **Files:**
-- Create: `packages/server/src/Directory.ts`
+- Create: `packages/server/src/DirectoryObject.ts`
 - Modify: `packages/server/src/RoomObject.ts`, `packages/server/src/index.ts`, `packages/server/src/validate.ts`, `packages/server/wrangler.jsonc`, `packages/server/test/env.d.ts`, `packages/server/test/api.test.ts`, `packages/server/test/validate.test.ts`
 
 **Acceptance Criteria:**
@@ -1067,7 +1067,7 @@ describe('open rooms', () => {
 
 Run: `npm test -w @ludo/server -- api` → FAIL.
 
-- [ ] **Step 4: `Directory.ts`.**
+- [ ] **Step 4: `DirectoryObject.ts` (class `Directory`).**
 
 ```ts
 import type { Listing, ModeName } from '@ludo/engine'
@@ -1154,7 +1154,7 @@ export class Directory extends DurableObject<Env> {
 
 ```ts
 import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type Listing, type Openness, type RoomInfo, type Settings, type TurnTimer } from '@ludo/engine'
-import type { Directory } from './Directory'
+import type { Directory } from './DirectoryObject'
 import { createRoom, DAY, recover, reduce, relist, type Input, type Room, type Step } from './room'
 
 export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; DIRECTORY: DurableObjectNamespace<Directory>; CREATE_LIMIT: RateLimit }
@@ -1195,7 +1195,7 @@ In `apply`: in the `step.remove` branch, call `this.publish(step.listing)` befor
 import type { Env } from './RoomObject'
 import { cleanName, makeCode, validCode, validDevice, validMode, validSettings, validTimer } from './validate'
 
-export { Directory } from './Directory'
+export { Directory } from './DirectoryObject'
 export { RoomObject } from './RoomObject'
 
 const MAX_BODY = 4096

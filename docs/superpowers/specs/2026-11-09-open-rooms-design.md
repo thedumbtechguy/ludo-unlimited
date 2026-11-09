@@ -49,8 +49,8 @@ Strangers can find a game. Quick match puts a player into a game in the mode the
 **Quick** (`open: 'quick'`): made only by quick match.
 - **Settings:** `settingsFor(mode, 4, 'firstWins')`, timer `normal` (30 s).
 - **No host:** `owner` and `host` are unset. Every host-only message (`settings`, `start`, `pause`, `resume`, `rematch`) is refused with `illegal`. The host rule from step 1 doesn't run.
-- **Seating:** a device that connects in the lobby is seated in the first free colour of `SEATS[4]`. `sit` and `stand` are refused. When all seats are taken, a newcomer watches.
-- **Start:** when all 4 seats are taken by connected players, or 20 s after the first player was seated (`startAt`), whichever comes first. Empty seats become computers, as with `empty: 'computers'`. If nobody is connected when `startAt` comes, the room waits and starts as soon as someone is seated.
+- **Seating:** everyone who connects is seated. In the lobby that's the first free colour of `SEATS[4]`; in a game it's the first computer seat still playing, taken over as with `takeover`. `sit` and `stand` are refused. Only when there's no seat left does a newcomer watch. In the lobby, a player who disconnects gives up their seat at once.
+- **Start:** when all 4 seats are taken by connected players, or 20 s after the first player was seated (`startAt`), whichever comes first. Empty seats become computers, as with `empty: 'computers'`. If nobody is connected when `startAt` comes, the countdown is cleared, and the next person seated starts a fresh 20 s.
 - **No pause:** the self-pause when nobody is connected still applies, since no one is there to see it.
 - **Rematch:** 15 s after the game finishes (`rematchAt`), the room goes back to the lobby. Connected players keep their seats, and everyone else is removed from their seat. `startAt` is set again for 20 s later.
 - **Expiry:** 24 h after `lastActive`, as now.
@@ -63,7 +63,7 @@ For both open kinds, when a seated human has been disconnected for 120 s during 
 - When that device reconnects and the colour is still in `computers`, it's taken over for them as if they'd sent `takeover`. If someone else has it, they watch.
 - `leftSeats` is cleared at rematch.
 
-Private rooms keep step 1's rule: the seat is theirs until the end.
+Private rooms keep step 1's rule: the seat is theirs until the end. A player who has finished keeps their seat in every kind of room: it's never released to others.
 
 ### Listings
 
@@ -91,7 +91,7 @@ type Listing = {
 
 ### Directory
 
-A new Durable Object class `Directory` (binding `DIRECTORY`, one instance named `open`, a new migration tag). Its logic is pure (`packages/server/src/directory.ts`), with a thin object around it, like the room.
+A new Durable Object class `Directory` (in `packages/server/src/DirectoryObject.ts`, since `Directory.ts` would clash with `directory.ts` on a case-insensitive disk; binding `DIRECTORY`, one instance named `open`, a new migration tag). Its logic is pure (`packages/server/src/directory.ts`), with a thin object around it, like the room.
 
 - **State:** listings by code, each with `updatedAt`, and quick-match holds `{ code, device, until }`. They're saved in its SQLite storage.
 - **`put(listing | null, code)`:** add, replace or remove a listing.
@@ -111,7 +111,7 @@ A new Durable Object class `Directory` (binding `DIRECTORY`, one instance named 
 - `POST /api/rooms` takes `open: boolean` (default false).
 - `PROTOCOL_VERSION` goes up by one, since `RoomView` and `settings` change.
 
-`RoomView` gains `open`, `startAt` and `rematchAt` (as milliseconds left, like `deadlineIn`), so devices can show the countdowns.
+`RoomView` gains `open`, `startIn` and `rematchIn` (as milliseconds left, like `deadlineIn`), so devices that connect later can show the countdowns. The rematch countdown also travels on the `clock` message (`rematchIn`), since a `room` message would reset the board mid-animation. `{ t: 'settings' }` carries a required `open: boolean`.
 
 ## Screens
 
@@ -139,14 +139,24 @@ Any online button asks for the nickname first when there isn't one saved (the ex
   - "Quick" or "Kofi's room"
   - "Waiting · 2 of 4" in the lobby, or "Playing · Blue free" (one or more colours)
   - the timer
-- Tapping a row opens `/r/CODE` as any room link does. A quick lobby seats you, a hosted lobby lets you pick, and a game puts you in as a watcher with the existing **Play as …** buttons.
-- It refreshes every 5 s while on screen, and also on pull-down and when the tab becomes visible again.
+- Tapping a row opens `/r/CODE` as any room link does. A quick room seats you, in its lobby or on a computer seat in its game. A hosted lobby lets you pick, and a hosted game puts you in as a watcher with the existing **Play as …** buttons.
+- It refreshes every 5 s while on screen, when the tab becomes visible again, and with a **Refresh** button.
 - Empty: "No open games right now" and **Quick match**.
 - Error: "Couldn't load games" and **Try again**.
 
 **Create a room:** a new row **Who can join: Friends with the code / Anyone**, defaulting to Friends. The host's lobby shows the same row. Open rooms show an "Open" tag next to the code.
 
 **In a quick room's game:** no pause controls and no host notice. Results show "Next game in 12 s" and **Leave**, with no Rematch.
+
+## Refinements made while planning
+
+1. **Quick rooms seat everyone who connects:** in the lobby on the first free seat, and in a game by taking the first computer seat still playing. So a quick room opened from Find a game seats you too, rather than leaving you watching.
+2. **Nobody here when the wait ends:** the countdown is cleared, and the next person seated starts a fresh 20 s.
+3. **The rematch countdown** travels on the `clock` message (`rematchIn`), since a `room` message would reset the board mid-animation. `RoomView` carries `startIn` and `rematchIn` too, for devices that connect later.
+4. **Refresh:** Find a game has a **Refresh** button instead of pull-down.
+5. **`settings`** carries a required `open: boolean`.
+6. **Leaving a quick lobby:** a player who disconnects in a quick room's lobby gives up their seat at once, so it's free for the next arrival.
+7. **Finished players:** a finished player's seat is never released to others.
 
 ## Error handling
 
@@ -176,5 +186,5 @@ Any online button asks for the nickname first when there isn't one saved (the ex
   - The quick lobby countdown and the results countdown.
   - The Who can join row.
   - Home: the new order, the name step before any online button when no name is saved, and Continue only with a saved game.
-- **Browser** (Playwright): two contexts quick match the same mode and land in the same room, and the game starts. A third context finds it in Find a game and joins as a watcher.
+- **Browser** (Playwright): two contexts quick match the same mode and land in the same room, and the game starts. A third context finds it in Find a game, opens it and is seated on a computer's seat.
 - Existing tests still pass.

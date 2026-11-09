@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { createGame, lane, settingsFor, track } from '@ludo/engine'
-import { combinedRolls, describePosition, finishCallout, firstHuman, kickCallouts, kickMessage, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
+import { combinedRolls, describePosition, finishCallout, firstHuman, kickCallouts, kickMessage, listingStatus, rulesName, listNumbers, numberedTargetLabel, pieceLabel, placeName, seatNames, targetLabel, turnTag, wastedText } from './labels'
 
 describe('labels', () => {
+  it('says how a listed room stands', () => {
+    const base = { code: 'QWRT', kind: 'quick', mode: 'ghana', players: 4, humans: 2, timer: 'normal' } as const
+    expect(listingStatus({ ...base, phase: 'lobby', seatsFree: 2, computerSeats: [] })).toBe('Waiting · 2 of 4')
+    expect(listingStatus({ ...base, phase: 'playing', seatsFree: 0, computerSeats: ['green', 'blue'] })).toBe('Playing · Green, Blue free')
+  })
+
   it('describes positions', () => {
     expect(describePosition({ kind: 'base' })).toBe('in base')
     expect(describePosition({ kind: 'home' })).toBe('home')

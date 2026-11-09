@@ -5,6 +5,7 @@ Ludo with Ghanaian kicks, for one device or online with friends.
 - `packages/engine`: the rules.
 - `packages/web`: the app (React and Vite).
 - `packages/server`: the online rooms (a Cloudflare Worker with a Durable Object per room). It also serves the built app.
+  One `Directory` Durable Object (`src/DirectoryObject.ts`) keeps the open rooms: `GET /api/open` lists them and `POST /api/quick` finds or makes a quick room. Its migration (`v2`) runs on the next deploy; the Workers Builds settings don't change.
 
 ## Running locally
 

@@ -1,4 +1,4 @@
-import { isWicked, MODES, type AfterKick, type Color, type EndCondition, type GameEffect, type GameState, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
+import { isWicked, MODES, type AfterKick, type Color, type EndCondition, type GameEffect, type GameState, type Listing, type ModeName, type Move, type PieceId, type Position, type Rules, type TurnTimer } from '@ludo/engine'
 import { FINISH_CALLOUT_MS, WIN_CALLOUT_MS } from './fx/actions'
 import type { Seats } from './types'
 
@@ -141,6 +141,13 @@ export const QUICK_MODES = [
   ['ghana', 'Ghana kicks', 'All kicks and the Labourer'],
   ['classic', 'Classic', 'Plain Ludo'],
 ] as const satisfies readonly (readonly [ModeName, string, string])[]
+
+/** A listed room's rules. */
+export const LISTED_MODE_NAME: Record<Listing['mode'], string> = { classic: 'Classic', ghana: 'Ghana kicks', custom: 'Custom' }
+
+/** "Waiting · 2 of 4" or "Playing · Green, Blue free". */
+export const listingStatus = (l: Listing): string =>
+  l.phase === 'lobby' ? `Waiting · ${l.humans} of ${l.players}` : `Playing · ${l.computerSeats.map((c) => COLOR_NAME[c]).join(', ')} free`
 
 const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
 

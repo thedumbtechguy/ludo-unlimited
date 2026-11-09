@@ -8,14 +8,15 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: 'http://localhost:5199' },
   projects: [
-    // The room test runs once, on desktop: it plays at real speed and makes a room.
-    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: 'online.spec.ts' },
+    // The room tests run once, on desktop: they play at real speed and make rooms, and two runs would match into each other's.
+    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: ['online.spec.ts', 'quick.spec.ts'] },
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: [
     {
       // The rooms server. Its routes answer 404 until a room exists, so wait for the port instead of a URL.
-      command: 'npm run dev -w @ludo/server -- --port 8787',
+      // It starts with empty state each run: wrangler keeps rooms, open listings and rate limits on disk.
+      command: 'rm -rf packages/server/.wrangler/e2e && npm run dev -w @ludo/server -- --port 8787 --persist-to .wrangler/e2e',
       port: 8787,
       cwd: '../..',
       reuseExistingServer: !process.env.CI,

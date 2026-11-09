@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { fixedDice, seededDice } from './dice'
-import { createRoom, quickMatch } from './online/api'
+import { createRoom, openRooms, quickMatch } from './online/api'
 import { useOnlineGame } from './online/useOnlineGame'
 import { setPlaying } from './update'
 import { FAST_TIMING } from './useGame'
 
 vi.mock('./online/useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
-vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn(), quickMatch: vi.fn() }))
+vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn(), quickMatch: vi.fn(), openRooms: vi.fn() }))
 vi.mock('./update', async (original) => ({ ...(await original<typeof import('./update')>()), setPlaying: vi.fn() }))
 
 // The back gesture: the browser steps back an entry and says so a moment later.
@@ -321,6 +321,19 @@ describe('App online', () => {
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
     await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Quick match' })).toBeInTheDocument()
+  })
+
+  it('Find a game lists the open rooms, and tapping one opens it', async () => {
+    vi.mocked(openRooms).mockResolvedValue([
+      { code: 'QWRT', kind: 'quick', mode: 'classic', phase: 'playing', players: 4, humans: 2, seatsFree: 0, computerSeats: ['blue'], timer: 'normal' },
+    ])
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Find a game' }))
+    await user.click(await screen.findByTestId('listing'))
+    await waitFor(() => expect(location.pathname).toBe('/r/QWRT'))
+    expect(useOnlineGame).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'QWRT', name: 'Ama' }))
   })
 
   it('quick match finds a room and opens it, remembering the rules', async () => {
