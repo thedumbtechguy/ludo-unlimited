@@ -10,8 +10,14 @@ describe('storage', () => {
 
   it('round-trips a saved game', () => {
     const log = roll(createGame(settings), 3).log
-    saveGame({ settings, seats: { red: 'human', yellow: 'computer' }, log })
-    expect(loadGame()).toEqual({ settings, seats: { red: 'human', yellow: 'computer' }, log })
+    saveGame({ settings, seats: { red: 'human', yellow: 'normal' }, log })
+    expect(loadGame()).toEqual({ settings, seats: { red: 'human', yellow: 'normal' }, log })
+  })
+
+  it('loads a game saved before levels with its computers at normal', () => {
+    const log = roll(createGame(settings), 3).log
+    localStorage.setItem('ludo-unlimited:game', JSON.stringify({ settings, seats: { red: 'human', yellow: 'computer' }, log }))
+    expect(loadGame()?.seats).toEqual({ red: 'human', yellow: 'normal' })
   })
 
   it('is empty when nothing is saved, or after clearing', () => {

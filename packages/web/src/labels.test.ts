@@ -38,15 +38,15 @@ describe('labels', () => {
 
   it('names seats: You for the first human, Player N for the next ones, Computer', () => {
     const colors = ['red', 'green', 'yellow', 'blue'] as const
-    expect(seatNames({ red: 'computer', green: 'human', yellow: 'human', blue: 'human' }, [...colors])).toEqual({
+    expect(seatNames({ red: 'normal', green: 'human', yellow: 'human', blue: 'human' }, [...colors])).toEqual({
       red: 'Computer',
       green: 'You',
       yellow: 'Player 2',
       blue: 'Player 3',
     })
     expect(seatNames({ red: 'human' }, ['red', 'yellow'])).toEqual({ red: 'You', yellow: 'Computer' })
-    expect(firstHuman({ red: 'computer', yellow: 'human' }, ['red', 'yellow'])).toBe('yellow')
-    expect(firstHuman({ red: 'computer' }, ['red', 'yellow'])).toBeUndefined()
+    expect(firstHuman({ red: 'normal', yellow: 'human' }, ['red', 'yellow'])).toBe('yellow')
+    expect(firstHuman({ red: 'normal' }, ['red', 'yellow'])).toBeUndefined()
   })
 
   it('tags the active yard', () => {

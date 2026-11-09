@@ -200,7 +200,7 @@ describe('GameScreen', () => {
 
     it('stays quiet about a computer’s roll that had no move', async () => {
       vi.useFakeTimers()
-      renderGame({ seats: { red: 'human', yellow: 'computer' } })
+      renderGame({ seats: { red: 'human', yellow: 'normal' } })
       await act(async () => {
         screen.getByRole('button', { name: /Roll dice/ }).click()
       })
@@ -216,7 +216,7 @@ describe('GameScreen', () => {
 
   describe('whose turn', () => {
     it('keeps "\'s turn" apart from the name, so only the name is cut short', () => {
-      renderGame({ seats: { red: 'computer', yellow: 'human' }, timing: { ...FAST_TIMING, botRoll: 60_000 } })
+      renderGame({ seats: { red: 'normal', yellow: 'human' }, timing: { ...FAST_TIMING, botRoll: 60_000 } })
       const label = document.querySelector('.turn-label')!
       expect(label.querySelector('.turn-name')).toHaveTextContent(/^Red$/)
       expect(label.querySelector('.turn-of')).toHaveTextContent("'s turn")
@@ -247,7 +247,7 @@ describe('GameScreen', () => {
   })
 
   describe('board', () => {
-    const seats = { red: 'computer', yellow: 'human' } as const
+    const seats = { red: 'normal', yellow: 'human' } as const
     const slowBot = { seats, timing: { ...FAST_TIMING, botRoll: 60_000 } }
 
     it('turns the first human’s yard bottom-right for a right hand', () => {
@@ -261,7 +261,7 @@ describe('GameScreen', () => {
     })
 
     it('turns red towards the viewer when nobody is human', () => {
-      renderGame({ ...slowBot, seats: { red: 'computer', yellow: 'computer' } }, { hand: 'left' })
+      renderGame({ ...slowBot, seats: { red: 'normal', yellow: 'normal' } }, { hand: 'left' })
       expect(corner('red')).toEqual(['4', '364'])
     })
 

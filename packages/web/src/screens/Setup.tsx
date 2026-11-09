@@ -1,8 +1,8 @@
-import { MODES, SEATS, type AfterKick, type EndCondition, type ModeName, type Rules, type Settings, type TurnTimer } from '@ludo/engine'
+import { MODES, SEATS, type AfterKick, type Color, type EndCondition, type ModeName, type Rules, type Settings, type TurnTimer } from '@ludo/engine'
 import { useId, useState } from 'react'
 import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { AFTER_KICK, COLOR_NAME, END, modeOf, seatNames, TIMERS } from '../labels'
+import { AFTER_KICK, COLOR_NAME, END, LEVELS, levelName, modeOf, seatNames, TIMERS } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Hand, Seats, ThemePref } from '../types'
 
@@ -62,6 +62,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
   const [endCondition, setEndCondition] = useState<EndCondition>(initial?.settings.endCondition ?? 'firstWins')
   const [timer, setTimer] = useState<TurnTimer>(initial?.timer ?? 'normal')
   const [open, setOpen] = useState<Open>()
+  const [levelFor, setLevelFor] = useState<Color>()
   const summaryId = useId()
 
   const close = () => setOpen(undefined)
@@ -78,7 +79,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
   }
 
   function start() {
-    const chosen = Object.fromEntries(seated.map((color) => [color, seats[color] ?? 'computer'])) as Seats
+    const chosen = Object.fromEntries(seated.map((color) => [color, seats[color] ?? 'normal'])) as Seats
     onStart?.({ players, endCondition, rules, afterKick }, chosen)
   }
 
@@ -109,16 +110,23 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
         {initial && <p className="row-note setup-note">People on removed seats go back to watching.</p>}
         {!online &&
           seated.map((color) => {
-            const human = seats[color] === 'human'
+            const seat = seats[color] ?? 'normal'
+            const human = seat === 'human'
             return (
               <div key={color} className="row">
                 <span className="dot" style={{ background: COLOR_HEX[color] }} />
                 <span className="row-label">{COLOR_NAME[color]}</span>
+                {seat !== 'human' && (
+                  <button type="button" className="level-button" aria-haspopup="dialog" aria-label={`${COLOR_NAME[color]} computer level: ${levelName(seat)}`} onClick={() => setLevelFor(color)}>
+                    {levelName(seat)}
+                    <Chevron />
+                  </button>
+                )}
                 <button
                   type="button"
                   className={human ? 'seat-button human' : 'seat-button'}
                   aria-label={`${COLOR_NAME[color]} player: ${names[color]}`}
-                  onClick={() => setSeats({ ...seats, [color]: human ? 'computer' : 'human' })}
+                  onClick={() => setSeats({ ...seats, [color]: human ? 'normal' : 'human' })}
                 >
                   {names[color]}
                 </button>
@@ -172,6 +180,15 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
       {open === 'timer' && <Picker title="Turn timer" options={TIMERS} value={timer} onPick={setTimer} onClose={close} />}
       {open === 'hand' && <Picker title="Playing hand" options={HANDS} value={hand} onPick={onHand} onClose={close} />}
       {open === 'theme' && <Picker title="Theme" options={THEMES} value={theme} onPick={onTheme} onClose={close} />}
+      {levelFor && (
+        <Picker
+          title={`${COLOR_NAME[levelFor]} computer`}
+          options={LEVELS}
+          value={seats[levelFor] === 'human' ? 'normal' : (seats[levelFor] ?? 'normal')}
+          onPick={(level) => setSeats({ ...seats, [levelFor]: level })}
+          onClose={() => setLevelFor(undefined)}
+        />
+      )}
       {open === 'rules' && (
         <Sheet title="Choose rules one by one" onClose={close}>
           <div className="sheet-rows">
