@@ -1,8 +1,9 @@
-import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type RoomInfo, type Settings, type TurnTimer } from '@ludo/engine'
+import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type Listing, type Openness, type RoomInfo, type Settings, type TurnTimer } from '@ludo/engine'
 import { DurableObject } from 'cloudflare:workers'
-import { createRoom, DAY, recover, reduce, type Input, type Room, type Step } from './room'
+import type { Directory } from './DirectoryObject'
+import { createRoom, DAY, recover, reduce, relist, type Input, type Room, type Step } from './room'
 
-export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; CREATE_LIMIT: RateLimit }
+export type Env = { ROOMS: DurableObjectNamespace<RoomObject>; DIRECTORY: DurableObjectNamespace<Directory>; CREATE_LIMIT: RateLimit }
 
 const MAX_MESSAGE = 2048
 const random = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32
@@ -28,11 +29,14 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   /** Make the room; false when this code is already taken. */
-  async create(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer }): Promise<boolean> {
+  async create(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; open?: Openness }): Promise<boolean> {
     if (await this.load()) return false
-    this.room = createRoom({ ...o, now: Date.now() })
+    const now = Date.now()
+    this.room = createRoom({ ...o, now })
+    const listing = relist(this.room, now)
     await this.ctx.storage.put('room', this.room)
     await this.ctx.storage.setAlarm(this.room.lastActive + DAY)
+    this.publish(listing)
     return true
   }
 
@@ -93,6 +97,14 @@ export class RoomObject extends DurableObject<Env> {
     await this.apply({ type: 'alarm' })
   }
 
+  /** Tell the directory about this room, without waiting. A lost update is sent again with the next change or the 10-minute refresh. */
+  private publish(listing: Listing | null | undefined): void {
+    if (listing === undefined || !this.room) return
+    const code = this.room.code
+    const directory = this.env.DIRECTORY.get(this.env.DIRECTORY.idFromName('open'))
+    this.ctx.waitUntil(directory.put(code, listing).catch((error: unknown) => console.warn(`room ${code}: the directory missed a listing`, error)))
+  }
+
   /** Sockets we can still send to; closing ones are on their way out. */
   private open(device?: string): WebSocket[] {
     return this.ctx.getWebSockets(device).filter((ws) => ws.readyState === WebSocket.OPEN)
@@ -121,6 +133,7 @@ export class RoomObject extends DurableObject<Env> {
     }
     if (step.remove) {
       await this.ctx.storage.deleteAll()
+      this.publish(step.listing)
       this.room = null
       for (const ws of this.open()) {
         ws.send(JSON.stringify({ t: 'error', code: 'not_found' }))
@@ -131,6 +144,7 @@ export class RoomObject extends DurableObject<Env> {
     this.room = step.room
     await this.ctx.storage.put('room', step.room)
     await this.ctx.storage.setAlarm(step.alarm)
+    this.publish(step.listing)
     for (const { to, msg } of step.sends) {
       const text = JSON.stringify(msg)
       for (const ws of this.open(to === 'all' ? undefined : to)) ws.send(text)

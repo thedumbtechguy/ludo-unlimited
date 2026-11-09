@@ -1,6 +1,6 @@
 import { settingsFor } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { CODE_ALPHABET, cleanName, cleanSettings, makeCode, validSettings, validTimer } from '../src/validate'
+import { CODE_ALPHABET, cleanName, cleanSettings, makeCode, validCode, validDevice, validMode, validSettings, validTimer } from '../src/validate'
 
 describe('cleanName', () => {
   it('trims, collapses spaces and keeps 16 characters', () => {
@@ -43,6 +43,14 @@ describe('validTimer', () => {
   it('knows the four timers', () => {
     for (const t of ['relaxed', 'normal', 'quick', 'off']) expect(validTimer(t)).toBe(true)
     expect(validTimer('slow')).toBe(false)
+  })
+})
+
+describe('validDevice, validMode, validCode', () => {
+  it('knows devices, quick match modes and codes', () => {
+    expect([validDevice('abc'), validDevice(''), validDevice('x'.repeat(65)), validDevice(3)]).toEqual([true, false, false, false])
+    expect([validMode('ghana'), validMode('classic'), validMode('custom')]).toEqual([true, true, false])
+    expect([validCode('KQZM'), validCode('kqzm'), validCode('KQZ')]).toEqual([true, false, false])
   })
 })
 

@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, replay, settingsFor, type GameEvent, type ServerMessage } from '@ludo/engine'
+import { PROTOCOL_VERSION, replay, settingsFor, type GameEvent, type Listing, type ServerMessage } from '@ludo/engine'
 import { runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test'
 import { env, exports } from 'cloudflare:workers'
 import { describe, expect, it, vi } from 'vitest'
@@ -28,6 +28,13 @@ async function open(code: string, device: string, v = PROTOCOL_VERSION) {
 }
 const settle = () => new Promise((r) => setTimeout(r, 50))
 const lastRoom = (got: ServerMessage[]) => got.filter((m) => m.t === 'room').at(-1)
+const post = (path: string, body: unknown, ip = `10.1.0.${++ipCounter}`) =>
+  exports.default.fetch(`${BASE}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip }, body: JSON.stringify(body) })
+const quickMatch = async (device: string, mode = 'classic', skip?: string) => {
+  const res = await post('/api/quick', { device, name: device, mode, skip })
+  return { status: res.status, code: res.ok ? ((await res.json()) as { code: string }).code : undefined }
+}
+const openList = async () => ((await (await exports.default.fetch(`${BASE}/api/open`)).json()) as { rooms: Listing[] }).rooms
 
 describe('api', () => {
   it('creates a room and looks it up', async () => {
@@ -180,5 +187,44 @@ describe('api', () => {
     const stored = await runInDurableObject(stub, (_, state) => state.storage.get<Room>('room'))
     expect([stored!.log, stored!.game]).toEqual([[roll3], replay(goodBody.settings, [roll3])])
     warn.mockRestore()
+  })
+})
+
+describe('open rooms', () => {
+  it('a hosted open room is listed; a private one is not', async () => {
+    const open = ((await (await create({ ...goodBody, open: true })).json()) as { code: string }).code
+    const shut = await newRoom()
+    await settle()
+    const codes = (await openList()).map((l) => l.code)
+    expect(codes).toContain(open)
+    expect(codes).not.toContain(shut)
+    expect((await openList()).find((l) => l.code === open)).toMatchObject({ kind: 'hosted', host: 'Ama', seatsFree: 3 })
+  })
+
+  it('refuses a bad open', async () => {
+    expect((await create({ ...goodBody, open: 'yes' })).status).toBe(400)
+  })
+
+  it('quick match makes a room, and the next quick match in that mode joins it', async () => {
+    const first = await quickMatch('q1', 'ghana')
+    expect(first.status).toBe(200)
+    await settle()
+    expect((await quickMatch('q2', 'ghana')).code).toBe(first.code)
+    // Skipping it makes another.
+    const other = await quickMatch('q3', 'ghana', first.code)
+    expect(other.code).not.toBe(first.code)
+  })
+
+  it('the quick match creator holds the first seat when they connect', async () => {
+    const { code } = await quickMatch('q4', 'classic', 'ZZZZ')
+    const q4 = await open(code!, 'q4')
+    await settle()
+    expect(lastRoom(q4.got)).toMatchObject({ you: { seat: 'red', host: false }, room: { open: 'quick' } })
+  })
+
+  it('refuses a bad quick match', async () => {
+    expect((await post('/api/quick', { device: 'd', name: 'D', mode: 'custom' })).status).toBe(400)
+    expect((await post('/api/quick', { device: '', name: 'D', mode: 'ghana' })).status).toBe(400)
+    expect((await post('/api/quick', { device: 'd', name: 'D', mode: 'ghana', skip: 'bad' })).status).toBe(400)
   })
 })

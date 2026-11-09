@@ -6,7 +6,7 @@ declare global {
     interface Env extends RoomEnv {}
     interface GlobalProps {
       mainModule: typeof import('../src/index')
-      durableNamespaces: 'RoomObject'
+      durableNamespaces: 'RoomObject' | 'Directory'
     }
   }
 }
