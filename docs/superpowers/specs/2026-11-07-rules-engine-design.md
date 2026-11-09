@@ -86,6 +86,7 @@ When a forward move lands exactly on a lone opponent, that opponent goes back to
 - An opponent's piece inside their own home lane can be kicked.
 - If a count, forward or backward, reaches an opponent's lane entry and then continues into their lane to land exactly on a lone opponent, the mover may turn into that lane and kick them. This includes a piece that starts its move on the lane entry.
 - Counting backwards into a lane needs **both** Home Kick and Back Kick on.
+- **Into your own lane:** a count backwards from the start side (e.g. red from 0: 0 → 51 → 50, red's entry) may turn into the player's **own** lane to land exactly on a lone opponent there and kick it. The kicker stays on that lane square, already on its way home. Like every backward move it's only allowed to kick. Coming home forward, a piece goes into its lane anyway, so that's a plain Front Kick; and a piece already in its own lane doesn't count back out and in again.
 - A piece already in an opponent's lane can't turn back into it during the same move.
 - The kicking piece stays on that lane square. While it's there, the lane's owner can kick it.
 - To leave, the piece moves **back out toward the main track** and then carries on along its own route. It can kick a lone opponent it lands on exactly on the way out.
