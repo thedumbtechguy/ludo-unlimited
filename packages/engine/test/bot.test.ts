@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chooseMove } from '../src/bot'
+import { chooseMove, LEVELS } from '../src/bot'
 import { applyMove, roll } from '../src/game'
 import { legalMoves } from '../src/legalMoves'
 import { HOME, lane, track } from '../src/position'
@@ -58,8 +58,9 @@ describe('chooseMove', () => {
     expect(chooseMove(s, () => 0.99)?.piece).toEqual(piece('red', 1))
   })
 
-  it('only picks legal moves, and bot-only games finish', () => {
-    for (let seed = 1; seed <= 20; seed++) {
+  it('only picks legal moves, and bot-only games finish, at every level', () => {
+    for (let seed = 1; seed <= 24; seed++) {
+      const level = LEVELS[seed % 3]
       const next = rng(seed)
       let state: GameState = createGame(randomSettings(rng(seed + 1000)))
       for (let step = 0; step < 100_000 && state.status === 'playing'; step++) {
@@ -67,11 +68,49 @@ describe('chooseMove', () => {
           state = roll(state, 1 + Math.floor(next() * 6))
           continue
         }
-        const move = chooseMove(state, next)!
+        const move = chooseMove(state, next, level)!
         expect(legalMoves(state)).toContainEqual(move)
         state = applyMove(state, move)
       }
       expect(state.status).toBe('finished')
     }
   }, 60_000)
+})
+
+describe('easy', () => {
+  it('half the time plays any legal move', () => {
+    const s = setup({ roll: 2, pieces: { red: [5, lane('red', 4)] } })
+    expect(chooseMove(s, () => 0, 'easy')).toEqual(legalMoves(s)[0])
+  })
+
+  it('otherwise plays like normal', () => {
+    const s = setup({ roll: 2, pieces: { red: [5, lane('red', 4)] } })
+    expect(chooseMove(s, () => 0.99, 'easy')?.to).toEqual(HOME)
+  })
+})
+
+describe('hard', () => {
+  const two = { players: 2 as const }
+
+  it('takes a kick', () => {
+    const s = setup({ ...two, roll: 6, pieces: { red: [5, 30], yellow: [11] } })
+    expect(chooseMove(s, first, 'hard')?.kick).toEqual(piece('yellow'))
+  })
+
+  it('moves a piece out of reach rather than run the one already safe', () => {
+    // Yellow on 8 can reach red's 10 with a 2. Moving 10 to 15 puts it out of reach.
+    const s = setup({ ...two, roll: 5, pieces: { red: [10, 30], yellow: [8] } })
+    expect(chooseMove(s, first, 'normal')?.piece).toEqual(piece('red', 1))
+    expect(chooseMove(s, first, 'hard')?.piece).toEqual(piece('red', 0))
+  })
+
+  it('finishes when it can', () => {
+    const s = setup({ ...two, roll: 2, pieces: { red: [lane('red', 4), 20], yellow: [22] } })
+    expect(chooseMove(s, first, 'hard')?.to).toEqual(HOME)
+  })
+
+  it('plays the Labourer owner’s pieces on a victim’s roll', () => {
+    const s = setup({ ...two, rules: { labourer: true }, turn: 'yellow', roll: 3, labourers: { yellow: 'red' }, pieces: { red: [5] } })
+    expect(chooseMove(s, first, 'hard')?.piece.color).toBe('red')
+  })
 })

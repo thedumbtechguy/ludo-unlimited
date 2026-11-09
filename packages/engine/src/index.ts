@@ -7,7 +7,7 @@ export { ANIMATION_TIMING, LAND_MS, WICKED_DELAY, eventMs, type Timing } from '.
 export * from './protocol'
 export { roll, applyMove, pass, replay, stopRolling } from './game'
 export { MODES, settingsFor, type Mode, type ModeName } from './modes'
-export { chooseMove } from './bot'
+export { chooseMove, LEVELS, type Level } from './bot'
 export { progress } from './progress'
 export { movePath } from './movePath'
 export { forwardPath, backwardPath, backwardPaths } from './path'
