@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type RoomInfo, type Settings, type TurnTimer } from '@ludo/engine'
+import { PROTOCOL_VERSION, SEATS, type ClientMessage, type ErrorCode, type RoomInfo, type Level, type Settings, type TurnTimer } from '@ludo/engine'
 import { DurableObject } from 'cloudflare:workers'
 import { createRoom, DAY, recover, reduce, type Input, type Room, type Step } from './room'
 
@@ -28,7 +28,7 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   /** Make the room; false when this code is already taken. */
-  async create(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer }): Promise<boolean> {
+  async create(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; level: Level }): Promise<boolean> {
     if (await this.load()) return false
     this.room = createRoom({ ...o, now: Date.now() })
     await this.ctx.storage.put('room', this.room)

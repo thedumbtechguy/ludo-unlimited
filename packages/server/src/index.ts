@@ -1,5 +1,5 @@
 import type { Env } from './RoomObject'
-import { cleanName, makeCode, validSettings, validTimer } from './validate'
+import { cleanName, makeCode, validLevel, validSettings, validTimer } from './validate'
 
 export { RoomObject } from './RoomObject'
 
@@ -34,13 +34,13 @@ async function create(request: Request, env: Env): Promise<Response> {
   const body = parse(text)
   const device = body?.device
   const name = cleanName(body?.name)
-  if (typeof device !== 'string' || !device || device.length > 64 || !name || !validSettings(body?.settings) || !validTimer(body?.timer)) {
+  if (typeof device !== 'string' || !device || device.length > 64 || !name || !validSettings(body?.settings) || !validTimer(body?.timer) || !validLevel(body?.level)) {
     return json({ error: 'bad_request' }, 400)
   }
   // A clash with a live room is rare (23^4 codes); try a few times.
   for (let i = 0; i < 5; i++) {
     const code = makeCode(Math.random)
-    if (await env.ROOMS.get(env.ROOMS.idFromName(code)).create({ code, device, name, settings: body.settings, timer: body.timer })) {
+    if (await env.ROOMS.get(env.ROOMS.idFromName(code)).create({ code, device, name, settings: body.settings, timer: body.timer, level: body.level })) {
       return json({ code })
     }
   }

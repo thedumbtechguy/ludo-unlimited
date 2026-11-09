@@ -1,4 +1,4 @@
-import type { Settings, TurnTimer } from '@ludo/engine'
+import { LEVELS, type Level, type Settings, type TurnTimer } from '@ludo/engine'
 
 /** Room code letters: no I, L or O, so a code read out loud or off a screen can't be mistaken. */
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ'
@@ -36,3 +36,5 @@ export function cleanSettings({ players, endCondition, afterKick, rules }: Setti
 }
 
 export const validTimer = (value: unknown): value is TurnTimer => ['relaxed', 'normal', 'quick', 'off'].includes(value as string)
+
+export const validLevel = (value: unknown): value is Level => (LEVELS as readonly unknown[]).includes(value)

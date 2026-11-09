@@ -12,7 +12,7 @@ export const fixedRandom = (values: number[]) => {
 export const die = (n: number) => (n - 1) / 6 + 0.01
 
 export function lobby(players: 2 | 3 | 4 = 4): Room {
-  return createRoom({ code: 'KQZM', device: 'host', name: 'Ama', settings: settingsFor('ghana', players, 'firstWins'), timer: 'normal', now: T0 })
+  return createRoom({ code: 'KQZM', device: 'host', name: 'Ama', settings: settingsFor('ghana', players, 'firstWins'), timer: 'normal', level: 'normal', now: T0 })
 }
 
 /** Run inputs in order; returns the last step. */

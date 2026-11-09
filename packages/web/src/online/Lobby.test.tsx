@@ -11,6 +11,7 @@ const room = (members: MemberView[], players: 2 | 3 | 4 = 4): RoomView => ({
   host: 1,
   settings: { players, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' },
   timer: 'normal',
+  level: 'normal',
   members,
   computers: [],
   covering: [],
@@ -84,6 +85,7 @@ describe('Lobby', () => {
       'After a kickCarry on',
       'Game endsWhen one player wins',
       'Turn timerNormal',
+      'Computer levelNormal',
     ])
   })
 

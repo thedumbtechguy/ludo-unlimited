@@ -15,6 +15,7 @@ const ROOM: RoomView = {
   host: 1,
   settings,
   timer: 'normal',
+  level: 'normal',
   members: [
     { id: 1, name: 'Ama', connected: true, seat: 'red' },
     { id: 2, name: 'Kofi', connected: true, seat: 'yellow' },

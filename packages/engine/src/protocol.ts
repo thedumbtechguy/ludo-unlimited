@@ -1,7 +1,8 @@
+import type { Level } from './bot'
 import type { Color, GameEvent, GameState, Move, Settings } from './types'
 
 /** Bumped whenever messages change shape; a device on another version is asked to update. */
-export const PROTOCOL_VERSION = 3
+export const PROTOCOL_VERSION = 4
 
 export type TurnTimer = 'relaxed' | 'normal' | 'quick' | 'off'
 export const TIMER_SECONDS: Record<Exclude<TurnTimer, 'off'>, number> = { relaxed: 60, normal: 30, quick: 15 }
@@ -18,6 +19,8 @@ export type RoomView = {
   host: number // member id
   settings: Settings
   timer: TurnTimer
+  /** How the computer plays, for computer seats and for anyone it covers. */
+  level: Level
   members: MemberView[]
   computers: Color[]
   covering: Color[]
@@ -39,7 +42,7 @@ export type ClientMessage =
   | { t: 'sit'; color: Color }
   | { t: 'stand' }
   | { t: 'takeover'; color: Color }
-  | { t: 'settings'; settings: Settings; timer: TurnTimer }
+  | { t: 'settings'; settings: Settings; timer: TurnTimer; level: Level }
   | { t: 'start'; empty: 'computers' | 'drop' }
   | { t: 'roll' }
   | { t: 'move'; move: Move }

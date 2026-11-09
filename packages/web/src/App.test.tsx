@@ -266,6 +266,7 @@ describe('App online', () => {
     host: 1,
     settings: { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' },
     timer: 'normal',
+    level: 'normal',
     members: [{ id: 1, name: 'Ama', connected: true }],
     computers: [],
     covering: [],
