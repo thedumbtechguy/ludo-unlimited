@@ -1,4 +1,4 @@
-import { replay, type GameEvent, type Settings } from '@ludo/engine'
+import { replay, type GameEvent, type ModeName, type Settings } from '@ludo/engine'
 import type { EffectsLevel, Hand, Seats, ThemePref } from './types'
 
 export type SavedGame = { settings: Settings; seats: Seats; log: GameEvent[] }
@@ -151,5 +151,24 @@ export function saveName(name: string): void {
     localStorage.setItem(NAME_KEY, name)
   } catch {
     // The name just won't be remembered.
+  }
+}
+
+const QUICK_MODE_KEY = 'ludo-unlimited:quick-mode'
+
+/** The rules last picked for quick match: Ghana kicks unless Classic was. */
+export function loadQuickMode(): ModeName {
+  try {
+    return localStorage.getItem(QUICK_MODE_KEY) === 'classic' ? 'classic' : 'ghana'
+  } catch {
+    return 'ghana'
+  }
+}
+
+export function saveQuickMode(mode: ModeName): void {
+  try {
+    localStorage.setItem(QUICK_MODE_KEY, mode)
+  } catch {
+    // Storage blocked: the pick lasts until the page closes.
   }
 }

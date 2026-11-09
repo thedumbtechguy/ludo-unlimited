@@ -1,6 +1,6 @@
 import { createGame, roll, settingsFor } from '@ludo/engine'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGame, loadDevice, loadEffects, loadGame, loadHand, loadMusic, loadName, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveName, saveSound, saveTheme } from './storage'
+import { clearGame, loadDevice, loadEffects, loadGame, loadHand, loadMusic, loadName, loadQuickMode, loadSound, loadTheme, saveEffects, saveGame, saveHand, saveMusic, saveName, saveQuickMode, saveSound, saveTheme } from './storage'
 
 const settings = settingsFor('ghana', 2, 'firstWins')
 
@@ -194,5 +194,11 @@ describe('storage', () => {
       expect(() => saveName('Kofi')).not.toThrow()
       expect(loadName()).toBe('')
     })
+  })
+
+  it('remembers the quick match rules, Ghana kicks by default', () => {
+    expect(loadQuickMode()).toBe('ghana')
+    saveQuickMode('classic')
+    expect(loadQuickMode()).toBe('classic')
   })
 })

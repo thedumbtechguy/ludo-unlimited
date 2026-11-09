@@ -43,9 +43,9 @@ const prefs = {
   music: true,
   onMusic: vi.fn(),
 } as const
-function renderRoom() {
+function renderRoom(onNoSeat?: () => void) {
   const onLeave = vi.fn()
-  render(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={onLeave} prefs={prefs} />)
+  render(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={onLeave} onNoSeat={onNoSeat} prefs={prefs} />)
   return onLeave
 }
 
@@ -170,5 +170,38 @@ describe('RoomScreen', () => {
       vi.mocked(OnlineGame).mockImplementation(() => <p>Game in progress</p>)
       error.mockRestore()
     }
+  })
+
+  describe('a quick room with no seat for you', () => {
+    const QUICK: RoomView = { ...ROOM, open: 'quick' }
+
+    it('says so once, on the first word from the room', () => {
+      given({ room: QUICK, you: { id: 2, host: false } })
+      const onNoSeat = vi.fn()
+      renderRoom(onNoSeat)
+      expect(onNoSeat).toHaveBeenCalledTimes(1)
+    })
+
+    it('is quiet when you have a seat', () => {
+      given({ room: QUICK, you: { id: 2, seat: 'green', host: false } })
+      const onNoSeat = vi.fn()
+      renderRoom(onNoSeat)
+      expect(onNoSeat).not.toHaveBeenCalled()
+    })
+
+    it('is only watching without onNoSeat', () => {
+      given({ room: QUICK, you: { id: 2, host: false } })
+      renderRoom()
+      expect(screen.getByText('KQMZ')).toBeInTheDocument()
+    })
+
+    it('judges only the first word: a seat lost later is not a miss', () => {
+      given({ room: QUICK, you: { id: 2, seat: 'green', host: false } })
+      const onNoSeat = vi.fn()
+      const { rerender } = render(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} onNoSeat={onNoSeat} prefs={prefs} />)
+      given({ room: { ...QUICK, seq: 1 }, you: { id: 2, host: false } })
+      rerender(<RoomScreen code="KQMZ" device="d1" name="Ama" timing={FAST_TIMING} onLeave={vi.fn()} onNoSeat={onNoSeat} prefs={prefs} />)
+      expect(onNoSeat).not.toHaveBeenCalled()
+    })
   })
 })

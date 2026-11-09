@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { fixedDice, seededDice } from './dice'
-import { createRoom } from './online/api'
+import { createRoom, quickMatch } from './online/api'
 import { useOnlineGame } from './online/useOnlineGame'
 import { setPlaying } from './update'
 import { FAST_TIMING } from './useGame'
 
 vi.mock('./online/useOnlineGame', () => ({ useOnlineGame: vi.fn() }))
-vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn() }))
+vi.mock('./online/api', async (original) => ({ ...(await original<typeof import('./online/api')>()), createRoom: vi.fn(), quickMatch: vi.fn() }))
 vi.mock('./update', async (original) => ({ ...(await original<typeof import('./update')>()), setPlaying: vi.fn() }))
 
 // The back gesture: the browser steps back an entry and says so a moment later.
@@ -278,6 +278,7 @@ describe('App online', () => {
   beforeEach(() => {
     localStorage.clear()
     history.replaceState(null, '', '/')
+    vi.mocked(quickMatch).mockReset()
     vi.mocked(useOnlineGame).mockImplementation(
       ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, status: 'open', clock: { paused: false, covering: [] }, send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
     )
@@ -319,7 +320,87 @@ describe('App online', () => {
     await user.click(screen.getByRole('button', { name: 'Quick match' }))
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Ama')
     await user.click(screen.getByRole('button', { name: 'Next' }))
-    expect(screen.getByText('Coming soon')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Quick match' })).toBeInTheDocument()
+  })
+
+  it('quick match finds a room and opens it, remembering the rules', async () => {
+    vi.mocked(quickMatch).mockResolvedValue('QWRT')
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.click(screen.getByRole('button', { name: /^Rules/ }))
+    await user.click(screen.getByRole('radio', { name: 'Classic' }))
+    await user.click(screen.getByRole('button', { name: 'Go' }))
+    await waitFor(() => expect(location.pathname).toBe('/r/QWRT'))
+    expect(quickMatch).toHaveBeenCalledWith({ device: expect.any(String), name: 'Ama', mode: 'classic', skip: undefined })
+    expect(localStorage.getItem('ludo-unlimited:quick-mode')).toBe('classic')
+  })
+
+  it('ignores a quick match answer that comes after Cancel', async () => {
+    let found!: (code: string) => void
+    vi.mocked(quickMatch).mockReturnValueOnce(new Promise((resolve) => (found = resolve)))
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.click(screen.getByRole('button', { name: 'Go' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Finding a game…')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await act(async () => found('LATE'))
+    expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument()
+    expect(location.pathname).toBe('/')
+  })
+
+  it('says so when quick match is over the limit, and Try again goes again', async () => {
+    vi.mocked(quickMatch).mockRejectedValueOnce(new Error('too_fast')).mockRejectedValueOnce(new Error('failed'))
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.click(screen.getByRole('button', { name: 'Go' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many new games. Try again in a minute.')
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Couldn’t find a game. Check your connection and try again.'))
+  })
+
+  it('a quick room with no seat for you is tried once more, skipping it', async () => {
+    vi.mocked(quickMatch).mockResolvedValueOnce('FULL').mockResolvedValueOnce('NEXT')
+    vi.mocked(useOnlineGame).mockImplementation(
+      ({ code }) =>
+        ({
+          room: { ...lobby(code), open: 'quick' },
+          you: code === 'FULL' ? { id: 9, host: false } : { id: 9, seat: 'green', host: false },
+          status: 'open',
+          send: vi.fn(),
+          clock: { paused: false, covering: [] },
+        }) as unknown as ReturnType<typeof useOnlineGame>,
+    )
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.click(screen.getByRole('button', { name: 'Go' }))
+    await waitFor(() => expect(location.pathname).toBe('/r/NEXT'))
+    expect(quickMatch).toHaveBeenLastCalledWith(expect.objectContaining({ skip: 'FULL' }))
+  })
+
+  it('a second quick room with no seat says so, with Try again', async () => {
+    vi.mocked(quickMatch).mockResolvedValueOnce('FULL').mockResolvedValueOnce('GONE')
+    vi.mocked(useOnlineGame).mockImplementation(
+      ({ code }) =>
+        ({ room: { ...lobby(code), open: 'quick' }, you: { id: 9, host: false }, status: 'open', send: vi.fn(), clock: { paused: false, covering: [] } }) as unknown as ReturnType<
+          typeof useOnlineGame
+        >,
+    )
+    localStorage.setItem('ludo-unlimited:name', 'Ama')
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Quick match' }))
+    await user.click(screen.getByRole('button', { name: 'Go' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t find a seat. Try again.')
+    expect(quickMatch).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
   it('creates a room and opens it', async () => {

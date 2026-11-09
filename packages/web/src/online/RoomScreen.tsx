@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Setup } from '../screens/Setup'
 import { updateNow } from '../update'
 import type { Timing } from '../useGame'
@@ -8,7 +8,8 @@ import { useOnlineGame } from './useOnlineGame'
 
 const UPDATE_WAIT = 8000
 
-type Props = { code: string; device: string; name: string; timing: Timing; onLeave: () => void; prefs: DevicePrefs }
+/** `onNoSeat`: a quick match landed here, but the room had no seat for you. */
+type Props = { code: string; device: string; name: string; timing: Timing; onLeave: () => void; onNoSeat?: () => void; prefs: DevicePrefs }
 
 /** A room, from the lobby to the game. It holds the connection: leaving the screen closes it. */
 export function RoomScreen(props: Props) {
@@ -37,10 +38,17 @@ const Problem = ({ code, onHome }: { code: string; onHome: () => void }) => (
   <Message text="This room ran into a problem and can't continue." detail={`Room ${code}`} onHome={onHome} />
 )
 
-function Room({ code, device, name, timing, onLeave, prefs }: Props) {
+function Room({ code, device, name, timing, onLeave, onNoSeat, prefs }: Props) {
   const online = useOnlineGame({ code, device, name, timing })
   const [editing, setEditing] = useState(false)
   const { room, you, error } = online
+  // A quick match lands you on a seat; if the first word from the room has none for you, the seat was lost.
+  const judged = useRef(false)
+  useEffect(() => {
+    if (judged.current || !room || !you) return
+    judged.current = true
+    if (onNoSeat && room.open === 'quick' && !you.seat) onNoSeat()
+  }, [room, you, onNoSeat])
   // False once an update was tried for this room and the app is still too old.
   const [updating, setUpdating] = useState(true)
   useEffect(() => {

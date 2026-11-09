@@ -355,6 +355,7 @@ p.row { margin: 0; }
 .lobby-waiting { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); margin: auto 0 0; padding: 16px 0; color: var(--muted); font-size: 17px; text-align: center; background: var(--table); }
 .setup-error { margin: auto 0 12px; font-size: 16px; }
 .setup-error + .start { margin-top: 0; }
+.quick-finding { margin: 32px 0 16px; font-size: 18px; font-weight: 700; text-align: center; }
 .message { align-items: center; justify-content: center; min-height: 60vh; gap: 16px; text-align: center; font-size: 17px; }
 .message .primary, .message .secondary { min-width: 160px; }
 .message .detail { margin: -8px 0 0; font-size: 15px; color: var(--muted); }

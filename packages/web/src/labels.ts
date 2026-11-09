@@ -136,6 +136,12 @@ export const WHO_CAN_JOIN = [
 ] as const
 export const whoCanJoinName = (open: boolean): string => nameIn(WHO_CAN_JOIN, open ? 'anyone' : 'friends')
 
+/** The rules quick match offers. */
+export const QUICK_MODES = [
+  ['ghana', 'Ghana kicks', 'All kicks and the Labourer'],
+  ['classic', 'Classic', 'Plain Ludo'],
+] as const satisfies readonly (readonly [ModeName, string, string])[]
+
 const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
 
 /** "Ghana rules", "Classic rules" or "Custom rules". */
