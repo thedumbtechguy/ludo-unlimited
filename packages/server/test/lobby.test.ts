@@ -74,9 +74,9 @@ describe('lobby', () => {
   it('only the host changes settings; fewer players stands anyone on a seat that is gone', () => {
     let step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'blue' })])
     const two = { ...step.room.settings, players: 2 as const }
-    step = run(step.room, [say('kofi', { t: 'settings', settings: two, timer: 'quick' })])
+    step = run(step.room, [say('kofi', { t: 'settings', settings: two, timer: 'quick', open: false })])
     expect(step.room.settings.players).toBe(4)
-    step = run(step.room, [say('host', { t: 'settings', settings: two, timer: 'quick' })])
+    step = run(step.room, [say('host', { t: 'settings', settings: two, timer: 'quick', open: false })])
     expect(step.room.settings.players).toBe(2)
     expect(step.room.timer).toBe('quick')
     expect(seatOf(step.room, 'kofi')).toBeUndefined()
@@ -85,7 +85,7 @@ describe('lobby', () => {
   it('settings are stored without extra keys', () => {
     const step = run(lobby(4), [join('host')])
     const settings = { ...step.room.settings, junk: 1, rules: { ...step.room.settings.rules, extra: true } }
-    const { room } = run(step.room, [say('host', { t: 'settings', settings, timer: 'quick' })])
+    const { room } = run(step.room, [say('host', { t: 'settings', settings, timer: 'quick', open: false })])
     expect(room.settings).toEqual(lobby(4).settings)
   })
 

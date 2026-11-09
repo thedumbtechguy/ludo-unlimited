@@ -12,6 +12,7 @@ import {
   pass,
   roll,
   SEATS,
+  settingsFor,
   stopRolling,
   TIMER_SECONDS,
   type ClientMessage,
@@ -19,6 +20,8 @@ import {
   type ErrorCode,
   type GameEvent,
   type GameState,
+  type ModeName,
+  type Openness,
   type RoomView,
   type ServerMessage,
   type Settings,
@@ -28,6 +31,10 @@ import {
 import { cleanName, cleanSettings, validSettings, validTimer } from './validate'
 
 export const DAY = 24 * 60 * 60 * 1000
+export const QUICK_START_MS = 20_000
+export const QUICK_REMATCH_MS = 15_000
+export const QUICK_TIMER: TurnTimer = 'normal'
+export const quickSettings = (mode: ModeName): Settings => settingsFor(mode, 4, 'firstWins')
 
 export type Member = { id: number; device: string; name: string; connected: boolean; seat?: Color; reactedAt?: number }
 
@@ -60,6 +67,12 @@ export type Room = {
   /** When the computer next acts, for a computer seat or one it's covering. */
   botAt?: number
   lastActive: number
+  /** Missing: private, the code only. */
+  open?: Openness
+  /** Quick rooms in the lobby: when the game starts by itself. */
+  startAt?: number
+  /** Quick rooms after a game: when the next one's lobby opens. */
+  rematchAt?: number
 }
 
 export type Input =
@@ -74,14 +87,16 @@ export type Step = { room: Room; sends: Send[]; alarm: number; remove: boolean }
 
 type Ctx = { room: Room; sends: Send[]; now: number; random: () => number }
 
-/** The creator starts on the first seat; it stays theirs when they first connect. */
-export function createRoom(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; now: number }): Room {
+/** The creator starts on the first seat; it stays theirs when they first connect. A quick room has no owner or host. */
+export function createRoom(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; now: number; open?: Openness }): Room {
   const settings = cleanSettings(o.settings)
+  const quick = o.open === 'quick'
   return {
     code: o.code,
     phase: 'lobby',
-    owner: o.device,
-    host: o.device,
+    owner: quick ? undefined : o.device,
+    host: quick ? '' : o.device,
+    open: o.open,
     settings,
     timer: o.timer,
     members: [{ id: 1, device: o.device, name: cleanName(o.name) ?? 'Player', connected: false, seat: SEATS[settings.players][0] }],
@@ -107,8 +122,13 @@ export function reduce(prev: Room, input: Input, now: number, random: () => numb
     else if (input.type === 'disconnect') disconnect(ctx, input.device)
     else message(ctx, input.device, input.msg)
   }
-  return { room, sends: ctx.sends, alarm: Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.lastActive + DAY), remove: false }
+  if (quickLobby(ctx)) broadcastRoom(ctx)
+  return { room, sends: ctx.sends, alarm: nextAlarm(room), remove: false }
 }
+
+/** When the room next has something to do by itself. */
+const nextAlarm = (room: Room) =>
+  Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.startAt ?? Infinity, room.rematchAt ?? Infinity, room.lastActive + DAY)
 
 export function viewOf(room: Room, now: number): RoomView {
   return {
@@ -124,7 +144,10 @@ export function viewOf(room: Room, now: number): RoomView {
     pausedFor: room.pausedFor,
     game: gameOf(room),
     seq: room.seq,
-    deadlineIn: room.deadline === undefined ? undefined : Math.max(0, room.deadline - now),
+    deadlineIn: msLeft(room.deadline, now),
+    open: room.open,
+    startIn: msLeft(room.startAt, now),
+    rematchIn: msLeft(room.rematchAt, now),
   }
 }
 
@@ -185,6 +208,7 @@ function refuse(ctx: Ctx, device: string, code: ErrorCode): void {
  * else the first connected seated member in colour order; else any connected member.
  */
 function pickHost(room: Room): void {
+  if (room.open === 'quick') return
   const owner = memberOf(room, room.owner ?? '')
   if (owner?.connected) return void (room.host = owner.device)
   const connected = room.members.filter((m) => m.connected)
@@ -205,9 +229,15 @@ function connect(ctx: Ctx, device: string, name: string): void {
     m = { id: room.nextId++, device, name: cleanName(name) ?? 'Player', connected: true }
     room.members.push(m)
   }
+  if (!m.seat) claim(room, m)
   pickHost(room)
   back(ctx, m.seat, wasIdle)
   broadcastRoom(ctx)
+}
+
+/** Quick rooms seat whoever arrives on the first free seat. */
+function claim(room: Room, m: Member): void {
+  if (room.open === 'quick' && room.phase === 'lobby') m.seat = SEATS[room.settings.players].find((c) => !room.members.some((o) => o.seat === c))
 }
 
 /**
@@ -254,6 +284,7 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
   const host = room.host === device
   switch (msg.t) {
     case 'sit': {
+      if (room.open === 'quick') return refuse(ctx, device, 'illegal')
       // A seat stays its holder's while they're away; only an empty seat can be taken.
       const free = room.phase === 'lobby' && SEATS[room.settings.players].includes(msg.color) && !room.members.some((o) => o.seat === msg.color)
       if (!free) return refuse(ctx, device, 'illegal')
@@ -263,6 +294,7 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
       return broadcastRoom(ctx)
     }
     case 'stand':
+      if (room.open === 'quick') return refuse(ctx, device, 'illegal')
       if (room.phase !== 'lobby') return refuse(ctx, device, 'illegal')
       m.seat = undefined
       pickHost(room)
@@ -270,9 +302,10 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
     case 'takeover':
       return takeover(ctx, m, msg.color)
     case 'settings': {
-      if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer)) return refuse(ctx, device, 'illegal')
+      if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer) || typeof msg.open !== 'boolean') return refuse(ctx, device, 'illegal')
       room.settings = cleanSettings(msg.settings)
       room.timer = msg.timer
+      room.open = msg.open ? 'hosted' : undefined
       for (const o of room.members) if (o.seat && !SEATS[msg.settings.players].includes(o.seat)) o.seat = undefined
       pickHost(room)
       return broadcastRoom(ctx)
@@ -336,18 +369,57 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   room.covering = []
   room.paused = false
   room.pausedFor = undefined
-  room.readyAt = undefined
+  room.readyAt = room.startAt = undefined
   schedule(ctx, room.game, ctx.now)
   return true
+}
+
+/**
+ * Quick rooms start by themselves: at once when every seat has someone here, else when the wait
+ * is up. With nobody here the wait stops; the next person seated starts it again. True when
+ * something devices show changed.
+ */
+function quickLobby(ctx: Ctx): boolean {
+  const { room, now } = ctx
+  if (room.open !== 'quick' || room.phase !== 'lobby') return false
+  const here = room.members.filter((m) => m.seat && m.connected).length
+  const was = room.startAt
+  if (here === SEATS[room.settings.players].length || (here > 0 && room.startAt !== undefined && now >= room.startAt)) {
+    room.startAt = undefined
+    return start(ctx, 'computers')
+  }
+  room.startAt = here === 0 ? undefined : (room.startAt ?? now + QUICK_START_MS)
+  return room.startAt !== was
+}
+
+/** Back to the lobby with the same settings. Seats of players who left are free again; a quick room seats whoever is here. */
+function rematch(ctx: Ctx): void {
+  const { room } = ctx
+  room.phase = 'lobby'
+  room.log = []
+  room.game = undefined
+  room.computers = []
+  room.covering = []
+  room.paused = false
+  room.pausedFor = undefined
+  room.deadline = room.botAt = room.readyAt = room.rematchAt = undefined
+  for (const o of room.members) if (!o.connected) o.seat = undefined
+  pickHost(room)
+  prune(room)
+  if (room.open === 'quick') for (const o of room.members) if (o.connected && !o.seat) claim(room, o)
 }
 
 const REACT_GAP = 3000
 const dieRoll = (random: () => number) => 1 + Math.floor(random() * 6)
 
+const msLeft = (at: number | undefined, now: number) => (at === undefined ? undefined : Math.max(0, at - now))
+
 function clock(ctx: Ctx): void {
   const { room, now } = ctx
-  const deadlineIn = room.deadline === undefined ? undefined : Math.max(0, room.deadline - now)
-  ctx.sends.push({ to: 'all', msg: { t: 'clock', deadlineIn, paused: room.paused, pausedFor: room.pausedFor, covering: room.covering } })
+  ctx.sends.push({
+    to: 'all',
+    msg: { t: 'clock', deadlineIn: msLeft(room.deadline, now), paused: room.paused, pausedFor: room.pausedFor, covering: room.covering, rematchIn: msLeft(room.rematchAt, now) },
+  })
 }
 
 /**
@@ -401,6 +473,7 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
   if (next.status === 'finished') {
     room.phase = 'finished'
     room.deadline = room.botAt = undefined
+    if (room.open === 'quick') room.rematchAt = ctx.now + QUICK_REMATCH_MS
   } else {
     room.readyAt = ctx.now + eventMs(game, recorded)
     schedule(ctx, next, room.readyAt)
@@ -418,6 +491,10 @@ function computerAct(ctx: Ctx, game: GameState): boolean {
 
 function tick(ctx: Ctx): void {
   const { room, now } = ctx
+  if (room.phase === 'finished' && room.rematchAt !== undefined && now >= room.rematchAt) {
+    rematch(ctx)
+    return broadcastRoom(ctx)
+  }
   if (room.phase !== 'playing' || room.paused) return
   const due = room.botAt ?? room.deadline
   if (due === undefined || now < due) return
@@ -475,17 +552,7 @@ function play(ctx: Ctx, m: Member, msg: ClientMessage): void {
       return
     case 'rematch':
       if (!host || room.phase !== 'finished') return refuse(ctx, m.device, 'illegal')
-      room.phase = 'lobby'
-      room.log = []
-      room.game = undefined
-      room.computers = []
-      room.covering = []
-      room.paused = false
-      room.pausedFor = undefined
-      room.deadline = room.botAt = room.readyAt = undefined
-      for (const o of room.members) if (!o.connected) o.seat = undefined
-      pickHost(room)
-      prune(room)
+      rematch(ctx)
       return broadcastRoom(ctx)
     default:
       return refuse(ctx, m.device, 'illegal')

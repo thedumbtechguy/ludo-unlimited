@@ -1,7 +1,7 @@
 import { ANIMATION_TIMING, applyMove, chooseMove, createGame, replay, roll, settingsFor, TIMER_SECONDS, type ClientMessage, type GameEvent } from '@ludo/engine'
 import { describe, expect, it } from 'vitest'
-import { DAY, gameOf, recover, reduce, type Room } from '../src/room'
-import { die, fixedRandom, join, lobby, run, say, seatOf, sentTo, T0 } from './helpers'
+import { DAY, gameOf, recover, type Room } from '../src/room'
+import { alarm, die, fixedRandom, join, lobby, playOut, run, say, seatOf, seeded, sentTo, T0 } from './helpers'
 
 /** Ama (red) and Kofi (yellow) in a 2-player classic room, started at T0. */
 function started(timer: Room['timer'] = 'normal'): Room {
@@ -16,19 +16,9 @@ function started(timer: Room['timer'] = 'normal'): Room {
     say('host', { t: 'start', empty: 'computers' }),
   ]).room
 }
-const alarm = (room: Room, at: number, random = fixedRandom([die(3)])) => reduce(room, { type: 'alarm' }, at, random)
 
 /** A move no game here allows: red has nothing to enter with. */
 const ILLEGAL: GameEvent = { type: 'move', move: { kind: 'enter', piece: { color: 'red', index: 0 }, to: { kind: 'track', index: 40 } } }
-
-/** A repeatable stream of random values. */
-const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31)
-
-/** Let the alarms play (computers and timeouts) until `done`. */
-function playOut(room: Room, done: (room: Room) => boolean, random = seeded(7)): Room {
-  for (let i = 0; i < 5000 && !done(room); i++) room = alarm(room, Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity), random).room
-  return room
-}
 
 describe('playing', () => {
   it('the human with the turn has the clock', () => {
