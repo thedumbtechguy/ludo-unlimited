@@ -7,6 +7,7 @@ import {
   currentMover,
   getPlayer,
   eventMs,
+  modeOfSettings,
   REACTIONS,
   replay,
   pass,
@@ -20,6 +21,7 @@ import {
   type ErrorCode,
   type GameEvent,
   type GameState,
+  type Listing,
   type ModeName,
   type Openness,
   type RoomView,
@@ -35,6 +37,8 @@ export const QUICK_START_MS = 20_000
 export const QUICK_REMATCH_MS = 15_000
 /** Open rooms: how long a player can be away mid-game before their seat opens to others. */
 export const SEAT_RELEASE_MS = 120_000
+/** How often a listed room tells the directory it is still there. */
+export const LISTING_REFRESH_MS = 10 * 60_000
 export const QUICK_TIMER: TurnTimer = 'normal'
 export const quickSettings = (mode: ModeName): Settings => settingsFor(mode, 4, 'firstWins')
 
@@ -77,6 +81,9 @@ export type Room = {
   startAt?: number
   /** Quick rooms after a game: when the next one's lobby opens. */
   rematchAt?: number
+  /** The listing last sent to the directory, and when. */
+  listed?: Listing
+  listedAt?: number
 }
 
 export type Input =
@@ -87,7 +94,7 @@ export type Input =
 
 export type Send = { to: 'all' | string; msg: ServerMessage }
 /** The room after an input, what to send, when to wake next, and whether the room is over for good. */
-export type Step = { room: Room; sends: Send[]; alarm: number; remove: boolean }
+export type Step = { room: Room; sends: Send[]; alarm: number; remove: boolean; listing?: Listing | null }
 
 type Ctx = { room: Room; sends: Send[]; now: number; random: () => number }
 
@@ -118,7 +125,7 @@ export function reduce(prev: Room, input: Input, now: number, random: () => numb
   const ctx: Ctx = { room: structuredClone(prev), sends: [], now, random }
   const { room } = ctx
   if (input.type === 'alarm') {
-    if (now >= room.lastActive + DAY) return { room, sends: [], alarm: now, remove: true }
+    if (now >= room.lastActive + DAY) return { room, sends: [], alarm: now, remove: true, listing: room.listed ? null : undefined }
     tick(ctx)
   } else {
     room.lastActive = now
@@ -127,12 +134,45 @@ export function reduce(prev: Room, input: Input, now: number, random: () => numb
     else message(ctx, input.device, input.msg)
   }
   if (quickLobby(ctx)) broadcastRoom(ctx)
-  return { room, sends: ctx.sends, alarm: nextAlarm(room), remove: false }
+  const listing = relist(room, now)
+  return { room, sends: ctx.sends, alarm: nextAlarm(room), remove: false, listing }
+}
+
+/** What the directory shows of an open room; null while nobody could play in it. */
+export function listingOf(room: Room): Listing | null {
+  if (!room.open || room.phase === 'finished') return null
+  const players = SEATS[room.settings.players].length
+  const humans = room.members.filter((m) => m.seat).length
+  const seatsFree = room.phase === 'lobby' ? players - humans : 0
+  const computerSeats = room.phase === 'playing' ? takeable(room, gameOf(room)) : []
+  if (seatsFree === 0 && computerSeats.length === 0) return null
+  return {
+    code: room.code,
+    kind: room.open,
+    mode: modeOfSettings(room.settings) ?? 'custom',
+    phase: room.phase,
+    players,
+    humans,
+    seatsFree,
+    computerSeats,
+    timer: room.timer,
+    host: room.open === 'hosted' ? memberOf(room, room.host)?.name : undefined,
+  }
+}
+
+/** The listing to send the directory when it changed or is due a refresh; undefined when there's nothing to send. */
+export function relist(room: Room, now: number): Listing | null | undefined {
+  const listing = listingOf(room)
+  const unchanged = JSON.stringify(listing) === JSON.stringify(room.listed ?? null)
+  if (unchanged && (!listing || now < room.listedAt! + LISTING_REFRESH_MS)) return undefined
+  room.listed = listing ?? undefined
+  room.listedAt = listing ? now : undefined
+  return listing
 }
 
 /** When the room next has something to do by itself. */
 const nextAlarm = (room: Room) =>
-  Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.startAt ?? Infinity, room.rematchAt ?? Infinity, releaseAt(room), room.lastActive + DAY)
+  Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.startAt ?? Infinity, room.rematchAt ?? Infinity, releaseAt(room), room.listedAt === undefined ? Infinity : room.listedAt + LISTING_REFRESH_MS, room.lastActive + DAY)
 
 /** When the next seat left in an open room goes to the computer. */
 const releaseAt = (room: Room) => Math.min(...room.members.map((m) => (m.leftAt === undefined ? Infinity : m.leftAt + SEAT_RELEASE_MS)))
