@@ -33,10 +33,12 @@ import { cleanName, cleanSettings, validSettings, validTimer } from './validate'
 export const DAY = 24 * 60 * 60 * 1000
 export const QUICK_START_MS = 20_000
 export const QUICK_REMATCH_MS = 15_000
+/** Open rooms: how long a player can be away mid-game before their seat opens to others. */
+export const SEAT_RELEASE_MS = 120_000
 export const QUICK_TIMER: TurnTimer = 'normal'
 export const quickSettings = (mode: ModeName): Settings => settingsFor(mode, 4, 'firstWins')
 
-export type Member = { id: number; device: string; name: string; connected: boolean; seat?: Color; reactedAt?: number }
+export type Member = { id: number; device: string; name: string; connected: boolean; seat?: Color; reactedAt?: number; leftAt?: number }
 
 export type Room = {
   code: string
@@ -69,6 +71,8 @@ export type Room = {
   lastActive: number
   /** Missing: private, the code only. */
   open?: Openness
+  /** Open rooms: seats given to the computer after their player stayed away, so they get them back if still free. */
+  leftSeats?: Partial<Record<Color, string>>
   /** Quick rooms in the lobby: when the game starts by itself. */
   startAt?: number
   /** Quick rooms after a game: when the next one's lobby opens. */
@@ -128,7 +132,10 @@ export function reduce(prev: Room, input: Input, now: number, random: () => numb
 
 /** When the room next has something to do by itself. */
 const nextAlarm = (room: Room) =>
-  Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.startAt ?? Infinity, room.rematchAt ?? Infinity, room.lastActive + DAY)
+  Math.min(room.botAt ?? Infinity, room.deadline ?? Infinity, room.startAt ?? Infinity, room.rematchAt ?? Infinity, releaseAt(room), room.lastActive + DAY)
+
+/** When the next seat left in an open room goes to the computer. */
+const releaseAt = (room: Room) => Math.min(...room.members.map((m) => (m.leftAt === undefined ? Infinity : m.leftAt + SEAT_RELEASE_MS)))
 
 export function viewOf(room: Room, now: number): RoomView {
   return {
@@ -180,6 +187,7 @@ export function recover(stored: Room, now: number): Room {
   room.seq += 1
   room.phase = game.status === 'finished' ? 'finished' : 'playing'
   room.readyAt = undefined
+  if (room.open === 'quick' && room.phase === 'finished') room.rematchAt = now + QUICK_REMATCH_MS
   schedule({ room, sends: [], now, random: Math.random }, game, now)
   return room
 }
@@ -224,6 +232,7 @@ function connect(ctx: Ctx, device: string, name: string): void {
   let m = memberOf(room, device)
   if (m) {
     m.connected = true
+    m.leftAt = undefined
     m.name = cleanName(name) ?? m.name
   } else {
     m = { id: room.nextId++, device, name: cleanName(name) ?? 'Player', connected: true }
@@ -235,9 +244,29 @@ function connect(ctx: Ctx, device: string, name: string): void {
   broadcastRoom(ctx)
 }
 
-/** Quick rooms seat whoever arrives on the first free seat. */
+/** Computer seats a watcher could take: still in the game. */
+const takeable = (room: Room, game: GameState): Color[] => room.computers.filter((c) => getPlayer(game, c).finishedPlace === undefined)
+
+/** A computer seat becomes the member's. Covered until its next turn starts, like a player who is back. */
+function takeSeat(room: Room, m: Member, color: Color): void {
+  room.computers = room.computers.filter((c) => c !== color)
+  room.covering.push(color)
+  m.seat = color
+}
+
+/**
+ * Open rooms seat some arrivals themselves: a player gets back the seat they stayed away from,
+ * if it's still the computer's; a quick room seats anyone, on a free seat or a computer seat.
+ */
 function claim(room: Room, m: Member): void {
-  if (room.open === 'quick' && room.phase === 'lobby') m.seat = SEATS[room.settings.players].find((c) => !room.members.some((o) => o.seat === c))
+  if (room.open === 'quick' && room.phase === 'lobby') {
+    m.seat = SEATS[room.settings.players].find((c) => !room.members.some((o) => o.seat === c))
+    return
+  }
+  if (!room.open || room.phase !== 'playing') return
+  const own = COLORS.find((c) => room.leftSeats?.[c] === m.device)
+  const color = own && room.computers.includes(own) ? own : room.open === 'quick' ? takeable(room, gameOf(room))[0] : undefined
+  if (color) takeSeat(room, m, color)
 }
 
 /**
@@ -271,7 +300,12 @@ function disconnect(ctx: Ctx, device: string): void {
   if (!m) return
   m.connected = false
   // In the lobby the seat stays theirs (phones drop sockets all the time); nobody else can take it. Start leaves them out.
-  if (room.phase === 'playing') leaveGame(ctx, m)
+  // A quick room can't wait for them: the seat is free for the next arrival.
+  if (room.open === 'quick' && room.phase === 'lobby') m.seat = undefined
+  if (room.phase === 'playing') {
+    leaveGame(ctx, m)
+    if (room.open && m.seat && !room.computers.includes(m.seat)) m.leftAt = ctx.now
+  }
   pickHost(room)
   prune(room)
   broadcastRoom(ctx)
@@ -334,10 +368,7 @@ function takeover(ctx: Ctx, m: Member, color: Color): void {
   const { room } = ctx
   if (room.phase !== 'playing' || !room.computers.includes(color) || m.seat) return refuse(ctx, m.device, 'illegal')
   const wasIdle = !anyoneSeatedConnected(room)
-  room.computers = room.computers.filter((c) => c !== color)
-  // Covered until its next turn starts, like a player who is back.
-  room.covering.push(color)
-  m.seat = color
+  takeSeat(room, m, color)
   pickHost(room)
   back(ctx, color, wasIdle)
   broadcastRoom(ctx)
@@ -370,6 +401,8 @@ function start(ctx: Ctx, empty: 'computers' | 'drop'): boolean {
   room.paused = false
   room.pausedFor = undefined
   room.readyAt = room.startAt = undefined
+  room.leftSeats = undefined
+  for (const o of room.members) o.leftAt = undefined
   schedule(ctx, room.game, ctx.now)
   return true
 }
@@ -403,6 +436,8 @@ function rematch(ctx: Ctx): void {
   room.paused = false
   room.pausedFor = undefined
   room.deadline = room.botAt = room.readyAt = room.rematchAt = undefined
+  room.leftSeats = undefined
+  for (const o of room.members) o.leftAt = undefined
   for (const o of room.members) if (!o.connected) o.seat = undefined
   pickHost(room)
   prune(room)
@@ -489,7 +524,26 @@ function computerAct(ctx: Ctx, game: GameState): boolean {
   return apply(ctx, game, event, 'computer')
 }
 
+/** Open rooms: a player away this long gives their seat to the computer, for anyone to take. */
+function release(ctx: Ctx): void {
+  const { room, now } = ctx
+  const due = room.members.filter((m) => m.leftAt !== undefined && now >= m.leftAt + SEAT_RELEASE_MS)
+  if (due.length === 0) return
+  for (const m of due) {
+    m.leftAt = undefined
+    if (room.phase !== 'playing' || !m.seat || m.connected) continue
+    room.covering = room.covering.filter((c) => c !== m.seat)
+    room.computers.push(m.seat)
+    room.leftSeats = { ...room.leftSeats, [m.seat]: m.device }
+    m.seat = undefined
+  }
+  pickHost(room)
+  prune(room)
+  broadcastRoom(ctx)
+}
+
 function tick(ctx: Ctx): void {
+  release(ctx)
   const { room, now } = ctx
   if (room.phase === 'finished' && room.rematchAt !== undefined && now >= room.rematchAt) {
     rematch(ctx)
