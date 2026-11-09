@@ -279,7 +279,7 @@ describe('App online', () => {
     localStorage.clear()
     history.replaceState(null, '', '/')
     vi.mocked(useOnlineGame).mockImplementation(
-      ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, status: 'open', send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
+      ({ code }) => ({ room: lobby(code), you: { id: 1, host: true }, status: 'open', clock: { paused: false, covering: [] }, send: vi.fn() }) as unknown as ReturnType<typeof useOnlineGame>,
     )
   })
 
@@ -314,7 +314,7 @@ describe('App online', () => {
     await user.click(screen.getByRole('button', { name: 'Create a room' }))
     expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Create room' }))
-    expect(createRoom).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ama', timer: 'normal', settings: expect.objectContaining({ players: 4 }) }))
+    expect(createRoom).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ama', timer: 'normal', open: false, settings: expect.objectContaining({ players: 4 }) }))
     expect(await screen.findByText('WXYZ')).toBeInTheDocument()
   })
 

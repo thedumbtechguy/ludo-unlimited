@@ -66,17 +66,17 @@ function Room({ code, device, name, timing, onLeave, prefs }: Props) {
           {...prefs}
           onBack={() => setEditing(false)}
           online={{
-            initial: { settings: room.settings, timer: room.timer },
+            initial: { settings: room.settings, timer: room.timer, open: room.open === 'hosted' },
             submitLabel: 'Save',
-            onCreate: (settings, timer) => {
-              online.send({ t: 'settings', settings, timer })
+            onCreate: (settings, timer, open) => {
+              online.send({ t: 'settings', settings, timer, open })
               setEditing(false)
             },
           }}
         />
       )
     }
-    return <Lobby room={room} you={you} status={online.status} send={online.send} onSettings={() => setEditing(true)} onLeave={onLeave} />
+    return <Lobby room={room} you={you} status={online.status} send={online.send} onSettings={() => setEditing(true)} onLeave={onLeave} startAt={online.clock.startAt} />
   }
   return <OnlineGame {...prefs} online={online} animated={timing.step > 0} onLeave={onLeave} />
 }

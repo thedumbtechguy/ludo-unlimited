@@ -22,10 +22,10 @@ const ama: MemberView = { id: 1, name: 'Ama', connected: true, seat: 'red' }
 const kofi: MemberView = { id: 2, name: 'Kofi', connected: true, seat: 'green' }
 const esi: MemberView = { id: 3, name: 'Esi', connected: true }
 
-function renderLobby(r: RoomView, you: YouView, status: Status = 'open') {
+function renderLobby(r: RoomView, you: YouView, status: Status = 'open', startAt?: number) {
   const send = vi.fn()
   const onSettings = vi.fn()
-  const { unmount } = render(<Lobby room={r} you={you} status={status} send={send} onSettings={onSettings} onLeave={vi.fn()} />)
+  const { unmount } = render(<Lobby room={r} you={you} status={status} send={send} onSettings={onSettings} onLeave={vi.fn()} startAt={startAt} />)
   return { send, onSettings, unmount }
 }
 const seatRows = () => screen.getAllByTestId('seat').map((row) => row.textContent)
@@ -83,6 +83,7 @@ describe('Lobby', () => {
       'RulesGhana rules',
       'After a kickCarry on',
       'Game endsWhen one player wins',
+      'Who can joinFriends with the code',
       'Turn timerNormal',
     ])
   })
@@ -183,5 +184,32 @@ describe('Lobby', () => {
     renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
     await userEvent.click(screen.getByRole('button', { name: 'Share link' }))
     expect(screen.queryByRole('textbox')).toBeNull()
+  })
+
+  it('a room open to anyone says so by its code', () => {
+    renderLobby({ ...room([ama]), open: 'hosted' }, { id: 1, seat: 'red', host: true })
+    expect(screen.getByText('Open')).toBeInTheDocument()
+    expect(screen.getByText('Anyone')).toBeInTheDocument()
+  })
+
+  it('a room for friends has no Open tag', () => {
+    renderLobby(room([ama]), { id: 1, seat: 'red', host: true })
+    expect(screen.queryByText('Open')).toBeNull()
+    expect(screen.getByText('Friends with the code')).toBeInTheDocument()
+  })
+
+  it('a quick room has no seat buttons, settings to change or Start, and counts down', () => {
+    vi.useFakeTimers()
+    renderLobby({ ...room([ama, kofi]), open: 'quick', host: 0 }, { id: 2, seat: 'green', host: false }, 'open', Date.now() + 14_000)
+    expect(screen.queryByRole('button', { name: /Tap to sit|Stand up|Change settings|Start/ })).toBeNull()
+    expect(screen.queryByText('Who can join')).toBeNull()
+    expect(screen.getByText('Starting in 14 s, computers fill empty seats')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(4000))
+    expect(screen.getByText('Starting in 10 s, computers fill empty seats')).toBeInTheDocument()
+  })
+
+  it('a quick room with no countdown waits for players', () => {
+    renderLobby({ ...room([]), open: 'quick', host: 0 }, { id: 2, host: false })
+    expect(screen.getByText('Waiting for players')).toBeInTheDocument()
   })
 })

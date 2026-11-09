@@ -29,7 +29,7 @@ const HOST: YouView = { id: 1, seat: 'red', host: true }
 const send = vi.fn()
 
 function given(state: { room?: RoomView; you?: YouView; error?: ErrorCode; status?: string }) {
-  vi.mocked(useOnlineGame).mockReturnValue({ status: 'open', ...state, send } as unknown as ReturnType<typeof useOnlineGame>)
+  vi.mocked(useOnlineGame).mockReturnValue({ status: 'open', clock: { paused: false, covering: [] }, ...state, send } as unknown as ReturnType<typeof useOnlineGame>)
 }
 const prefs = {
   hand: 'right',
@@ -136,7 +136,7 @@ describe('RoomScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: /Turn timer/ }))
     await userEvent.click(screen.getByRole('radio', { name: 'Relaxed' }))
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(send).toHaveBeenCalledWith({ t: 'settings', settings: ROOM.settings, timer: 'relaxed' })
+    expect(send).toHaveBeenCalledWith({ t: 'settings', settings: ROOM.settings, timer: 'relaxed', open: false })
     expect(screen.getByText('KQMZ')).toBeInTheDocument()
   })
 

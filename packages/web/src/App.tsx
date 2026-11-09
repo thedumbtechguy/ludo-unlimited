@@ -118,7 +118,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
 
   // Create room is held while the room is made. Its answer only counts if you're still waiting for that one.
   const requests = useRef(0)
-  async function create(settings: Settings, timer: TurnTimer) {
+  async function create(settings: Settings, timer: TurnTimer, open: boolean) {
     const request = ++requests.current
     setScreen({ name: 'create', request })
     const stillHere = () => {
@@ -126,7 +126,7 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
       return now.name === 'create' && now.request === request
     }
     try {
-      const code = await createRoom({ device, name, settings, timer })
+      const code = await createRoom({ device, name, settings, timer, open })
       if (stillHere()) go({ name: 'room', code })
     } catch (e) {
       const error = (e as Error).message === 'too_fast' ? 'Too many new rooms. Try again in a minute.' : 'Couldn’t make the room. Check your connection and try again.'

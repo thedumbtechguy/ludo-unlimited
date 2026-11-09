@@ -2,7 +2,7 @@ import { MODES, SEATS, type AfterKick, type EndCondition, type ModeName, type Ru
 import { useId, useState } from 'react'
 import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { AFTER_KICK, COLOR_NAME, END, modeOf, seatNames, TIMERS } from '../labels'
+import { AFTER_KICK, COLOR_NAME, END, modeOf, seatNames, TIMERS, WHO_CAN_JOIN } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Hand, Seats, ThemePref } from '../types'
 
@@ -30,7 +30,7 @@ const THEMES = [
 
 const labelOf = <T,>(options: readonly (readonly [T, string, ...string[]])[], value: T) => options.find(([v]) => v === value)![1]
 
-type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'rules' | 'hand' | 'theme'
+type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'join' | 'rules' | 'hand' | 'theme'
 type Props = {
   /** Local games only. */
   onStart?: (settings: Settings, seats: Seats) => void
@@ -40,13 +40,13 @@ type Props = {
   theme: ThemePref
   onTheme: (theme: ThemePref) => void
   /**
-   * Online: no seats (they fill as people join), a turn timer, and `onCreate` instead of `onStart`.
+   * Online: no seats (they fill as people join), a turn timer, who can join, and `onCreate` instead of `onStart`.
    * `error` shows above the button; `busy` holds the button while the room is being made.
    */
   online?: {
-    initial?: { settings: Settings; timer: TurnTimer }
+    initial?: { settings: Settings; timer: TurnTimer; open: boolean }
     submitLabel: string
-    onCreate: (settings: Settings, timer: TurnTimer) => void
+    onCreate: (settings: Settings, timer: TurnTimer, open: boolean) => void
     error?: string
     busy?: boolean
   }
@@ -61,6 +61,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
   const [seats, setSeats] = useState<Seats>({ red: 'human' })
   const [endCondition, setEndCondition] = useState<EndCondition>(initial?.settings.endCondition ?? 'firstWins')
   const [timer, setTimer] = useState<TurnTimer>(initial?.timer ?? 'normal')
+  const [anyone, setAnyone] = useState(initial?.open ?? false)
   const [open, setOpen] = useState<Open>()
   const summaryId = useId()
 
@@ -141,6 +142,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
         {pickerRow('afterKick', 'After a kick', labelOf(AFTER_KICK, afterKick))}
         {pickerRow('end', 'Game ends', labelOf(END, endCondition))}
         {online && pickerRow('timer', 'Turn timer', labelOf(TIMERS, timer))}
+        {online && pickerRow('join', 'Who can join', labelOf(WHO_CAN_JOIN, anyone ? 'anyone' : 'friends'))}
         {pickerRow('rules', 'Choose rules one by one')}
       </section>
 
@@ -161,7 +163,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
         type="button"
         className="primary start"
         disabled={online?.busy}
-        onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer) : start())}
+        onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer, anyone) : start())}
       >
         {online?.busy ? 'Creating…' : (online?.submitLabel ?? 'Start game')}
       </button>
@@ -170,6 +172,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
       {open === 'afterKick' && <Picker title="After a kick" options={AFTER_KICK} value={afterKick} onPick={setAfterKick} onClose={close} />}
       {open === 'end' && <Picker title="Game ends" options={END} value={endCondition} onPick={setEndCondition} onClose={close} />}
       {open === 'timer' && <Picker title="Turn timer" options={TIMERS} value={timer} onPick={setTimer} onClose={close} />}
+      {open === 'join' && <Picker title="Who can join" options={WHO_CAN_JOIN} value={anyone ? 'anyone' : 'friends'} onPick={(v) => setAnyone(v === 'anyone')} onClose={close} />}
       {open === 'hand' && <Picker title="Playing hand" options={HANDS} value={hand} onPick={onHand} onClose={close} />}
       {open === 'theme' && <Picker title="Theme" options={THEMES} value={theme} onPick={onTheme} onClose={close} />}
       {open === 'rules' && (

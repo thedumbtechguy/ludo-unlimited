@@ -4,7 +4,8 @@ import { useGameView } from '../useGameView'
 import { socketUrl } from './api'
 import { openConnection, type Connection, type Status } from './socket'
 
-export type Clock = { deadline?: number; paused: boolean; pausedFor?: Color; covering: Color[] }
+/** `startAt`: a quick lobby's start. `rematchAt`: a quick room's next game. All local times. */
+export type Clock = { deadline?: number; startAt?: number; rematchAt?: number; paused: boolean; pausedFor?: Color; covering: Color[] }
 export type ShownReaction = { id: number; color: Color; reaction: Reaction }
 
 /** Errors after which there's no point reconnecting. */
@@ -19,9 +20,13 @@ export type OnlineOptions = {
   connect?: typeof openConnection
 }
 
-const clockFrom = (deadlineIn: number | undefined, rest: Omit<Clock, 'deadline'>): Clock => ({
+const at = (ms: number | undefined) => (ms === undefined ? undefined : Date.now() + ms)
+/** The room's times are milliseconds left, so device clocks that disagree don't matter. */
+const clockFrom = (times: { deadlineIn?: number; startIn?: number; rematchIn?: number }, rest: Omit<Clock, 'deadline' | 'startAt' | 'rematchAt'>): Clock => ({
   ...rest,
-  deadline: deadlineIn === undefined ? undefined : Date.now() + deadlineIn,
+  deadline: at(times.deadlineIn),
+  startAt: at(times.startIn),
+  rematchAt: at(times.rematchIn),
 })
 
 /** A game in an online room: the room plays it, this device shows it and sends what its person does. */
@@ -95,7 +100,7 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
         setRoom(r)
         setYou(msg.you)
         setWaiting(false)
-        setClock(clockFrom(r.deadlineIn, { paused: r.paused, pausedFor: r.pausedFor, covering: r.covering }))
+        setClock(clockFrom(r, { paused: r.paused, pausedFor: r.pausedFor, covering: r.covering }))
         if (r.phase === 'lobby') {
           live.current = false
           seq.current = r.seq
@@ -119,7 +124,7 @@ export function useOnlineGame({ code, device, name, timing, connect = openConnec
         view.enqueue(msg.event)
         return
       case 'clock':
-        setClock(clockFrom(msg.deadlineIn, { paused: msg.paused, pausedFor: msg.pausedFor, covering: msg.covering }))
+        setClock(clockFrom(msg, { paused: msg.paused, pausedFor: msg.pausedFor, covering: msg.covering }))
         return
       case 'reaction': {
         const id = ++reactionId.current

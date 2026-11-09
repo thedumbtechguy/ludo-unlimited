@@ -2,18 +2,28 @@ import { SEATS, type ClientMessage, type RoomView, type YouView } from '@ludo/en
 import { useEffect, useState } from 'react'
 import { Chevron } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { afterKickName, COLOR_NAME, endName, rulesName, timerName } from '../labels'
+import { afterKickName, COLOR_NAME, endName, rulesName, timerName, whoCanJoinName } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Status } from './socket'
+import { useSecondsLeft } from './useSecondsLeft'
 
-type Props = { room: RoomView; you: YouView; status: Status; send: (msg: ClientMessage) => void; onSettings: () => void; onLeave: () => void }
+/** `startAt`: when a quick room starts by itself (a local time). */
+type Props = {
+  room: RoomView
+  you: YouView
+  status: Status
+  send: (msg: ClientMessage) => void
+  onSettings: () => void
+  onLeave: () => void
+  startAt?: number
+}
 
 const COPIED_MS = 2000
 
 const roomLink = (code: string) => `${location.origin}/r/${code}`
 
-/** The room before the game: share the code, take a seat, and the host starts. */
-export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
+/** The room before the game: share the code, take a seat, and the host starts. A quick room seats people and starts by itself. */
+export function Lobby({ room, you, status, send, onSettings, onLeave, startAt }: Props) {
   const [asking, setAsking] = useState(false)
   // 'failed': no share sheet and no clipboard (plain http on a LAN, or permission denied), so show the link to copy by hand.
   const [shared, setShared] = useState<'copied' | 'failed'>()
@@ -25,6 +35,8 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
   const empty = seats.length - people
   const watching = room.members.filter((m) => !m.seat && m.connected).length
   const host = room.members.find((m) => m.id === room.host)
+  const quick = room.open === 'quick'
+  const seconds = useSecondsLeft(startAt)
 
   useEffect(() => {
     if (shared !== 'copied') return
@@ -68,7 +80,7 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
         </p>
       )}
 
-      <p className="room-code-label">Room code</p>
+      <p className="room-code-label">Room code{room.open === 'hosted' && <span className="open-tag">Open</span>}</p>
       <p className="room-code">{room.code}</p>
       <button type="button" className="secondary" onClick={share}>
         {shared === 'copied' ? 'Link copied' : 'Share link'}
@@ -93,18 +105,19 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
                 {COLOR_NAME[color]}
                 {m && `: ${m.name}${m.connected ? '' : ' (away)'}${m.id === room.host ? ' (host)' : ''}`}
               </span>
-              {m?.id === you.id ? (
-                <button type="button" className="seat-button" disabled={offline} onClick={() => send({ t: 'stand' })}>
-                  Stand up
-                </button>
-              ) : (
-                !m &&
-                !you.seat && (
-                  <button type="button" className="seat-button human" disabled={offline} aria-label={`Tap to sit as ${COLOR_NAME[color]}`} onClick={() => send({ t: 'sit', color })}>
-                    Tap to sit
+              {!quick &&
+                (m?.id === you.id ? (
+                  <button type="button" className="seat-button" disabled={offline} onClick={() => send({ t: 'stand' })}>
+                    Stand up
                   </button>
-                )
-              )}
+                ) : (
+                  !m &&
+                  !you.seat && (
+                    <button type="button" className="seat-button human" disabled={offline} aria-label={`Tap to sit as ${COLOR_NAME[color]}`} onClick={() => send({ t: 'sit', color })}>
+                      Tap to sit
+                    </button>
+                  )
+                ))}
             </div>
           )
         })}
@@ -127,6 +140,12 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
           <span className="row-label">Game ends</span>
           <span className="row-value">{endName(room.settings.endCondition)}</span>
         </p>
+        {!quick && (
+          <p className="row">
+            <span className="row-label">Who can join</span>
+            <span className="row-value">{whoCanJoinName(room.open === 'hosted')}</span>
+          </p>
+        )}
         <p className="row">
           <span className="row-label">Turn timer</span>
           <span className="row-value">{timerName(room.timer)}</span>
@@ -139,7 +158,11 @@ export function Lobby({ room, you, status, send, onSettings, onLeave }: Props) {
         )}
       </section>
 
-      {you.host ? (
+      {quick ? (
+        <p className="lobby-waiting" role="status">
+          {seconds === undefined ? 'Waiting for players' : `Starting in ${seconds} s, computers fill empty seats`}
+        </p>
+      ) : you.host ? (
         <button type="button" className="primary start" disabled={people < 1 || offline} onClick={() => (empty === 0 ? start('computers') : setAsking(true))}>
           Start
         </button>

@@ -50,6 +50,8 @@ export function OnlineGame({ online, animated, onLeave, ...prefs }: Props) {
         names={names}
         host={host}
         hostName={room.members.find((m) => m.id === room.host)?.name}
+        quick={room.open === 'quick'}
+        nextAt={clock.rematchAt}
         onRematch={() => send({ t: 'rematch' })}
         onLeave={onLeave}
       />

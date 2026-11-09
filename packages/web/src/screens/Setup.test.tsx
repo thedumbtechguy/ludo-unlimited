@@ -218,18 +218,33 @@ describe('Setup', () => {
       expect(quick).toHaveAccessibleDescription('15 seconds for each roll or move.')
       await userEvent.click(quick)
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }))
-      expect(onCreate).toHaveBeenCalledWith({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }, 'quick')
+      expect(onCreate).toHaveBeenCalledWith({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }, 'quick', false)
     })
 
     it('starts from a room\'s settings and saves them', async () => {
       const settings = { players: 2, endCondition: 'playForPlaces', rules: MODES.classic.rules, afterKick: 'bonusRoll' } as const
-      const onCreate = renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'off' } })
+      const onCreate = renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'off', open: false } })
       expect(ghana()).toHaveAttribute('aria-checked', 'false')
       expect(screen.getByRole('button', { name: /^Players/ })).toHaveTextContent('2')
       expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('No timer')
       expect(screen.getByText('People on removed seats go back to watching.')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-      expect(onCreate).toHaveBeenCalledWith(settings, 'off')
+      expect(onCreate).toHaveBeenCalledWith(settings, 'off', false)
+    })
+
+    it('Who can join is Friends with the code until changed, and is sent on create', async () => {
+      const onCreate = renderOnline()
+      expect(screen.getByRole('button', { name: /^Who can join/ })).toHaveTextContent('Friends with the code')
+      await userEvent.click(screen.getByRole('button', { name: /^Who can join/ }))
+      await userEvent.click(screen.getByRole('radio', { name: 'Anyone' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Create room' }))
+      expect(onCreate).toHaveBeenCalledWith(expect.anything(), 'normal', true)
+    })
+
+    it('starts from a room open to anyone', () => {
+      const settings = { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' } as const
+      renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'normal', open: true } })
+      expect(screen.getByRole('button', { name: /^Who can join/ })).toHaveTextContent('Anyone')
     })
   })
 

@@ -29,4 +29,13 @@ describe('OnlineResults', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Leave' }))
     expect(onLeave).toHaveBeenCalled()
   })
+
+  it('a quick room has no Rematch: the next game starts by itself', () => {
+    vi.useFakeTimers()
+    render(<OnlineResults game={game()} names={names} host={false} quick nextAt={Date.now() + 12_000} onRematch={vi.fn()} onLeave={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Rematch' })).toBeNull()
+    expect(screen.getByText('Next game in 12 s')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument()
+    vi.useRealTimers()
+  })
 })

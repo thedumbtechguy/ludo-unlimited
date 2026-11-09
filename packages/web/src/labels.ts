@@ -129,6 +129,13 @@ export const timerName = (timer: TurnTimer): string => nameIn(TIMERS, timer)
 export const afterKickName = (afterKick: AfterKick): string => nameIn(AFTER_KICK, afterKick)
 export const endName = (end: EndCondition): string => nameIn(END, end)
 
+/** Who can join, as the room screens say it. */
+export const WHO_CAN_JOIN = [
+  ['friends', 'Friends with the code', 'Only people you share the code or link with'],
+  ['anyone', 'Anyone', 'Listed in Find a game for anyone to join'],
+] as const
+export const whoCanJoinName = (open: boolean): string => nameIn(WHO_CAN_JOIN, open ? 'anyone' : 'friends')
+
 const MODE_RULES_NAME: Record<ModeName, string> = { ghana: 'Ghana rules', classic: 'Classic rules' }
 
 /** "Ghana rules", "Classic rules" or "Custom rules". */
