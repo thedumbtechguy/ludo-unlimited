@@ -20,3 +20,9 @@ export function settingsFor(mode: ModeName, players: Settings['players'], endCon
   const { rules, afterKick } = MODES[mode]
   return { players, endCondition, rules: { ...rules }, afterKick }
 }
+
+/** The mode these settings are, or undefined when the rules were chosen one by one. */
+export const modeOfSettings = (s: Mode): ModeName | undefined =>
+  (Object.keys(MODES) as ModeName[]).find(
+    (name) => s.afterKick === MODES[name].afterKick && Object.entries(MODES[name].rules).every(([key, on]) => s.rules[key as keyof Settings['rules']] === on),
+  )
