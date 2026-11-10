@@ -126,9 +126,10 @@ export const TIMERS = [
 
 /** The computer's levels, each with how it plays. */
 export const LEVELS = [
-  ['easy', 'Easy', 'Often misses a kick or moves the wrong piece. Good for learning.'],
-  ['normal', 'Normal', 'Never misses a finish or a kick, but doesn’t look out for danger.'],
-  ['hard', 'Hard', 'Plans its whole turn and keeps its pieces out of reach of a kick.'],
+  ['easy', 'Easy', 'Often moves the wrong piece or misses a kick. Good for learning.'],
+  ['normal', 'Normal', 'Sometimes misses a kick or a chance to finish.'],
+  ['hard', 'Hard', 'Never misses a finish or a kick, but doesn’t look out for danger.'],
+  ['expert', 'Expert', 'Plans its whole turn and keeps its pieces out of reach of a kick.'],
 ] as const satisfies readonly (readonly [Level, string, string])[]
 
 const nameIn = <T,>(options: readonly (readonly [T, string, string])[], value: T): string => options.find(([v]) => v === value)![1]

@@ -6,24 +6,28 @@ import { progress } from './progress'
 import { getPlayer } from './state'
 import type { Color, GameState, Move, Position } from './types'
 
-export const LEVELS = ['easy', 'normal', 'hard'] as const
+export const LEVELS = ['easy', 'normal', 'hard', 'expert'] as const
 export type Level = (typeof LEVELS)[number]
+
+/** How often Easy and Normal play any legal move instead of Hard's choice. */
+const SLIPS: Record<'easy' | 'normal', number> = { easy: 0.8, normal: 0.4 }
 
 /**
  * The computer's move, or undefined with no legal move. `random` (0 ≤ r < 1) breaks ties.
- * - easy: half the time any legal move, otherwise the normal choice.
- * - normal: finish > kick > enter > furthest along.
- * - hard: plans the rest of its rolls, then weighs progress, kicks and how exposed its pieces are.
+ * - easy, normal: Hard's move, except now and then (see `SLIPS`) any legal move.
+ * - hard: finish > kick > enter > furthest along.
+ * - expert: plans the rest of its rolls, then weighs progress, kicks and how exposed its pieces are.
  */
-export function chooseMove(state: GameState, random: () => number, level: Level = 'normal'): Move | undefined {
+export function chooseMove(state: GameState, random: () => number, level: Level = 'hard'): Move | undefined {
   const moves = legalMoves(state)
   if (moves.length === 0) return undefined
   switch (level) {
     case 'easy':
-      return random() < 0.5 ? pick(moves, random) : sensible(moves, random)
     case 'normal':
-      return sensible(moves, random)
+      return random() < SLIPS[level] ? pick(moves, random) : sensible(moves, random)
     case 'hard':
+      return sensible(moves, random)
+    case 'expert':
       return planned(state, moves, random)
   }
 }
@@ -48,7 +52,7 @@ function sensible(moves: Move[], random: () => number): Move {
 
 /** Moves within this much of the best count as equally good. */
 const TIE = 1e-6
-/** How many positions Hard looks at per move before it stops planning ahead, so a move stays quick. */
+/** How many positions Expert looks at per move before it stops planning ahead, so a move stays quick. */
 const BUDGET = 60
 
 type Search = { me: Color; memo: Map<string, number>; left: number }
