@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { viewOf } from '../src/room'
-import { join, lobby, run, say, seatOf, sentTo } from './helpers'
+import { join, lobby, run, say, seatOf, sentTo, T0 } from './helpers'
 
 describe('lobby', () => {
   it('the creator is the host on the first seat; joining makes a watcher and tells everyone', () => {
@@ -74,18 +74,31 @@ describe('lobby', () => {
   it('only the host changes settings; fewer players stands anyone on a seat that is gone', () => {
     let step = run(lobby(4), [join('host'), join('kofi'), say('kofi', { t: 'sit', color: 'blue' })])
     const two = { ...step.room.settings, players: 2 as const }
-    step = run(step.room, [say('kofi', { t: 'settings', settings: two, timer: 'quick', open: false })])
+    step = run(step.room, [say('kofi', { t: 'settings', settings: two, timer: 'quick', level: 'normal', open: false })])
     expect(step.room.settings.players).toBe(4)
-    step = run(step.room, [say('host', { t: 'settings', settings: two, timer: 'quick', open: false })])
+    step = run(step.room, [say('host', { t: 'settings', settings: two, timer: 'quick', level: 'expert', open: false })])
     expect(step.room.settings.players).toBe(2)
     expect(step.room.timer).toBe('quick')
+    expect(step.room.level).toBe('expert')
     expect(seatOf(step.room, 'kofi')).toBeUndefined()
+  })
+
+  it('refuses a computer level it doesn\'t know', () => {
+    const step = run(lobby(4), [join('host'), say('host', { t: 'settings', settings: lobby(4).settings, timer: 'quick', level: 'genius' as never, open: false })])
+    expect(sentTo(step, 'host')).toContainEqual({ t: 'error', code: 'illegal' })
+    expect(step.room.level).toBe('normal')
+  })
+
+  it('a room stored before levels keeps the bot it had, now Hard', () => {
+    const old = lobby(4)
+    delete old.level
+    expect(viewOf(old, T0).level).toBe('hard')
   })
 
   it('settings are stored without extra keys', () => {
     const step = run(lobby(4), [join('host')])
     const settings = { ...step.room.settings, junk: 1, rules: { ...step.room.settings.rules, extra: true } }
-    const { room } = run(step.room, [say('host', { t: 'settings', settings, timer: 'quick', open: false })])
+    const { room } = run(step.room, [say('host', { t: 'settings', settings, timer: 'quick', level: 'normal', open: false })])
     expect(room.settings).toEqual(lobby(4).settings)
   })
 

@@ -45,13 +45,13 @@ describe('listings', () => {
   it('rules chosen one by one are custom', () => {
     const custom = settingsFor('ghana', 4, 'firstWins')
     custom.rules.labourer = false
-    const step = run(lobby(4, 'hosted'), [join('host', 'Ama'), say('host', { t: 'settings', settings: custom, timer: 'normal', open: true })])
+    const step = run(lobby(4, 'hosted'), [join('host', 'Ama'), say('host', { t: 'settings', settings: custom, timer: 'normal', level: 'normal', open: true })])
     expect(step.listing).toMatchObject({ mode: 'custom' })
   })
 
   it('closing a room takes it off; an expired listed room is taken off as it goes', () => {
     const listed = run(lobby(4, 'hosted'), [join('host', 'Ama')])
-    const closed = run(listed.room, [say('host', { t: 'settings', settings: listed.room.settings, timer: 'normal', open: false })])
+    const closed = run(listed.room, [say('host', { t: 'settings', settings: listed.room.settings, timer: 'normal', level: 'normal', open: false })])
     expect(closed.listing).toBeNull()
     const expired = alarm(listed.room, T0 + DAY)
     expect([expired.remove, expired.listing]).toEqual([true, null])

@@ -1,5 +1,5 @@
 import type { Env } from './RoomObject'
-import { cleanName, makeCode, validCode, validDevice, validMode, validSettings, validTimer } from './validate'
+import { cleanName, makeCode, validCode, validDevice, validLevel, validMode, validSettings, validTimer } from './validate'
 
 export { Directory } from './DirectoryObject'
 export { RoomObject } from './RoomObject'
@@ -54,13 +54,13 @@ async function create(request: Request, env: Env): Promise<Response> {
   if (!(await allowed(env.CREATE_LIMIT, request))) return json({ error: 'too_fast' }, 429)
   const body = await readBody(request)
   const name = cleanName(body?.name)
-  if (!body || !validDevice(body.device) || !name || !validSettings(body.settings) || !validTimer(body.timer) || (body.open !== undefined && typeof body.open !== 'boolean')) {
+  if (!body || !validDevice(body.device) || !name || !validSettings(body.settings) || !validTimer(body.timer) || !validLevel(body.level) || (body.open !== undefined && typeof body.open !== 'boolean')) {
     return json({ error: 'bad_request' }, 400)
   }
   // A clash with a live room is rare (23^4 codes); try a few times.
   for (let i = 0; i < 5; i++) {
     const code = makeCode(Math.random)
-    const made = await env.ROOMS.get(env.ROOMS.idFromName(code)).create({ code, device: body.device, name, settings: body.settings, timer: body.timer, open: body.open ? 'hosted' : undefined })
+    const made = await env.ROOMS.get(env.ROOMS.idFromName(code)).create({ code, device: body.device, name, settings: body.settings, timer: body.timer, level: body.level, open: body.open ? 'hosted' : undefined })
     if (made) return json({ code })
   }
   return json({ error: 'busy' }, 503)

@@ -21,6 +21,7 @@ import {
   type ErrorCode,
   type GameEvent,
   type GameState,
+  type Level,
   type Listing,
   type ModeName,
   type Openness,
@@ -30,7 +31,7 @@ import {
   type TurnTimer,
   type YouView,
 } from '@ludo/engine'
-import { cleanName, cleanSettings, validSettings, validTimer } from './validate'
+import { cleanName, cleanSettings, validLevel, validSettings, validTimer } from './validate'
 
 export const DAY = 24 * 60 * 60 * 1000
 export const QUICK_START_MS = 20_000
@@ -52,6 +53,8 @@ export type Room = {
   host: string
   settings: Settings
   timer: TurnTimer
+  /** Absent in rooms stored before levels: those keep the bot they had, now Hard. */
+  level?: Level
   members: Member[]
   nextId: number
   computers: Color[]
@@ -99,7 +102,7 @@ export type Step = { room: Room; sends: Send[]; alarm: number; remove: boolean; 
 type Ctx = { room: Room; sends: Send[]; now: number; random: () => number }
 
 /** The creator starts on the first seat; it stays theirs when they first connect. A quick room has no owner or host. */
-export function createRoom(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; now: number; open?: Openness }): Room {
+export function createRoom(o: { code: string; device: string; name: string; settings: Settings; timer: TurnTimer; level?: Level; now: number; open?: Openness }): Room {
   const settings = cleanSettings(o.settings)
   const quick = o.open === 'quick'
   return {
@@ -110,6 +113,7 @@ export function createRoom(o: { code: string; device: string; name: string; sett
     open: o.open,
     settings,
     timer: o.timer,
+    level: o.level ?? 'normal',
     members: [{ id: 1, device: o.device, name: cleanName(o.name) ?? 'Player', connected: false, seat: SEATS[settings.players][0] }],
     nextId: 2,
     computers: [],
@@ -181,6 +185,8 @@ const nextAlarm = (room: Room) =>
 /** When the next seat left in an open room goes to the computer. */
 const releaseAt = (room: Room) => Math.min(...room.members.map((m) => (m.leftAt === undefined ? Infinity : m.leftAt + SEAT_RELEASE_MS)))
 
+const levelOf = (room: Room): Level => room.level ?? 'hard'
+
 export function viewOf(room: Room, now: number): RoomView {
   return {
     code: room.code,
@@ -188,6 +194,7 @@ export function viewOf(room: Room, now: number): RoomView {
     host: room.members.find((m) => m.device === room.host)?.id ?? 0,
     settings: room.settings,
     timer: room.timer,
+    level: levelOf(room),
     members: room.members.map(({ id, name, connected, seat }) => ({ id, name, connected, seat })),
     computers: room.computers,
     covering: room.covering,
@@ -381,9 +388,10 @@ function message(ctx: Ctx, device: string, msg: ClientMessage): void {
     case 'takeover':
       return takeover(ctx, m, msg.color)
     case 'settings': {
-      if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer) || typeof msg.open !== 'boolean') return refuse(ctx, device, 'illegal')
+      if (!host || room.phase !== 'lobby' || !validSettings(msg.settings) || !validTimer(msg.timer) || typeof msg.open !== 'boolean' || !validLevel(msg.level)) return refuse(ctx, device, 'illegal')
       room.settings = cleanSettings(msg.settings)
       room.timer = msg.timer
+      room.level = msg.level
       room.open = msg.open ? 'hosted' : undefined
       for (const o of room.members) if (o.seat && !SEATS[msg.settings.players].includes(o.seat)) o.seat = undefined
       pickHost(room)
@@ -566,7 +574,7 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
 /** The computer plays one decision for whoever has to act; false when the engine refuses it. */
 function computerAct(ctx: Ctx, game: GameState): boolean {
   const event: GameEvent =
-    game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random)! }
+    game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random, levelOf(ctx.room))! }
   return apply(ctx, game, event, 'computer')
 }
 

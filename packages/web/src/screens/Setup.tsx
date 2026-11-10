@@ -1,4 +1,4 @@
-import { MODES, SEATS, type AfterKick, type Color, type EndCondition, type ModeName, type Rules, type Settings, type TurnTimer } from '@ludo/engine'
+import { MODES, SEATS, type AfterKick, type Color, type EndCondition, type Level, type ModeName, type Rules, type Settings, type TurnTimer } from '@ludo/engine'
 import { useId, useState } from 'react'
 import { Chevron, Picker, SwitchMark } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
@@ -30,7 +30,7 @@ const THEMES = [
 
 const labelOf = <T,>(options: readonly (readonly [T, string, ...string[]])[], value: T) => options.find(([v]) => v === value)![1]
 
-type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'join' | 'rules' | 'hand' | 'theme'
+type Open = 'players' | 'afterKick' | 'end' | 'timer' | 'level' | 'join' | 'rules' | 'hand' | 'theme'
 type Props = {
   /** Local games only. */
   onStart?: (settings: Settings, seats: Seats) => void
@@ -40,13 +40,13 @@ type Props = {
   theme: ThemePref
   onTheme: (theme: ThemePref) => void
   /**
-   * Online: no seats (they fill as people join), a turn timer, who can join, and `onCreate` instead of `onStart`.
+   * Online: no seats (they fill as people join), a turn timer, one computer level for the room, who can join, and `onCreate` instead of `onStart`.
    * `error` shows above the button; `busy` holds the button while the room is being made.
    */
   online?: {
-    initial?: { settings: Settings; timer: TurnTimer; open: boolean }
+    initial?: { settings: Settings; timer: TurnTimer; level: Level; open: boolean }
     submitLabel: string
-    onCreate: (settings: Settings, timer: TurnTimer, open: boolean) => void
+    onCreate: (settings: Settings, timer: TurnTimer, level: Level, open: boolean) => void
     error?: string
     busy?: boolean
   }
@@ -62,6 +62,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
   const [endCondition, setEndCondition] = useState<EndCondition>(initial?.settings.endCondition ?? 'firstWins')
   const [timer, setTimer] = useState<TurnTimer>(initial?.timer ?? 'normal')
   const [anyone, setAnyone] = useState(initial?.open ?? false)
+  const [level, setLevel] = useState<Level>(initial?.level ?? 'normal')
   const [open, setOpen] = useState<Open>()
   const [levelFor, setLevelFor] = useState<Color>()
   const summaryId = useId()
@@ -150,6 +151,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
         {pickerRow('afterKick', 'After a kick', labelOf(AFTER_KICK, afterKick))}
         {pickerRow('end', 'Game ends', labelOf(END, endCondition))}
         {online && pickerRow('timer', 'Turn timer', labelOf(TIMERS, timer))}
+        {online && pickerRow('level', 'Computer level', levelName(level))}
         {online && pickerRow('join', 'Who can join', labelOf(WHO_CAN_JOIN, anyone ? 'anyone' : 'friends'))}
         {pickerRow('rules', 'Choose rules one by one')}
       </section>
@@ -171,7 +173,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
         type="button"
         className="primary start"
         disabled={online?.busy}
-        onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer, anyone) : start())}
+        onClick={() => (online ? online.onCreate({ players, endCondition, rules, afterKick }, timer, level, anyone) : start())}
       >
         {online?.busy ? 'Creating…' : (online?.submitLabel ?? 'Start game')}
       </button>
@@ -180,6 +182,7 @@ export function Setup({ onStart, onBack, hand, onHand, theme, onTheme, online }:
       {open === 'afterKick' && <Picker title="After a kick" options={AFTER_KICK} value={afterKick} onPick={setAfterKick} onClose={close} />}
       {open === 'end' && <Picker title="Game ends" options={END} value={endCondition} onPick={setEndCondition} onClose={close} />}
       {open === 'timer' && <Picker title="Turn timer" options={TIMERS} value={timer} onPick={setTimer} onClose={close} />}
+      {open === 'level' && <Picker title="Computer level" options={LEVELS} value={level} onPick={setLevel} onClose={close} />}
       {open === 'join' && <Picker title="Who can join" options={WHO_CAN_JOIN} value={anyone ? 'anyone' : 'friends'} onPick={(v) => setAnyone(v === 'anyone')} onClose={close} />}
       {open === 'hand' && <Picker title="Playing hand" options={HANDS} value={hand} onPick={onHand} onClose={close} />}
       {open === 'theme' && <Picker title="Theme" options={THEMES} value={theme} onPick={onTheme} onClose={close} />}

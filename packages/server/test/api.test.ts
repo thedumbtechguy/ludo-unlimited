@@ -12,7 +12,7 @@ const create = (body: unknown, ip = `10.0.0.${++ipCounter}`) =>
     headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip },
     body: JSON.stringify(body),
   })
-const goodBody = { device: 'host', name: 'Ama', settings: settingsFor('ghana', 4, 'firstWins'), timer: 'normal' }
+const goodBody = { device: 'host', name: 'Ama', settings: settingsFor('ghana', 4, 'firstWins'), timer: 'normal', level: 'normal' }
 const newRoom = async () => ((await (await create(goodBody)).json()) as { code: string }).code
 
 /** Open a socket and collect what it's sent. */
@@ -53,6 +53,8 @@ describe('api', () => {
 
   it('refuses a bad body and an unknown code', async () => {
     expect((await create({ ...goodBody, timer: 'forever' })).status).toBe(400)
+    expect((await create({ ...goodBody, level: 'impossible' })).status).toBe(400)
+    expect((await create({ ...goodBody, level: undefined })).status).toBe(400)
     expect((await create('nope')).status).toBe(400)
     expect((await exports.default.fetch(`${BASE}/api/rooms/ZZZZ`)).status).toBe(404)
     expect((await exports.default.fetch(`${BASE}/api/rooms/TOOLONG`)).status).toBe(404)

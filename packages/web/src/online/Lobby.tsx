@@ -2,7 +2,7 @@ import { SEATS, type ClientMessage, type RoomView, type YouView } from '@ludo/en
 import { useEffect, useState } from 'react'
 import { Chevron } from '../components/Picker'
 import { Sheet } from '../components/Sheet'
-import { afterKickName, COLOR_NAME, endName, rulesName, timerName, whoCanJoinName } from '../labels'
+import { afterKickName, COLOR_NAME, endName, levelName, rulesName, timerName, whoCanJoinName } from '../labels'
 import { COLOR_HEX } from '../theme'
 import type { Status } from './socket'
 import { useSecondsLeft } from './useSecondsLeft'
@@ -149,6 +149,10 @@ export function Lobby({ room, you, status, send, onSettings, onLeave, startAt }:
         <p className="row">
           <span className="row-label">Turn timer</span>
           <span className="row-value">{timerName(room.timer)}</span>
+        </p>
+        <p className="row">
+          <span className="row-label">Computer level</span>
+          <span className="row-value">{levelName(room.level)}</span>
         </p>
         {you.host && (
           <button type="button" className="row" disabled={offline} onClick={onSettings}>

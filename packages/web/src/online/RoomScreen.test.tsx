@@ -18,6 +18,7 @@ const ROOM: RoomView = {
   host: 1,
   settings: { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' },
   timer: 'normal',
+  level: 'normal',
   members: [{ id: 1, name: 'Ama', connected: true, seat: 'red' }],
   computers: [],
   covering: [],
@@ -136,7 +137,7 @@ describe('RoomScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: /Turn timer/ }))
     await userEvent.click(screen.getByRole('radio', { name: 'Relaxed' }))
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-    expect(send).toHaveBeenCalledWith({ t: 'settings', settings: ROOM.settings, timer: 'relaxed', open: false })
+    expect(send).toHaveBeenCalledWith({ t: 'settings', settings: ROOM.settings, timer: 'relaxed', level: 'normal', open: false })
     expect(screen.getByText('KQMZ')).toBeInTheDocument()
   })
 

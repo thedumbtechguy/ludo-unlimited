@@ -74,10 +74,10 @@ function Room({ code, device, name, timing, onLeave, onNoSeat, prefs }: Props) {
           {...prefs}
           onBack={() => setEditing(false)}
           online={{
-            initial: { settings: room.settings, timer: room.timer, open: room.open === 'hosted' },
+            initial: { settings: room.settings, timer: room.timer, level: room.level, open: room.open === 'hosted' },
             submitLabel: 'Save',
-            onCreate: (settings, timer, open) => {
-              online.send({ t: 'settings', settings, timer, open })
+            onCreate: (settings, timer, level, open) => {
+              online.send({ t: 'settings', settings, timer, level, open })
               setEditing(false)
             },
           }}

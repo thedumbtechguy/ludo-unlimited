@@ -1,8 +1,9 @@
+import type { Level } from './bot'
 import type { ModeName } from './modes'
 import type { Color, GameEvent, GameState, Move, Settings } from './types'
 
 /** Bumped whenever messages change shape; a device on another version is asked to update. */
-export const PROTOCOL_VERSION = 4
+export const PROTOCOL_VERSION = 5
 
 /** Who can find a room besides those with its code. Missing: private. `quick` rooms run themselves. */
 export type Openness = 'quick' | 'hosted'
@@ -22,6 +23,8 @@ export type RoomView = {
   host: number // member id
   settings: Settings
   timer: TurnTimer
+  /** How the computer plays, for computer seats and for anyone it covers. */
+  level: Level
   members: MemberView[]
   computers: Color[]
   covering: Color[]
@@ -49,7 +52,7 @@ export type ClientMessage =
   | { t: 'sit'; color: Color }
   | { t: 'stand' }
   | { t: 'takeover'; color: Color }
-  | { t: 'settings'; settings: Settings; timer: TurnTimer; open: boolean }
+  | { t: 'settings'; settings: Settings; timer: TurnTimer; open: boolean; level: Level }
   | { t: 'start'; empty: 'computers' | 'drop' }
   | { t: 'roll' }
   | { t: 'move'; move: Move }

@@ -18,7 +18,7 @@ describe('quick rooms', () => {
     const msgs: ClientMessage[] = [
       { t: 'sit', color: 'blue' },
       { t: 'stand' },
-      { t: 'settings', settings: room.settings, timer: 'off', open: false },
+      { t: 'settings', settings: room.settings, timer: 'off', level: 'normal', open: false },
       { t: 'start', empty: 'computers' },
     ]
     for (const msg of msgs) {
@@ -98,10 +98,10 @@ describe('hosted open rooms', () => {
   it('are made open, and the host can close and open them in the lobby', () => {
     const made = lobby(4, 'hosted')
     expect(made.open).toBe('hosted')
-    let step = run(made, [join('host'), say('host', { t: 'settings', settings: made.settings, timer: 'normal', open: false })])
+    let step = run(made, [join('host'), say('host', { t: 'settings', settings: made.settings, timer: 'normal', level: 'normal', open: false })])
     expect(step.room.open).toBeUndefined()
     expect(lastRoom(step, 'host')).toMatchObject({ room: { open: undefined } })
-    step = run(step.room, [say('host', { t: 'settings', settings: made.settings, timer: 'normal', open: true })])
+    step = run(step.room, [say('host', { t: 'settings', settings: made.settings, timer: 'normal', level: 'normal', open: true })])
     expect(step.room.open).toBe('hosted')
   })
 

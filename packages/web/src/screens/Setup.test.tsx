@@ -222,7 +222,7 @@ describe('Setup', () => {
       return onCreate
     }
 
-    it('has no seat rows, a turn timer, and Create room hands back the settings and timer', async () => {
+    it('has no seat rows, a turn timer and a computer level, and Create room hands them back', async () => {
       const onCreate = renderOnline()
       expect(screen.getByRole('heading', { level: 1, name: 'New room' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Red player/ })).toBeNull()
@@ -232,19 +232,23 @@ describe('Setup', () => {
       const quick = screen.getByRole('radio', { name: 'Quick' })
       expect(quick).toHaveAccessibleDescription('15 seconds for each roll or move.')
       await userEvent.click(quick)
+      expect(screen.getByRole('button', { name: /Computer level/ })).toHaveTextContent('Normal')
+      await userEvent.click(screen.getByRole('button', { name: /Computer level/ }))
+      await userEvent.click(screen.getByRole('radio', { name: 'Expert' }))
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }))
-      expect(onCreate).toHaveBeenCalledWith({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }, 'quick', false)
+      expect(onCreate).toHaveBeenCalledWith({ players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' }, 'quick', 'expert', false)
     })
 
     it('starts from a room\'s settings and saves them', async () => {
       const settings = { players: 2, endCondition: 'playForPlaces', rules: MODES.classic.rules, afterKick: 'bonusRoll' } as const
-      const onCreate = renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'off', open: false } })
+      const onCreate = renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'off', level: 'easy', open: false } })
       expect(ghana()).toHaveAttribute('aria-checked', 'false')
       expect(screen.getByRole('button', { name: /^Players/ })).toHaveTextContent('2')
       expect(screen.getByRole('button', { name: /Turn timer/ })).toHaveTextContent('No timer')
+      expect(screen.getByRole('button', { name: /Computer level/ })).toHaveTextContent('Easy')
       expect(screen.getByText('People on removed seats go back to watching.')).toBeInTheDocument()
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-      expect(onCreate).toHaveBeenCalledWith(settings, 'off', false)
+      expect(onCreate).toHaveBeenCalledWith(settings, 'off', 'easy', false)
     })
 
     it('Who can join is Friends with the code until changed, and is sent on create', async () => {
@@ -253,12 +257,12 @@ describe('Setup', () => {
       await userEvent.click(screen.getByRole('button', { name: /^Who can join/ }))
       await userEvent.click(screen.getByRole('radio', { name: 'Anyone' }))
       await userEvent.click(screen.getByRole('button', { name: 'Create room' }))
-      expect(onCreate).toHaveBeenCalledWith(expect.anything(), 'normal', true)
+      expect(onCreate).toHaveBeenCalledWith(expect.anything(), 'normal', 'normal', true)
     })
 
     it('starts from a room open to anyone', () => {
       const settings = { players: 4, endCondition: 'firstWins', rules: MODES.ghana.rules, afterKick: 'normal' } as const
-      renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'normal', open: true } })
+      renderOnline({ submitLabel: 'Save', initial: { settings, timer: 'normal', level: 'normal', open: true } })
       expect(screen.getByRole('button', { name: /^Who can join/ })).toHaveTextContent('Anyone')
     })
   })

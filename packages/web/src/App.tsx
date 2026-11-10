@@ -1,4 +1,4 @@
-import type { GameEvent, GameState, ModeName, Settings, TurnTimer } from '@ludo/engine'
+import type { GameEvent, GameState, Level, ModeName, Settings, TurnTimer } from '@ludo/engine'
 import { useEffect, useRef, useState } from 'react'
 import type { Dice } from './dice'
 import { audio } from './fx/audio'
@@ -140,11 +140,11 @@ export function App({ dice, timing }: { dice: Dice; timing: Timing }) {
     return (now.name === 'create' || now.name === 'quick') && now.request === request
   }
 
-  async function create(settings: Settings, timer: TurnTimer, open: boolean) {
+  async function create(settings: Settings, timer: TurnTimer, level: Level, open: boolean) {
     const request = ++requests.current
     setScreen({ name: 'create', request })
     try {
-      const code = await createRoom({ device, name, settings, timer, open })
+      const code = await createRoom({ device, name, settings, timer, level, open })
       if (waitingFor(request)) go({ name: 'room', code })
     } catch (e) {
       const error = (e as Error).message === 'too_fast' ? 'Too many new rooms. Try again in a minute.' : 'Couldn’t make the room. Check your connection and try again.'
