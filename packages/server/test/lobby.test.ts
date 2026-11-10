@@ -84,15 +84,15 @@ describe('lobby', () => {
   })
 
   it('refuses a computer level it doesn\'t know', () => {
-    const step = run(lobby(4), [join('host'), say('host', { t: 'settings', settings: lobby(4).settings, timer: 'quick', level: 'expert' as never })])
+    const step = run(lobby(4), [join('host'), say('host', { t: 'settings', settings: lobby(4).settings, timer: 'quick', level: 'genius' as never })])
     expect(sentTo(step, 'host')).toContainEqual({ t: 'error', code: 'illegal' })
     expect(step.room.level).toBe('normal')
   })
 
-  it('a room stored before levels plays at normal', () => {
+  it('a room stored before levels keeps the bot it had, now Hard', () => {
     const old = lobby(4)
     delete old.level
-    expect(viewOf(old, T0).level).toBe('normal')
+    expect(viewOf(old, T0).level).toBe('hard')
   })
 
   it('settings are stored without extra keys', () => {

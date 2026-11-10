@@ -26,9 +26,9 @@ export function loadGame(): SavedGame | undefined {
   }
 }
 
-/** Games saved before there were levels have plain 'computer' seats: those played at normal. */
+/** Games saved before there were levels have plain 'computer' seats: that bot is now Hard. */
 function upgradeSeats(seats: Record<string, string>): Seats {
-  return Object.fromEntries(Object.entries(seats).map(([color, seat]) => [color, seat === 'computer' ? 'normal' : seat])) as Seats
+  return Object.fromEntries(Object.entries(seats).map(([color, seat]) => [color, seat === 'computer' ? 'hard' : seat])) as Seats
 }
 
 export function clearGame(): void {

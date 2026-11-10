@@ -40,7 +40,7 @@ export type Room = {
   host: string
   settings: Settings
   timer: TurnTimer
-  /** Absent in rooms stored before levels: those play at normal. */
+  /** Absent in rooms stored before levels: those keep the bot they had, now Hard. */
   level?: Level
   members: Member[]
   nextId: number
@@ -121,7 +121,7 @@ export function viewOf(room: Room, now: number): RoomView {
     host: room.members.find((m) => m.device === room.host)?.id ?? 0,
     settings: room.settings,
     timer: room.timer,
-    level: room.level ?? 'normal',
+    level: room.level ?? 'hard',
     members: room.members.map(({ id, name, connected, seat }) => ({ id, name, connected, seat })),
     computers: room.computers,
     covering: room.covering,
@@ -418,7 +418,7 @@ function apply(ctx: Ctx, game: GameState, event: GameEvent, by: 'human' | 'compu
 /** The computer plays one decision for whoever has to act; false when the engine refuses it. */
 function computerAct(ctx: Ctx, game: GameState): boolean {
   const event: GameEvent =
-    game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random, ctx.room.level ?? 'normal')! }
+    game.pendingRoll === undefined ? { type: 'roll', value: dieRoll(ctx.random) } : { type: 'move', move: chooseMove(game, ctx.random, ctx.room.level ?? 'hard')! }
   return apply(ctx, game, event, 'computer')
 }
 

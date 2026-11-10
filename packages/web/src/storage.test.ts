@@ -14,10 +14,10 @@ describe('storage', () => {
     expect(loadGame()).toEqual({ settings, seats: { red: 'human', yellow: 'normal' }, log })
   })
 
-  it('loads a game saved before levels with its computers at normal', () => {
+  it('loads a game saved before levels with its computers at hard, the bot they were playing', () => {
     const log = roll(createGame(settings), 3).log
     localStorage.setItem('ludo-unlimited:game', JSON.stringify({ settings, seats: { red: 'human', yellow: 'computer' }, log }))
-    expect(loadGame()?.seats).toEqual({ red: 'human', yellow: 'normal' })
+    expect(loadGame()?.seats).toEqual({ red: 'human', yellow: 'hard' })
   })
 
   it('is empty when nothing is saved, or after clearing', () => {
